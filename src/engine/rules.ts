@@ -42,6 +42,8 @@ export interface RulesConfig {
   compassAfterWins: number;
   havenRestPct: number;
   bossMendToFull: boolean;
+  /** Spiral Shell (halfActMend): percent of missing Heart Mended between acts instead of full. */
+  shellActMendPct: number;
 
   glimmersBase: { normal: number; elite: number; boss: number; final: number };
   glimmersResolve: { normal: number; elite: number; boss: number; final: number };
@@ -84,6 +86,7 @@ export const DEFAULT_RULES: RulesConfig = {
   compassAfterWins: 2,
   havenRestPct: 30,
   bossMendToFull: true,
+  shellActMendPct: 50,
 
   glimmersBase: { normal: 10, elite: 25, boss: 60, final: 0 },
   glimmersResolve: { normal: 8, elite: 20, boss: 40, final: 0 },

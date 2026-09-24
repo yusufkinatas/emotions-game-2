@@ -354,6 +354,10 @@ export type RunCond =
   | { c: 'glimmers' | 'buriedCount' | 'heart' | 'upgradable'; op: CmpOp; n: number }
   | { c: 'lightCount'; light: Light; op: CmpOp; n: number }
   | { c: 'hasKeepsake'; id: KeepsakeId }
+  /** Current act (1, 2, or 3 = The Deep). Wishing Well: "Hope in Act 2, any available Light in Act 1". */
+  | { c: 'act'; op: CmpOp; n: number }
+  /** Kind of the card picked by the most recent deckSelect (Tea, Slowly: "If it was a Buried card"). */
+  | { c: 'lastSelectedKind'; kind: CardKind }
   | { c: 'not'; of: RunCond };
 
 export interface CardFilter {
@@ -371,6 +375,18 @@ export interface CardFilter {
 }
 
 export type DeckSelectPurpose = 'remove' | 'upgrade' | 'transform' | 'duplicate' | 'tend';
+
+/**
+ * Where a deckSelect came from.
+ * - shop: a Sanctuary service, paid when the card is chosen (skip is free).
+ * - haven: Kindle or Reflect; choosing finishes the Haven, skipping returns to it.
+ * - effects: an event (or event-combat) effect list; `continuation` runs after the choice with a stream
+ *   seeded from `seed`.
+ */
+export type DeckSelectOrigin =
+  | { kind: 'shop'; service: 'remove' | 'talk'; price: number }
+  | { kind: 'haven' }
+  | { kind: 'effects'; continuation: RunEffect[]; seed: number };
 
 export type RunEffect =
   | { op: 'heart' | 'maxHeart' | 'glimmers'; n: number }
@@ -493,7 +509,7 @@ export interface RunState {
   keepsakes: KeepsakeInstance[];
   /** 3 = The Deep. */
   act: 1 | 2 | 3;
-  /** Floors cleared this run. */
+  /** Floors entered this run, counting the current one (the same number as stats.floors, "Floors reached" in 15.4). */
   floor: number;
   tutorial: boolean;
   map: MapState;
@@ -505,6 +521,8 @@ export interface RunState {
   insightsMade: CardId[];
   /** Glimmers paid by the last payAll RunEffect. */
   lastPaid: number;
+  /** Def id of the card picked by the most recent deckSelect (before the change was applied). */
+  lastSelected?: CardId | null;
   stats: RunStats;
 }
 
@@ -558,6 +576,8 @@ export interface EffectCtx {
   fromCard: boolean;
   /** Set when a hit from this card Suppressed its target (Push It Down). */
   suppressedTarget?: boolean;
+  /** hitTaken passives: relation of the triggering hit (Cond 'relation'). */
+  relation?: Relation;
 }
 
 export interface Frame {
@@ -571,6 +591,17 @@ export interface PendingChoice {
   options: Uid[];
   /** Remaining work to run after the choice (stack of frames, top last). */
   continuation: Frame[];
+  /** The card play the choice interrupted; its cleanup (5.3 step 8) runs after the continuation. */
+  play?: {
+    uid: Uid;
+    target: Uid | null;
+    lights: Light[];
+    harmonized: boolean;
+    /** Shades hit by the card so far (cardHitResolved passives). */
+    hit: Uid[];
+    cost: number;
+    suppressed: boolean;
+  };
 }
 
 export interface CombatStats {
@@ -617,8 +648,12 @@ export interface CombatState {
   player: { hp: number; maxHp: number; guard: number; statuses: StatusBag };
   /** Combat copies keep the deck instance uid. */
   cards: Record<Uid, CombatCard>;
-  /** removed = Surfaced Buried cards and B3-removed Buried cards. */
-  piles: { draw: Uid[]; hand: Uid[]; discard: Uid[]; letGo: Uid[]; moods: Uid[]; removed: Uid[] };
+  /**
+   * removed = Surfaced Buried cards and B3-removed Buried cards. draw[0] is the top of the draw pile.
+   * play = the card being played (between 5.3 steps 4 and 8, incl. while a choice is pending); the engine
+   * always sets it (optional only so hand-built fixtures stay valid).
+   */
+  piles: { draw: Uid[]; hand: Uid[]; discard: Uid[]; letGo: Uid[]; moods: Uid[]; removed: Uid[]; play?: Uid[] };
   /** Array order = position = action order (left to right). */
   enemies: EnemyState[];
   gone: GoneEnemy[];
@@ -681,6 +716,7 @@ export interface RewardOffer {
   cards: CardId[];
   taken: { keepsake: boolean; card: boolean };
   outcomes: GoneEnemy[];
+  /** 12.2 Full Bloom: a fight or elite where every non-Fleeting Shade was Resolved, so `cards` has a 4th option. */
   fullBloom: boolean;
   /** Where 'continue' goes. */
   then: 'map' | 'wheelCloses' | 'deep' | 'victory';
@@ -720,6 +756,8 @@ export type Phase =
       /** Phase to return to after the choice (or on skip, if skippable). */
       then: Phase;
       skippable: boolean;
+      /** What opened the selection (payment, where a choice leads, remaining event effects). */
+      origin?: DeckSelectOrigin;
     }
   | { kind: 'victory'; ending: 'resolved' | 'suppressed' }
   | { kind: 'defeat'; cause: 'heart' | 'turnLimit' };
@@ -828,6 +866,10 @@ export type GameEvent =
   | { e: 'tended'; uid: Uid; weightAfter: number }
   | { e: 'insight'; uid: Uid; to: CardId; upgraded: boolean }
   | { e: 'peace'; uid: Uid }
+  /** A Mood played outward is now active (card moved to the moods pile). */
+  | { e: 'moodActive'; uid: Uid }
+  /** A card moved into the hand by an effect (Look Inward), not a draw. */
+  | { e: 'toHand'; uid: Uid; from: 'draw' | 'discard' | 'removed' }
   | { e: 'promise'; created: boolean; targetUid: Uid | null }
   | { e: 'pending'; purpose: PendingChoice['purpose']; options: Uid[] }
   | { e: 'festering' }
@@ -944,6 +986,45 @@ export interface NodeDetail {
   text: string;
 }
 
+/** Light Mix bar and deck counts (DESIGN 12.2, 16.4). */
+export interface DeckSummary {
+  total: number;
+  /** Mono-Light cards per Light (Insight cards excluded). */
+  byLight: Record<Light, number>;
+  /** Blend cards per Blend. */
+  byBlend: Record<Blend, number>;
+  neutral: number;
+  buried: number;
+  insight: number;
+  /** 12.2 "most common Light": `ease` cards only, by printed Light (a Blend counts for both), ties by wheel order. */
+  easeByLight: Record<Light, number>;
+  /** All six Lights sorted by easeByLight (desc), ties by wheel order. */
+  mostCommon: Light[];
+  /** Total Weight of Buried cards. */
+  buriedWeight: number;
+  /**
+   * Top-bar Numbness meter (4.16), null without Buried cards. willSurface = the cards that will rise (3 heaviest,
+   * ties by wheel order); hiddenIntensity = max Intensity the rest add (hiddenWeight x the boss's hpPerHiddenWeight).
+   */
+  numbness: { willSurface: Uid[]; hiddenWeight: number; hiddenIntensity: number } | null;
+}
+
+export interface EventOptionView {
+  label: string;
+  result: string;
+  enabled: boolean;
+  /** Why the option is disabled ("Not enough Heart", or the option's requiresText). */
+  reason: string | null;
+}
+
+export interface HavenOptionView {
+  id: 'rest' | 'kindle' | 'reflect';
+  available: boolean;
+  reason: string | null;
+  /** Rest only: Heart after resting. */
+  heartAfter: number | null;
+}
+
 export interface EngineCtx {
   pack: ContentPack;
   rules: RulesConfig;
@@ -975,6 +1056,14 @@ export interface Engine {
   /** Rules text of a card definition outside combat (deck view, rewards, shop). */
   describeCard(defId: CardId, upgraded: boolean, weight?: number): string;
   nodeDetail(s: GameState, nodeId: number): NodeDetail;
+  /** Deck counts, most common Light and the Numbness meter. */
+  deckSummary(s: GameState): DeckSummary;
+  /** Options of the current event with enabled state and reasons ([] outside an event). */
+  eventOptions(s: GameState): EventOptionView[];
+  /** Haven options with availability ([] outside a Haven). */
+  havenOptions(s: GameState): HavenOptionView[];
+  /** Invariant violations of a state (DESIGN 22); [] when healthy. */
+  checkInvariants(s: GameState): string[];
   hash(s: GameState): string;
   serialize(s: GameState): string;
   deserialize(json: string): GameState | null;
