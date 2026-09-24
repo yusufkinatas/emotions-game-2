@@ -360,7 +360,7 @@ The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit a
 1. Copy the run deck into `combat.cards` (combat copies keep the deck instance `uid`). Shuffle into the draw pile with the node's `shuffle` stream. Put Innate cards (and Worn Diary's Buried card) on top.
 2. Spawn Shades in encounter order, left to right (HP pre-rolled at map generation). Roll each normal Shade's pattern start offset with the `ai` stream (elites, bosses, Surfaced, and every member of `enc.t1` to `enc.t4`: offset 0).
 3. Surfacing, then The Numbness's hidden-Weight growth (Numbness/Apathy only, 4.16).
-4. Combat-start triggers in order: player Keepsakes (acquisition order), then Shade passives (position order). Examples: Woven Bracelet summons a Lantern Moth; Chipped Teacup gives 3 Seething; Skitter summons a Doubt; Echo's Last One Left.
+4. Combat-start triggers in order: player Keepsakes (acquisition order), then Shade passives (position order). Examples: Chipped Teacup gives 3 Seething; Skitter summons a Doubt; Echo's Last One Left. (Woven Bracelet summons at 5.2 step 5 on turn 1, L7.)
 5. Roll every Shade's intent.
 6. `note = []`, `turn = 0`. Go to 5.2.
 
@@ -369,7 +369,7 @@ The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit a
 2. Remove all player Guard.
 3. `energy = 3 + keepsake bonuses (+1 Chipped Teacup, +1 Spiral Shell, +1 Morning Tea on turn 1) + next_spirit - (1 if Hollow >= 1)`, minimum 0. Clear `next_spirit`.
 4. Draw 5 + `next_draw` (+2 Sun Charm on turn 1). Clear `next_draw`. If the draw pile is empty when drawing, shuffle the discard pile into it (`shuffle` stream).
-5. Turn-start triggers: Moods (Better Days, Lionheart), then Keepsakes (Warm Socks on turn 1).
+5. Turn-start triggers: Moods (Better Days, Lionheart), then Keepsakes (Warm Socks and Woven Bracelet on turn 1).
 6. Resolve due Promises (creation order). Win check: R-8b after each Promise hit (a Promise that finishes the last Shade wins before the player acts).
 7. Player may act: `play`, `endTurn` (and `choose`/`confirm` while a choice is pending).
 
@@ -2080,7 +2080,7 @@ Never cut Deep Resolve: it is the reason Blends exist ("a Blend can land a DEEP 
 
 ## 25. Changelog v1.0 -> v1.1
 
-Each line names the red-team finding (B = blocker, M = major, minor-N = minor item N) or the lead's own decision (L1 to L6), then the sections it touched.
+Each line names the red-team finding (B = blocker, M = major, minor-N = minor item N) or the lead's own decision (L1 to L7), then the sections it touched.
 
 **Blockers**
 - **B1** New rule R-8b (immediate win check after every hit and Shade removal from any source, win check before the Heart-0 check in the same step), referenced from 5.2, 5.3, 5.6, 5.7 and the section 5 preamble. 5.3 step 9 is now "Win check: R-8b", R-8a no longer ends the combat, and scenario tests cover Companion, Promise and High Five finishing blows (4.8, 5, 4.13, 4.14, 6.4, 22).
@@ -2145,6 +2145,7 @@ Each line names the red-team finding (B = blocker, M = major, minor-N = minor it
 - **L4** The package.json script list shows the final set: dev, build, preview, typecheck (3 tsconfigs), test, test:watch, test:slow, test:balance, sim (20.2).
 - **L5 lead: harmonized Keepsake triggers after the card's effects.** Keepsake `harmonized` triggers (Tuning Fork) fire once the card's effect list has finished (after 5.3 step 7, before step 8 cleanup), not at step 4: a draw at step 4 stopped the sealed preview before the card's hits, so the first Harmonized card each turn showed no RESOLVE/SUPPRESS banner. An Inward play's Tend target is chosen before any Keepsake draw. A card that ends the combat (R-8b) fires no trigger (5.3).
 - **L6 lead: Intensity thresholds are percent of current max Intensity.** The Mask's Cracked, the Spiral's Deepening and The Numbness's Thaw trigger at 50% of current max Intensity (75 of 150, 100 of 200, 90 of 180), so B2 growth raises the Thaw point (4.16, 7.1, 7.2, 7.3).
+- **L7 lead: Woven Bracelet summons on turn 1 start.** Its Lantern Moth moves from the combat-start triggers (5.1 step 4) to the turn-1 Keepsake triggers (5.2 step 5), after the turn-1 Guard reset, so Welcome Mat's +3 Guard from that summon is kept (5.1, 5.2).
 
 **Editor's clarifications** (needed to apply the decisions above consistently)
 - **B3** "Already own" an Insight means created earlier this run, even if it has since left the deck. This reconciles "created at most once per run" with "whose Insight you already own" (4.10, 20.3).

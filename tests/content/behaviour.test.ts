@@ -261,6 +261,30 @@ describe('numb rules and The Deep', () => {
   });
 });
 
+describe('intents with several afflictions', () => {
+  /** Puts Shade 0 on `moveId` of its cycle (the first phase for The Numbness), current intent included. */
+  const onMove = (s: GameState, moveId: string, cycle: string[]) =>
+    edit(s, (c) => {
+      const e = c.enemies[0]!;
+      e.pattern.index = cycle.indexOf(moveId);
+      e.intent = { moveId };
+    });
+
+  it('Dread Shadow, Longing Remember and The Numbness Nothing Much list every affliction in move order', () => {
+    const cases: [string, string, string[], { id: string; stacks: number }[], string][] = [
+      ['enc.a2.dread', 'shadow', ['creak', 'shadow'], [{ id: 'trembling', stacks: 2 }, { id: 'hollow', stacks: 1 }], 'Gives you 2 Trembling and 1 Hollow.'],
+      ['enc.a2.longing', 'remember', ['reach_back', 'remember', 'ache'], [{ id: 'heavy', stacks: 1 }, { id: 'isolated', stacks: 1 }], 'Gives you 1 Heavy and 1 Isolated.'],
+      ['enc.deep.numbness', 'nothing_much', ['static', 'fog', 'nothing_much'], [{ id: 'heavy', stacks: 1 }, { id: 'hollow', stacks: 1 }], 'Gives you 1 Heavy and 1 Hollow.'],
+    ];
+    for (const [encounter, moveId, cycle, afflicts, sentence] of cases) {
+      const s = onMove(fight(encounter), moveId, cycle);
+      const [iv] = engine.intents(s);
+      expect(iv, encounter).toMatchObject({ moveId, afflicts, afflict: afflicts[0] });
+      expect(iv!.text, encounter).toContain(sentence);
+    }
+  });
+});
+
 describe('turn-1 Keepsakes and Charms', () => {
   it('Sun Charm draws 7 on turn 1 only; Morning Tea gives 4 Spirit on turn 1 only; Warm Socks 6 Guard', () => {
     let s = fight('enc.a1.grumble', { charm: 'ks.sun_charm' });

@@ -15,6 +15,9 @@ import { CombatOver, createRt, enemyDef, findEnemy, SealedStop, type Rt } from '
 import { capitalize, describeInCombat, shadeName, statusName } from './text';
 import { endTurnSteps } from './turn';
 
+/** "a", "a and b", "a, b and c". */
+const listAnd = (xs: string[]): string => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
 function intentText(rt: Rt, e: EnemyState, v: Omit<IntentView, 'text'>, overrideEmpties: boolean): string {
   const parts: string[] = [];
   const outline = e.intent ? moveOutline(rt, e, e.intent.moveId) : null;
@@ -27,7 +30,7 @@ function intentText(rt: Rt, e: EnemyState, v: Omit<IntentView, 'text'>, override
     }
   }
   if (v.guard) parts.push(`Gains ${v.guard} Guard.`);
-  if (v.afflict) parts.push(`Gives you ${v.afflict.stacks} ${statusName(rt, v.afflict.id)}.`);
+  if (v.afflicts.length) parts.push(`Gives you ${listAnd(v.afflicts.map((a) => `${a.stacks} ${statusName(rt, a.id)}`))}.`);
   if (outline && outline.mend > 0) parts.push(`Restores ${outline.mend} Intensity.`);
   if (v.kinds.includes('buff')) parts.push('Grows stronger.');
   if (v.kinds.includes('summon')) parts.push('Calls for company.');
@@ -59,7 +62,8 @@ export function intentViewOf(rt: Rt, e: EnemyState): IntentView | null {
       ? { perStrike: first.perStrike, count: sameStrikes ? outline.strikes.reduce((n, s) => n + s.count, 0) : first.count }
       : null,
     guard: outline.shield > 0 ? outline.shield : null,
-    afflict: outline.afflict,
+    afflict: outline.afflicts[0] ?? null,
+    afflicts: outline.afflicts,
     overriddenBy: forced ? overrideName(forced) : null,
     projected: false,
     projectedReason: null,
@@ -72,7 +76,7 @@ function sameNumbers(a: IntentView, b: IntentView): boolean {
     a.moveId === b.moveId &&
     JSON.stringify(a.strikes) === JSON.stringify(b.strikes) &&
     a.guard === b.guard &&
-    JSON.stringify(a.afflict) === JSON.stringify(b.afflict)
+    JSON.stringify(a.afflicts) === JSON.stringify(b.afflicts)
   );
 }
 

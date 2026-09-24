@@ -727,7 +727,8 @@ describe('Keepsakes match DESIGN 9', () => {
     // Sun Charm and Morning Tea feed the turn-1 draw and Spirit of 5.2 through next_draw / next_spirit.
     expect(hooks('ks.sun_charm')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'next_draw', stacks: 2, to: 'player' }], limit: undefined } });
     expect(hooks('ks.morning_tea')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'next_spirit', stacks: 1, to: 'player' }], limit: undefined } });
-    expect(hooks('ks.woven_bracelet')).toEqual({ combatStart: { effects: [{ op: 'summon', companion: 'comp.lantern_moth' }], limit: undefined } });
+    // L7: turn 1 start (after the Guard reset), so Welcome Mat's Guard from this summon is kept.
+    expect(hooks('ks.woven_bracelet')).toEqual({ turn1Start: { effects: [{ op: 'summon', companion: 'comp.lantern_moth' }], limit: undefined } });
     expect(hooks('ks.brave_pebble')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'nerve', stacks: 1, to: 'player' }], limit: undefined } });
     expect(hooks('ks.tuning_fork')).toEqual({ harmonized: { effects: [{ op: 'draw', n: 1 }], limit: 'turn' } });
     expect(hooks('ks.pressed_flower')).toEqual({ resolved: { effects: [{ op: 'mend', amount: 3, to: 'player' }], limit: undefined } });

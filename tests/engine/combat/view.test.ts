@@ -1,6 +1,7 @@
 // 16.2 UI data: IntentView text and numbers, HandHints, card text slots, Preview lines and banners.
 import { describe, expect, it } from 'vitest';
 import { describeCard } from '../../../src/engine/combat/index';
+import { miniPack } from '../../fixtures/miniPack';
 import { testPack } from '../../fixtures/testPack';
 import { ctxFor } from '../../helpers/run';
 import { scenario } from '../../helpers/scenario';
@@ -12,7 +13,7 @@ describe('IntentView', () => {
   it('numbers include Flare and Hush; text explains them', () => {
     const t = scenario().draw(...five).enemy('shade.grumble', { intent: 'snap', statuses: { flare: 1 } }).enemy('shade.mope', { intent: 'drizzle', statuses: { hush: 1 } }).build();
     const [a, b] = t.intents();
-    expect(a).toMatchObject({ moveId: 'snap', name: 'Snap', kinds: ['strike'], strikes: { perStrike: 8, count: 1 }, guard: null, afflict: null });
+    expect(a).toMatchObject({ moveId: 'snap', name: 'Snap', kinds: ['strike'], strikes: { perStrike: 8, count: 1 }, guard: null, afflict: null, afflicts: [] });
     expect(a!.text).toBe('Strikes for 8 (7 + 1 Flare).');
     expect(b!.strikes).toEqual({ perStrike: 1, count: 3 });
     expect(b!.text).toBe('Strikes 3 times for 1 each (2 - 1 Hush).');
@@ -21,9 +22,22 @@ describe('IntentView', () => {
   it('guard and afflict parts; overriddenBy names the gauge', () => {
     const t = scenario().draw(...five).enemy('shade.kettle', { statuses: { pressure: 6 }, intent: 'boil_over' }).enemy('shade.mope', { intent: 'curl_up' }).build();
     const [k, m] = t.intents();
-    expect(k).toMatchObject({ overriddenBy: 'pressure', afflict: { id: 'seething', stacks: 3 } });
+    expect(k).toMatchObject({ overriddenBy: 'pressure', afflict: { id: 'seething', stacks: 3 }, afflicts: [{ id: 'seething', stacks: 3 }] });
     expect(k!.text).toContain('Pressure is full');
     expect(m).toMatchObject({ guard: 10, text: 'Gains 10 Guard.' });
+  });
+
+  it('afflicts lists every affliction in move order; afflict is the first; the text names them all', () => {
+    const t = scenario(miniPack).draw(...five).enemy('shade.numbness', { intent: 'nothing_much' }).build();
+    const [n] = t.intents();
+    expect(n!.afflicts).toEqual([{ id: 'heavy', stacks: 1 }, { id: 'hollow', stacks: 1 }]);
+    expect(n!.afflict).toEqual({ id: 'heavy', stacks: 1 });
+    expect(n!.text).toBe('Strikes for 8. Gives you 1 Heavy and 1 Hollow.');
+    const u = scenario().draw(...five).enemy('shade.longing', { intent: 'remember' }).enemy('shade.grumble', { intent: 'snap' }).build();
+    const [l, g] = u.intents();
+    expect(l).toMatchObject({ guard: 10, afflict: { id: 'heavy', stacks: 1 }, afflicts: [{ id: 'heavy', stacks: 1 }, { id: 'isolated', stacks: 1 }] });
+    expect(l!.text).toBe('Gains 10 Guard. Gives you 1 Heavy and 1 Isolated.');
+    expect(g).toMatchObject({ afflict: null, afflicts: [] });
   });
 
   it('an override that fires as its gauge runs out says so (Dread at Countdown 0)', () => {

@@ -1,5 +1,6 @@
 // Section 9 Keepsakes: every in-combat trigger (with limits) and flag.
 import { describe, expect, it } from 'vitest';
+import { defaultPack } from '../../../src/content';
 import { scenario, startScenario } from '../../helpers/scenario';
 
 const five = ['courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm'];
@@ -30,6 +31,18 @@ describe('Keepsake triggers', () => {
     t.endTurn();
     expect(t.c.piles.hand).toHaveLength(5);
     expect(t.c.energy).toBe(4);
+  });
+
+  it('L7: Woven Bracelet summons at turn 1 start, after the Guard reset, so Welcome Mat\'s 3 Guard is kept', () => {
+    const t = startScenario({ pack: defaultPack, deck: lots, encounter: 'enc.a1.grumble', keepsakes: ['ks.woven_bracelet', 'ks.welcome_mat'], seed: 2 });
+    expect(t.c.turn).toBe(1);
+    expect(t.c.companions.map((x) => x.defId)).toEqual(['comp.lantern_moth']);
+    expect(t.c.player.guard).toBe(3);
+    const turn1 = t.log.findIndex((e) => e.e === 'turn' && e.side === 'player' && e.n === 1);
+    const bracelet = t.log.findIndex((e) => e.e === 'keepsake' && e.id === 'ks.woven_bracelet');
+    expect(bracelet).toBeGreaterThan(turn1);
+    t.endTurn();
+    expect(t.c.companions).toHaveLength(1); // once per combat, not every turn
   });
 
   it('Ember Lantern: whenever a Shade gains Flare, gain 2 Guard (Festering counts per Shade)', () => {

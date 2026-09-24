@@ -893,7 +893,10 @@ export interface IntentView {
   /** Per-strike damage after Flare and Hush, and strike count. */
   strikes: { perStrike: number; count: number } | null;
   guard: number | null;
+  /** First affliction of the move (compatibility): `afflicts[0] ?? null`. */
   afflict: { id: string; stacks: number } | null;
+  /** Every affliction the move gives you, in move order (Dread's Shadow: 2 Trembling, then 1 Hollow). */
+  afflicts: { id: string; stacks: number }[];
   /** Gauge/override that forced this move (e.g. 'pressure'), else null. */
   overriddenBy: string | null;
   /** M2: this is the intent projected after your end-of-turn steps (differs from the current one). */

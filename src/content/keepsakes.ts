@@ -36,11 +36,12 @@ export const KEEPSAKES: KeepsakeDef[] = [
     icon: 'sun',
   },
   {
+    // L7: summons at turn 1 start (after 5.2's Guard reset), so Welcome Mat's +3 Guard from it is kept.
     id: 'ks.woven_bracelet',
     name: 'Woven Bracelet',
     rarity: 'charm',
     text: 'At the start of each combat, Summon a Lantern Moth.',
-    on: { combatStart: { effects: [summon('comp.lantern_moth')] } },
+    on: { turn1Start: { effects: [summon('comp.lantern_moth')] } },
     addsCard: 'friendship.reach_out',
     icon: 'bracelet',
   },

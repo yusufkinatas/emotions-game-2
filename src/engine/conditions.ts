@@ -139,7 +139,8 @@ export interface MoveOutline {
   strikeTotal: number;
   /** Guard the Shade gains. */
   shield: number;
-  afflict: { id: string; stacks: number } | null;
+  /** Every affliction the move gives you, in move order. */
+  afflicts: { id: string; stacks: number }[];
   mend: number;
 }
 
@@ -151,7 +152,7 @@ export function selfCtx(e: EnemyState): EffectCtx {
 }
 
 export function moveOutline(rt: Rt, e: EnemyState, moveId: string): MoveOutline {
-  const out: MoveOutline = { strikes: [], strikeTotal: 0, shield: 0, afflict: null, mend: 0 };
+  const out: MoveOutline = { strikes: [], strikeTotal: 0, shield: 0, afflicts: [], mend: 0 };
   const move = enemyDef(rt, e).moves[moveId];
   if (!move) return out;
   const ctx = selfCtx(e);
@@ -175,11 +176,11 @@ export function moveOutline(rt: Rt, e: EnemyState, moveId: string): MoveOutline 
           if (eff.to !== 'player') out.mend += Math.max(0, evalAmount(rt, eff.amount, ctx));
           break;
         case 'afflict':
-          if (!out.afflict) out.afflict = { id: eff.id, stacks: eff.stacks };
+          out.afflicts.push({ id: eff.id, stacks: eff.stacks });
           break;
         case 'status':
-          if (!out.afflict && eff.to === 'player' && isAfflictionId(rt, eff.id)) {
-            out.afflict = { id: eff.id, stacks: evalAmount(rt, eff.stacks, ctx) };
+          if (eff.to === 'player' && isAfflictionId(rt, eff.id)) {
+            out.afflicts.push({ id: eff.id, stacks: evalAmount(rt, eff.stacks, ctx) });
           }
           break;
         case 'if':
