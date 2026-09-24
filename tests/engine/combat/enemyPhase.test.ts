@@ -126,6 +126,38 @@ describe('5.7.1 projected intents (M2)', () => {
     expect(p.targets[0]!.hits[0]!.base).toBe(7); // turn_away is not an attack
   });
 
+  it('Festering (R-17): from festerTurn the shown strikes include +1 Flare, and that is what lands', () => {
+    const t = scenario().turn(12).draw(...lots).enemy('shade.grumble', { hp: 40, intent: 'snap' }).enemy('shade.mope', { intent: 'curl_up' }).build();
+    const [g, m] = t.intents();
+    expect(g).toMatchObject({ moveId: 'snap', strikes: { perStrike: 8, count: 1 }, projected: true, projectedReason: 'The Shades fester: +1 Flare.' });
+    expect(g!.text).toBe('Strikes for 8 (7 + 1 Flare).');
+    expect(m).toMatchObject({ moveId: 'curl_up', projected: false, projectedReason: null }); // no strike, nothing to show
+    const p = t.previewEndTurn()!;
+    expect(p.uncertain).toBe(false);
+    expect(p.player.incomingLoss).toBe(8);
+    t.endTurn();
+    expect(t.eventsOf('festering')).toHaveLength(1);
+    expect(t.eventsOf('strike').map((e) => e.amount)).toEqual([g!.strikes!.perStrike]);
+    expect(t.c.player.hp).toBe(70 - p.player.incomingLoss);
+  });
+
+  it('Festering joins other causes; before festerTurn nothing festers', () => {
+    const t = scenario().turn(12).hand('courage.brave_strike').draw(...lots).enemy('shade.grumble', { hp: 40, intent: 'snap' }).build();
+    t.play('courage.brave_strike', 0); // no Love: Short Fuse
+    const [g] = t.intents();
+    expect(g!.strikes!.perStrike).toBe(9);
+    expect(g!.projectedReason).toBe('Short Fuse will add Flare at the end of your turn. The Shades fester: +1 Flare.');
+    t.endTurn();
+    expect(t.eventsOf('strike').map((e) => e.amount)).toEqual([9]);
+    const u = scenario().turn(11).draw(...lots).enemy('shade.grumble', { hp: 40, intent: 'snap' }).build();
+    expect(u.intents()[0]).toMatchObject({ strikes: { perStrike: 7, count: 1 }, projected: false });
+  });
+
+  it('play previews count Festering in the Heart you will lose at end of turn', () => {
+    const t = scenario().turn(12).hand('courage.stand_firm').enemy('shade.grumble', { intent: 'snap' }).build();
+    expect(t.preview('courage.stand_firm')!.player.incomingLoss).toBe(8 - 5);
+  });
+
   it('unchanged intents are not flagged', () => {
     const t = scenario().draw(...lots).enemy('shade.mope', { intent: 'sigh' }).build();
     expect(t.intents()[0]).toMatchObject({ moveId: 'sigh', projected: false, projectedReason: null, text: 'Strikes for 6. Gives you 1 Heavy.' });

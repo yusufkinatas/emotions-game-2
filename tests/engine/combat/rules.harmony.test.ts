@@ -103,3 +103,50 @@ describe('R-4 Harmony and the Note', () => {
     expect(t.eventsOf('keepsake')).toHaveLength(0);
   });
 });
+
+describe('L5: Keepsake `harmonized` triggers fire after the card\'s effects (5.3 step 7, before step 8)', () => {
+  const five = ['courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm', 'courage.stand_firm'];
+
+  it('Tuning Fork draws after the hits, so the sealed preview still shows the RESOLVE banner', () => {
+    const t = scenario().compass().keepsakes('ks.tuning_fork').note('joy').hand('love.kind_word').draw(...five)
+      .enemy('shade.grumble', { hp: 10 }).enemy('shade.mope').build();
+    const p = t.preview('love.kind_word', 0)!;
+    expect(p.harmonized).toBe(true);
+    expect(p.uncertain).toBe(true); // the Keepsake draw seals the rest
+    const g = p.targets.find((x) => x.uid === t.enemy(0).uid)!;
+    expect(g.hits).toHaveLength(1);
+    expect(g.outcome).toBe('resolve');
+    expect(p.line).toContain('Finishes it: RESOLVE');
+    t.play('love.kind_word', 0);
+    const order = t.events.map((e) => e.e).filter((e) => e === 'harmony' || e === 'hit' || e === 'resolved' || e === 'keepsake' || e === 'draw' || e === 'discard');
+    expect(order).toEqual(['harmony', 'hit', 'resolved', 'keepsake', 'draw', 'discard']);
+    expect(t.c.piles.hand).toHaveLength(1);
+  });
+
+  it('a Harmonized card that ends the combat (R-8b) fires no trigger', () => {
+    const t = scenario().compass().keepsakes('ks.tuning_fork').note('joy').hand('love.kind_word').draw(...five)
+      .enemy('shade.grumble', { hp: 10 }).build();
+    t.play('love.kind_word', 0);
+    expect(t.c.outcome).toBe('won');
+    expect(t.eventsOf('keepsake').filter((e) => e.id === 'ks.tuning_fork')).toHaveLength(0);
+    expect(t.eventsOf('draw')).toHaveLength(0);
+    expect(t.c.keepsakeFired).toEqual({});
+  });
+
+  it('Inward: the Tend target is chosen before the Keepsake draw', () => {
+    const t = scenario().compass().keepsakes('ks.tuning_fork').note('love')
+      .hand('joy.bright_spark', { id: 'buried.anger', weight: 2 }).draw({ id: 'buried.sadness', weight: 3 }, ...five)
+      .enemy('shade.grumble', { hp: 40 }).build();
+    const anger = t.uid('buried.anger');
+    const sadness = t.uid('buried.sadness');
+    const p = t.preview('joy.bright_spark', 'inward')!;
+    expect(p.harmonized).toBe(true);
+    expect(p.player.tended).toMatchObject({ uid: anger, weightAfter: 1 });
+    t.play('joy.bright_spark', 'inward');
+    expect(t.c.cards[anger]!.weight).toBe(1);
+    expect(t.c.cards[sadness]!).toMatchObject({ weight: 3, mem: { tended: false } });
+    expect(t.c.piles.hand).toContain(sadness);
+    const order = t.events.map((e) => e.e).filter((e) => e === 'tended' || e === 'keepsake' || e === 'draw');
+    expect(order).toEqual(['tended', 'keepsake', 'draw']);
+  });
+});

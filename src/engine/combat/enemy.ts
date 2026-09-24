@@ -1,7 +1,7 @@
 // Shade intents and actions (DESIGN 5.7, 7): cycle/byFace/phases patterns, overrides (M13), face turning
 // (R-5, M1), summons (7.0), and the enemy phase with its phase-start snapshot.
 
-import { MEM_TURNS_LEFT, ST } from '../constants';
+import { FESTER_FLARE, MEM_TURNS_LEFT, ST } from '../constants';
 import { evalCond, selfCtx } from '../conditions';
 import { runEffects, settle } from '../interpreter';
 import { clearEnemyGuard, emit, insertEnemy, setFaceIndex, setIntent } from '../primitives';
@@ -205,15 +205,27 @@ function act(rt: Rt, e: EnemyState): void {
   rollIntent(rt, e);
 }
 
+/** R-17: the enemy phase that follows this player turn Festers. */
+export function festers(rt: Rt): boolean {
+  return rt.c.turn >= rt.rules.festerTurn;
+}
+
+/**
+ * 5.7 step 1 (R-17): from festerTurn every Shade gains 1 Flare. Shared by the enemy phase and the M2 intent
+ * projection, so displayed strikes already include it.
+ */
+export function fester(rt: Rt): void {
+  if (!festers(rt)) return;
+  emit(rt, { e: 'festering' });
+  for (const e of rt.c.enemies.slice()) giveStatus(rt, e, ST.flare, FESTER_FLARE);
+  settle(rt);
+}
+
 /** 5.7: Festering, then each Shade of the phase-start snapshot acts left to right if still present. */
 export function enemyPhase(rt: Rt): void {
   rt.c.moodFiredThisPhase = [];
   emit(rt, { e: 'turn', side: 'enemy', n: rt.c.turn });
-  if (rt.c.turn >= rt.rules.festerTurn) {
-    emit(rt, { e: 'festering' });
-    for (const e of rt.c.enemies.slice()) giveStatus(rt, e, ST.flare, 1);
-    settle(rt);
-  }
+  fester(rt);
   const snapshot = rt.c.enemies.map((e) => e.uid);
   for (const uid of snapshot) {
     const e = findEnemy(rt, uid);

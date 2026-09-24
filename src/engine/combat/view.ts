@@ -1,13 +1,14 @@
 // UI data (DESIGN 16.2): IntentView incl. the M2 projection after your end-of-turn steps, HandHints and
 // card text. Everything is derived from engine state; the UI never computes rules.
 
+import { FESTER_FLARE, ST } from '../constants';
 import { moveOutline } from '../conditions';
 import { typingOf } from '../damage';
 import { afflictionSoothedBy, blendOfLights, relationOf } from '../emotions';
 import type { EngineCtx, EnemyState, GameState, HandHint, IntentView, Uid } from '../types';
 import { inwardTendCandidate, isBuried } from './buried';
 import { hasKeyword } from './cards';
-import { deriveIntent, overrideGauge, overrideName } from './enemy';
+import { deriveIntent, fester, overrideGauge, overrideName } from './enemy';
 import { canTarget, cardCtx, inwardLegal, planCard } from './legal';
 import { hitSpecFor } from './lethal';
 import { CombatOver, createRt, enemyDef, findEnemy, SealedStop, type Rt } from './runtime';
@@ -75,54 +76,99 @@ function sameNumbers(a: IntentView, b: IntentView): boolean {
   );
 }
 
-/** Tooltip cause of a projected change ("Lantern Moth will turn it to Fear."). */
-function projectionReason(proj: Rt, uid: Uid, cur: IntentView, next: IntentView): string {
+/**
+ * The M2 projection (5.7.1): a sealed clone of the combat after 5.6 steps 1 to 6, then Festering (5.7 step 1)
+ * when the coming enemy phase Festers. `festerAt` indexes the first Festering event in `rt.events`.
+ * Null when there is nothing to project (combat over, a pending choice, or your end of turn wins the combat).
+ */
+export interface Projection {
+  rt: Rt;
+  festerAt: number;
+}
+
+export function projectEndOfTurn(s: GameState, ectx: EngineCtx): Projection | null {
+  const c = s.combat;
+  if (!c || c.outcome || c.pending) return null;
+  const proj = createRt(s, ectx, { sealed: true });
+  let stopped = false;
+  try {
+    endTurnSteps(proj, 6);
+  } catch (err) {
+    if (err instanceof SealedStop) stopped = true;
+    else if (!(err instanceof CombatOver)) throw err;
+  }
+  if (proj.c.outcome) return null;
+  const festerAt = proj.events.length;
+  // A draw sealed the rest of your end of turn; Festering is not hidden information, so it still applies.
+  if (stopped) proj.queue.length = 0;
+  try {
+    fester(proj);
+  } catch (err) {
+    if (!(err instanceof SealedStop) && !(err instanceof CombatOver)) throw err;
+  }
+  return proj.c.outcome ? null : { rt: proj, festerAt };
+}
+
+/** Tooltip cause of a projected change ("Lantern Moth will turn it to Fear."), several causes joined. */
+function projectionReason(p: Projection, uid: Uid, cur: IntentView, next: IntentView): string {
+  const proj = p.rt;
   let lastHitter: string | null = null;
   let faceTo: string | null = null;
   let flare = false;
-  for (const ev of proj.events) {
+  let festered = false;
+  for (let i = 0; i < proj.events.length; i++) {
+    const ev = proj.events[i]!;
+    const flareUp = ev.e === 'status' && ev.to.side === 'enemy' && ev.to.uid === uid && ev.id === ST.flare && ev.delta > 0;
+    if (i >= p.festerAt) {
+      if (flareUp) festered = true;
+      continue;
+    }
     if (ev.e === 'hit' && ev.to.side === 'enemy' && ev.to.uid === uid && ev.from.side === 'companion') {
       const fromUid = ev.from.uid;
       const comp = proj.c.companions.find((x) => x.uid === fromUid);
       lastHitter = comp ? (proj.pack.companions[comp.defId]?.name ?? 'Your Companion') : 'Your Companion';
     }
     if (ev.e === 'face' && ev.enemy === uid) faceTo = shadeName(ev.face);
-    if (ev.e === 'status' && ev.to.side === 'enemy' && ev.to.uid === uid && ev.id === 'flare' && ev.delta > 0) flare = true;
+    if (flareUp) flare = true;
   }
-  if (faceTo) return `${lastHitter ?? 'Your end of turn'} will turn it to ${faceTo}.`;
-  const e = findEnemy(proj, uid);
-  const passive = e ? enemyDef(proj, e).passives?.find((p) => p.on === 'playerTurnEnd')?.name : undefined;
-  if (flare) return `${passive ?? 'It'} will add Flare at the end of your turn.`;
-  if (cur.moveId !== next.moveId && lastHitter) return `${lastHitter} will change its move.`;
-  return 'This changes at the end of your turn.';
+  const reasons: string[] = [];
+  if (faceTo) reasons.push(`${lastHitter ?? 'Your end of turn'} will turn it to ${faceTo}.`);
+  if (flare) {
+    const e = findEnemy(proj, uid);
+    const passive = e ? enemyDef(proj, e).passives?.find((x) => x.on === 'playerTurnEnd')?.name : undefined;
+    reasons.push(`${passive ?? 'It'} will add Flare at the end of your turn.`);
+  }
+  if (!faceTo && cur.moveId !== next.moveId && lastHitter) reasons.push(`${lastHitter} will change its move.`);
+  if (festered) reasons.push(`The Shades fester: +${FESTER_FLARE} Flare.`);
+  return reasons.join(' ') || 'This changes at the end of your turn.';
 }
 
-/** M2: every intent as it will be after 5.6 steps 1 to 6 (from the real interpreter, sealed). */
-export function intentsView(s: GameState, ectx: EngineCtx): IntentView[] {
+/**
+ * The intents the pills show for a combat state (M2): the projection after your end-of-turn steps and
+ * Festering where it differs from the current intent. `only` limits the Shades (an empty set skips the work).
+ */
+export function displayedIntents(s: GameState, ectx: EngineCtx, only?: ReadonlySet<Uid>): Map<Uid, IntentView> {
+  const out = new Map<Uid, IntentView>();
   const c = s.combat;
-  if (!c || c.outcome) return [];
+  if (!c || c.outcome || (only && only.size === 0)) return out;
   const rt = createRt(s, ectx, { readonly: true });
-  let proj: Rt | null = null;
-  if (!c.pending) {
-    proj = createRt(s, ectx, { sealed: true });
-    try {
-      endTurnSteps(proj, 6);
-    } catch (err) {
-      if (!(err instanceof SealedStop) && !(err instanceof CombatOver)) throw err;
-    }
-    if (proj.c.outcome) proj = null;
-  }
-  const out: IntentView[] = [];
+  const proj = projectEndOfTurn(s, ectx);
   for (const e of c.enemies) {
+    if (only && !only.has(e.uid)) continue;
     const cur = intentViewOf(rt, e);
     if (!cur) continue;
-    const pe = proj ? findEnemy(proj, e.uid) : undefined;
-    const next = pe && proj ? intentViewOf(proj, pe) : null;
-    if (next && !sameNumbers(cur, next)) {
-      out.push({ ...next, projected: true, projectedReason: projectionReason(proj!, e.uid, cur, next) });
-    } else out.push(cur);
+    const pe = proj ? findEnemy(proj.rt, e.uid) : undefined;
+    const next = pe && proj ? intentViewOf(proj.rt, pe) : null;
+    if (next && proj && !sameNumbers(cur, next)) {
+      out.set(e.uid, { ...next, projected: true, projectedReason: projectionReason(proj, e.uid, cur, next) });
+    } else out.set(e.uid, cur);
   }
   return out;
+}
+
+/** M2: every intent as it will be after 5.6 steps 1 to 6 and Festering (from the real interpreter, sealed). */
+export function intentsView(s: GameState, ectx: EngineCtx): IntentView[] {
+  return [...displayedIntents(s, ectx).values()];
 }
 
 export function handHintsView(s: GameState, ectx: EngineCtx): HandHint[] {
@@ -155,12 +201,14 @@ export function handHintsView(s: GameState, ectx: EngineCtx): HandHint[] {
     const targets = c.enemies.filter((e) => canTarget(rt, e, shy));
     const inward = affordable && inwardLegal(rt, plan);
     const outward = affordable && (def.target !== 'enemy' || targets.length > 0);
-    const relations = c.enemies
-      .filter((e) => canTarget(rt, e, true))
-      .map((e) => {
-        const spec = hitSpecFor(rt, e, 1, cardCtx(uid, e.uid, plan.effective, plan.harmonized));
-        return { enemy: e.uid, relation: relationOf(plan.effective, typingOf(spec.target), { fromCard: true, lightningRod: spec.lightningRod }, ectx.rules).relation };
-      });
+    // Only Shades this card could reach: 'enemy' cards their legal targets (Shy, Reaches Shy, Veiled); 'all'
+    // cards every Shade an ALL hit reaches (Shy too, never Veiled); self/none cards (informative for the Harmony
+    // and type chips) every Shade that isn't Veiled.
+    const reach = def.target === 'enemy' ? targets : c.enemies.filter((e) => canTarget(rt, e, true));
+    const relations = reach.map((e) => {
+      const spec = hitSpecFor(rt, e, 1, cardCtx(uid, e.uid, plan.effective, plan.harmonized));
+      return { enemy: e.uid, relation: relationOf(plan.effective, typingOf(spec.target), { fromCard: true, lightningRod: spec.lightningRod }, ectx.rules).relation };
+    });
     const tends = plan.effective.length > 0 && def.lights.length > 0 ? inwardTendCandidate(rt, plan.effective) : null;
     const soothes = [...new Set(plan.effective.map(afflictionSoothedBy))].filter((id) => (ps[id] ?? 0) > 0);
     const blend = blendOfLights(plan.effective);

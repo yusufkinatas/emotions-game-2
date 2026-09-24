@@ -46,6 +46,8 @@ export const MEM_TURNS_LEFT = 'turnsLeft';
 /** EnemyState.memory key prefix for PassiveDef.once flags. */
 export const MEM_ONCE = 'once:';
 
+/** Festering (R-17): Flare every Shade gains at the start of each enemy phase from festerTurn. */
+export const FESTER_FLARE = 1;
 /** Paper Crane: Mend to this instead of reaching 0 Heart. */
 export const PAPER_CRANE_HEART = 25;
 /** Lead Box: Surfaced Shades have this percent of their Intensity. */

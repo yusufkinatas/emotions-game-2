@@ -1,8 +1,19 @@
 // Random-bot combat playthroughs for property tests: preview == step, determinism, purity.
 
-import { combatLegalActions, previewCombat, startCombat, stepCombat } from '../../src/engine/combat/index';
+import { combatLegalActions, intents, previewCombat, startCombat, stepCombat } from '../../src/engine/combat/index';
 import { hash32, Rng } from '../../src/engine/rng';
-import type { Action, CombatState, ContentPack, EngineCtx, GameState, KeepsakeId, Preview, Shade } from '../../src/engine/types';
+import type {
+  Action,
+  CombatState,
+  ContentPack,
+  EngineCtx,
+  GameEvent,
+  GameState,
+  IntentView,
+  KeepsakeId,
+  Preview,
+  Shade,
+} from '../../src/engine/types';
 import { ctxFor, makeState } from './run';
 
 const showing = (e: CombatState['enemies'][number]): Shade | null => (e.faces.length ? e.faces[e.faceIndex % e.faces.length]! : null);
@@ -37,8 +48,11 @@ export interface Mismatch {
   what: string;
 }
 
-/** Compares a certain preview against the real step result. Returns a list of differences. */
-export function comparePreview(p: Preview, before: CombatState, after: CombatState): string[] {
+/**
+ * Compares a certain preview against the real step result. Returns a list of differences. `shownAfter` are the
+ * intents() of the state after the step: each listed Shade that stays must have exactly that intentAfter.
+ */
+export function comparePreview(p: Preview, before: CombatState, after: CombatState, shownAfter?: IntentView[]): string[] {
   const out: string[] = [];
   const diff = (what: string, a: unknown, b: unknown) => {
     if (JSON.stringify(a) !== JSON.stringify(b)) out.push(`${what}: preview ${JSON.stringify(a)} actual ${JSON.stringify(b)}`);
@@ -54,6 +68,7 @@ export function comparePreview(p: Preview, before: CombatState, after: CombatSta
       diff(`face ${t.uid}`, t.faceAfter, showing(e1));
       diff(`flare ${t.uid}`, t.flareDelta, (e1.statuses.flare ?? 0) - (e0.statuses.flare ?? 0));
       if (t.outcome !== null && t.outcome !== 'wavering') out.push(`outcome ${t.uid}: preview ${t.outcome} but still present`);
+      if (shownAfter) diff(`intentAfter ${t.uid}`, t.intentAfter, shownAfter.find((v) => v.enemy === t.uid) ?? null);
     } else {
       const g = after.gone.find((x) => x.uid === t.uid);
       diff(`outcome ${t.uid}`, t.outcome, g?.outcome ?? 'missing');
@@ -80,6 +95,32 @@ export function comparePreview(p: Preview, before: CombatState, after: CombatSta
   diff('player statuses', sortKeys(bag), sortKeys(after.player.statuses));
   diff('partial', p.partial, after.pending !== null);
   diff('note', p.noteAfter, after.note);
+  return out;
+}
+
+/**
+ * Every displayed intent (M2 projection, incl. Festering) must be the move that Shade makes in the enemy phase
+ * that follows, and each strike that lands must equal its displayed per-strike number. `lost`: Heart reached 0
+ * during the phase, so later strikes may be missing.
+ */
+export function compareIntentsToEnemyPhase(shown: IntentView[], events: GameEvent[], lost: boolean): string[] {
+  const out: string[] = [];
+  const start = events.findIndex((e) => e.e === 'turn' && e.side === 'enemy');
+  if (start < 0) return out;
+  let end = events.findIndex((e, i) => i > start && e.e === 'turn' && e.side === 'player');
+  if (end < 0) end = events.length;
+  const phase = events.slice(start, end);
+  for (const iv of shown) {
+    const move = phase.find((e): e is Extract<GameEvent, { e: 'enemyMove' }> => e.e === 'enemyMove' && e.enemy === iv.enemy);
+    if (!move) continue;
+    if (move.moveId !== iv.moveId) out.push(`intent ${iv.enemy}: shown ${iv.moveId} but made ${move.moveId}`);
+    const landed = phase.filter((e): e is Extract<GameEvent, { e: 'strike' }> => e.e === 'strike' && e.enemy === iv.enemy).map((e) => e.amount);
+    const shownStrikes = iv.strikes ? Array.from({ length: iv.strikes.count }, () => iv.strikes!.perStrike) : [];
+    const expected = lost ? shownStrikes.slice(0, landed.length) : shownStrikes;
+    if (JSON.stringify(landed) !== JSON.stringify(expected)) {
+      out.push(`intent ${iv.enemy} ${iv.moveId}: shown strikes ${JSON.stringify(shownStrikes)} but landed ${JSON.stringify(landed)}`);
+    }
+  }
   return out;
 }
 
@@ -118,14 +159,20 @@ export function playRandomCombat(
         if (p.uncertain) continue;
         certain++;
         const r = stepCombat(state, ctx, a);
-        for (const what of comparePreview(p, state.combat, r.state.combat!)) mismatches.push({ seed, step, action: a, what });
+        const shownAfter = intents(r.state, ctx);
+        for (const what of comparePreview(p, state.combat, r.state.combat!, shownAfter)) mismatches.push({ seed, step, action: a, what });
       }
     }
     // Prefer plays a little so combats progress.
     const plays = legal.filter((a) => a.t !== 'endTurn');
     const a = plays.length > 0 && rng.float() < 0.8 ? rng.pick(plays) : rng.pick(legal);
     o.onStep?.(state, a);
-    state = stepCombat(state, ctx, a).state;
+    const shown = o.checkPreviews !== false && a.t === 'endTurn' && !previewCombat(state, ctx, a)?.uncertain ? intents(state, ctx) : null;
+    const r = stepCombat(state, ctx, a);
+    if (shown) {
+      for (const what of compareIntentsToEnemyPhase(shown, r.events, r.state.combat!.outcome === 'lost')) mismatches.push({ seed, step, action: a, what });
+    }
+    state = r.state;
     actions.push(a);
     hashes.push(String(hash32(JSON.stringify(state))));
   }

@@ -36,7 +36,7 @@ export function playCard(rt: Rt, plan: PlayPlan, target: Uid | null, inward: boo
     c.turnFlags.harmonies += 1;
     c.stats.harmonies += 1;
     emit(rt, { e: 'harmony', blend: blendOfLights(plan.effective), count: c.turnFlags.harmonies });
-    fireKeepsakes(rt, 'harmonized');
+    // Keepsake `harmonized` triggers fire after the effect list (L5), in finishPlay.
   }
   // Step 5: the Note becomes the printed Lights (never for neutral or Numb-greyed cards).
   if (def.lights.length > 0 && !plan.greyed) setNote(rt, def.lights);
@@ -69,11 +69,21 @@ function countPlay(rt: Rt, defId: CardId, lights: readonly Light[]): void {
   for (const l of lights) st.playsByLight[l] = (st.playsByLight[l] ?? 0) + 1;
 }
 
-/** Step 8: cleanup and the card-count passives. */
+/**
+ * End of step 7, then step 8. L5: Keepsake `harmonized` triggers (Tuning Fork) fire once the card's effect list
+ * has finished (for Inward plays: after the cleanse and Tend; after a pending choice: once the continuation has
+ * run), so a sealed preview shows the card's hits before a Keepsake draw stops it. A card that ended the combat
+ * (R-8b) never gets here, so its trigger does not fire.
+ */
 function finishPlay(rt: Rt, inward: boolean): void {
   const c = rt.c;
   const play = rt.play;
   if (!play) return;
+  if (play.harmonized) {
+    fireKeepsakes(rt, 'harmonized');
+    settle(rt);
+  }
+  // Step 8: cleanup and the card-count passives.
   const card = c.cards[play.uid]!;
   const def = rt.pack.cards[card.defId]!;
   const to =

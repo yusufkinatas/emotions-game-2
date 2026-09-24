@@ -1,9 +1,9 @@
 // previewCombat (DESIGN 20.1.6): the real interpreter on a clone with sealed RNG. Any draw or shuffle stops
 // the run there and marks the preview uncertain; numbers after that point are not shown.
 
-import { ST } from '../constants';
+import { FESTER_FLARE, ST } from '../constants';
 import { moveOutline } from '../conditions';
-import { resolveStrikes } from '../damage';
+import { computeStrike, resolveStrikes } from '../damage';
 import { cureOf } from '../emotions';
 import type {
   Action,
@@ -22,14 +22,14 @@ import type {
 } from '../types';
 import { IllegalActionError } from '../types';
 import { cardEffects, cardName, hasKeyword } from './cards';
-import { enemyPhase } from './enemy';
+import { enemyPhase, festers } from './enemy';
 import { canTarget, checkPlay, planCard, type PlayPlan } from './legal';
 import { playCard } from './play';
 import { numbBoss } from './buried';
 import { CombatOver, createRt, enemyDef, SealedStop, showing, type Rt } from './runtime';
 import { shadeName, statusName } from './text';
 import { endTurnSteps } from './turn';
-import { intentViewOf } from './view';
+import { displayedIntents, intentViewOf } from './view';
 
 type PlayAction = Extract<Action, { t: 'play' }>;
 
@@ -146,12 +146,14 @@ function summarize(
       flareDelta: e1 ? (e1.statuses[ST.flare] ?? 0) - (e0.statuses[ST.flare] ?? 0) : 0,
       faceAfter: e1 ? showing(e1) : (gone?.face ?? showing(e0)),
       gauges: e1 ? statusDiff(e0.statuses, e1.statuses, ST.flare) : {},
-      intentAfter: e1 && (intentChanged || statusesChanged || e1.faceIndex !== e0.faceIndex) ? intentViewOf(rt, e1) : null,
+      intentAfter: null,
       buried: rt.notes.buried[e0.uid] ?? null,
       afterglows: r ? r.afterglows.slice() : [],
       glimmers: r ? r.glimmers : 0,
     });
   }
+
+  fillIntentsAfter(s, ectx, a, rt, targets, opts);
 
   const p0 = before.player;
   const p1 = after.player;
@@ -190,14 +192,38 @@ function summarize(
   return preview;
 }
 
-/** Seething tick plus the current intents' strikes against your Guard (play previews). */
+/**
+ * PreviewTarget.intentAfter: the intent each listed Shade that stays will show after the action. Plays: the
+ * pill after the play, from the same M2 projection as intents() (your end-of-turn steps and Festering), so a
+ * face turn or a gauge reaching an override shows up. endTurn: the intent rolled for your next turn. Nested
+ * Resolve-with previews skip it.
+ */
+function fillIntentsAfter(s: GameState, ectx: EngineCtx, a: Action, rt: Rt, targets: PreviewTarget[], opts: PreviewOpts): void {
+  if (opts.nested) return;
+  const after = rt.c;
+  if (a.t === 'endTurn') {
+    for (const t of targets) {
+      const e1 = after.enemies.find((x) => x.uid === t.uid);
+      t.intentAfter = e1 ? intentViewOf(rt, e1) : null;
+    }
+    return;
+  }
+  const stay = new Set(targets.filter((t) => after.enemies.some((x) => x.uid === t.uid)).map((t) => t.uid));
+  const views = displayedIntents({ ...s, nextUid: rt.nextUid, combat: after }, ectx, stay);
+  for (const t of targets) t.intentAfter = views.get(t.uid) ?? null;
+}
+
+/** Seething tick plus the current intents' strikes (with Festering's Flare, R-17) against your Guard (play previews). */
 function projectedLoss(rt: Rt, guard: number): number {
   let g = guard;
   let loss = rt.c.player.statuses[ST.seething] ?? 0;
+  const fest = festers(rt) ? FESTER_FLARE : 0;
   for (const e of rt.c.enemies) {
     if (!e.intent) continue;
+    const flare = (e.statuses[ST.flare] ?? 0) + fest;
+    const hush = e.statuses[ST.hush] ?? 0;
     for (const st of moveOutline(rt, e, e.intent.moveId).strikes) {
-      const r = resolveStrikes(st.perStrike, st.count, g, Number.MAX_SAFE_INTEGER);
+      const r = resolveStrikes(computeStrike(st.base, flare, hush), st.count, g, Number.MAX_SAFE_INTEGER);
       g = r.guardAfter;
       loss += r.hpLoss;
     }

@@ -55,6 +55,23 @@ describe('HandHints', () => {
     expect(name!.relations.map((r) => r.relation)).toEqual(['neutral', 'neutral']);
   });
 
+  it('relations list only the Shades the card could reach (Shy, Reaches Shy, ALL, Veiled)', () => {
+    const t = scenario().hand('love.kind_word', 'neutral.name_it', 'joy.confetti', 'courage.stand_firm')
+      .enemy('shade.wallflower').enemy('shade.grumble').build();
+    const [wall, grumble] = [t.enemy(0).uid, t.enemy(1).uid];
+    const reach = t.hints().map((h) => h.relations.map((r) => r.enemy));
+    expect(reach).toEqual([
+      [grumble], // enemy card: Wallflower is Shy while Grumble stands
+      [wall, grumble], // Reaches Shy
+      [wall, grumble], // ALL hits reach Shy Shades
+      [wall, grumble], // self card: informative, every Shade that isn't Veiled
+    ]);
+    const u = scenario().removed({ id: 'buried.fear', weight: 2 }).hand('love.kind_word', 'joy.confetti', 'courage.stand_firm')
+      .enemy('shade.surfaced_fear', { hp: 20, surfacedFromCard: 1 }).enemy('shade.numbness', { hp: 150, statuses: { veiled: 1 } }).build();
+    const surfaced = u.enemy(0).uid;
+    expect(u.hints().map((h) => h.relations.map((r) => r.enemy))).toEqual([[surfaced], [surfaced], [surfaced]]);
+  });
+
   it('unaffordable cards are not playable', () => {
     const t = scenario().energy(0).hand('love.kind_word').enemy('shade.grumble').build();
     expect(t.hints()[0]!.playable).toBe(false);
@@ -145,6 +162,33 @@ describe('Preview', () => {
     const u = scenario().insightsMade('insight.instinct').removed({ id: 'buried.fear', weight: 2 }).hand('courage.brave_strike')
       .enemy('shade.surfaced_fear', { hp: 5, surfacedFromCard: 1 }).enemy('shade.numbness', { hp: 150, statuses: { veiled: 1 } }).build();
     expect(u.preview('courage.brave_strike', 0)!.line).toContain('Finishes it: RESOLVE, Buried Fear is released, Caution:');
+  });
+
+  it('intentAfter: a gauge reaching its override (Kettle Pressure 6: boil_over), through the M2 projection', () => {
+    const t = scenario().hand('courage.brave_strike').enemy('shade.kettle', { hp: 90, intent: 'rattle', statuses: { pressure: 5 } }).build();
+    expect(t.intents()[0]!.moveId).toBe('rattle');
+    const k = t.preview('courage.brave_strike', 0)!.targets[0]!;
+    expect(k.gauges.pressure).toEqual([5, 6]);
+    expect(k.intentAfter).toMatchObject({ moveId: 'boil_over', overriddenBy: 'pressure', strikes: { perStrike: 24, count: 1 }, projected: false });
+    t.play('courage.brave_strike', 0);
+    expect(t.intents()[0]).toEqual(k.intentAfter);
+    // From festerTurn the pill after the play already includes Festering's Flare.
+    const u = scenario().turn(12).hand('courage.brave_strike').enemy('shade.kettle', { hp: 90, intent: 'rattle', statuses: { pressure: 5 } }).build();
+    const f = u.preview('courage.brave_strike', 0)!.targets[0]!;
+    expect(f.intentAfter).toMatchObject({ moveId: 'boil_over', strikes: { perStrike: 25, count: 1 }, projected: true, projectedReason: 'The Shades fester: +1 Flare.' });
+  });
+
+  it('intentAfter: The Mask turned by the play, then by the Lantern Moth at end of turn (not the current intent)', () => {
+    const t = scenario().companions('comp.lantern_moth').hand('joy.giggle').enemy('shade.mask', { hp: 150, faceIndex: 1 }).build();
+    expect(t.intents()[0]).toMatchObject({ moveId: 'weep', projected: false });
+    const m = t.preview('joy.giggle', 0)!.targets[0]!;
+    expect(m.faceAfter).toBe('loneliness'); // the play turns it: its current intent becomes turn_away
+    expect(m.intentAfter).toMatchObject({ moveId: 'startle', projected: true, projectedReason: 'Lantern Moth will turn it to Fear.' });
+    t.play('joy.giggle', 0);
+    expect(t.enemy(0).intent!.moveId).toBe('turn_away');
+    expect(t.intents()[0]).toEqual(m.intentAfter);
+    const u = scenario().hand('joy.giggle').enemy('shade.mask', { hp: 150, faceIndex: 1 }).build();
+    expect(u.preview('joy.giggle', 0)!.targets[0]!.intentAfter).toMatchObject({ moveId: 'turn_away', projected: false });
   });
 
   it('illegal plays have no preview; previews never touch the input state', () => {
