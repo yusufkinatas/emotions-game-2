@@ -11,5 +11,6 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    exclude: ['tests/slow/**', 'tests/balance/**', 'node_modules/**'],
   },
 });

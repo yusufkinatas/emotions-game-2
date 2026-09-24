@@ -44,7 +44,7 @@ export interface RulesConfig {
   bossMendToFull: boolean;
 
   glimmersBase: { normal: number; elite: number; boss: number; final: number };
-  glimmersResolve: { normal: number; elite: number; boss: number };
+  glimmersResolve: { normal: number; elite: number; boss: number; final: number };
 
   /** 'clockwise' is the real game. A table exists only for tests and sweeps: Shade -> its DISSONANT Light. */
   dissonance: 'clockwise' | Record<Shade, Light>;
@@ -86,7 +86,7 @@ export const DEFAULT_RULES: RulesConfig = {
   bossMendToFull: true,
 
   glimmersBase: { normal: 10, elite: 25, boss: 60, final: 0 },
-  glimmersResolve: { normal: 8, elite: 20, boss: 40 },
+  glimmersResolve: { normal: 8, elite: 20, boss: 40, final: 0 },
 
   dissonance: 'clockwise',
 };

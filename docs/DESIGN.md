@@ -2,7 +2,7 @@
 
 > Tagline: *Every feeling has a light.*
 > Genre: turn-based roguelike deckbuilder (browser, TypeScript + Vite, Vitest).
-> Status: FINAL BUILD SPEC v1.1. This document replaces the seed brief, the four reviews and v1.0. v1.1 applies the lead's decisions on the red-team review; section 25 lists every change. Where this doc and any earlier text disagree, this doc wins. Every id, name and number here is canonical. Numbers marked "tuning knob" may be changed only through `src/content/rules.ts` or content data after the simulator says so (section 21).
+> Status: FINAL BUILD SPEC v1.1. This document replaces the seed brief, the four reviews and v1.0. v1.1 applies the lead's decisions on the red-team review. Section 25 lists every change. Where this doc and any earlier text disagree, this doc wins. Every id, name and number here is canonical. Numbers marked "tuning knob" may be changed only through `src/content/rules.ts` or content data after the simulator says so (section 21).
 
 ---
 
@@ -276,7 +276,7 @@ The lethal preview shows the Afterglow ("RESOLVE +8 Glimmers, Caution: +6 Guard"
 - **In hand:** at the end of your turn, if a Buried card is in your hand, you gain stacks of its Shade's affliction equal to its Weight. This happens **after** afflictions tick and decay (5.6), so the stacks affect your next turn. Buried cards are discarded at end of turn like other cards (they never Linger, even with Serenity).
 - **Tend:** Weight -1. Sources: Inward play (4.7), Sit With It, Haven Reflect, Sanctuary "Talk it through", Memory "The Unsent Letter". In combat, each Buried card can be Tended **at most once per combat**. Lead Box forbids Tending.
 - **Insight:** Insight comes from Tending a Buried card to Weight 0, or from Resolving its Surfaced Shade. A Surfaced Resolve is not a Tend: Journal doesn't trigger, Lead Box doesn't block it, and Worn Diary's upgrade applies. The Buried card transforms permanently into its Insight card. The Insight is **upgraded** if its peakWeight was 2 or more (or if you own Worn Diary). In combat the transformed card stays in your hand and is playable that same turn.
-- **One of each Insight per run:** each Insight id can be created at most once per run (tracked in `run.insightsCreated`). A Buried card whose Insight you already own is removed from your deck when it reaches Weight 0 ("You've already made peace with this one."). Resolving a Surfaced Shade whose Insight you already own likewise removes its Buried card instead of transforming it. "Already own" means created earlier this run, even if that Insight has since left the deck. Invariant: at most one of each `insight.*` in the deck.
+- **One of each Insight per run:** each Insight id can be created at most once per run (tracked in `run.insightsMade`). A Buried card whose Insight you already own is removed from your deck when it reaches Weight 0 ("You've already made peace with this one."). Resolving a Surfaced Shade whose Insight you already own likewise removes its Buried card instead of transforming it. "Already own" means created earlier this run, even if that Insight has since left the deck. Invariant: at most one of each `insight.*` in the deck.
 - Minions (Fleeting) never Bury. The Numbness and Apathy never Bury.
 
 | Buried card | Affliction while in hand | Tended by | Insight |
@@ -295,7 +295,7 @@ An **automatic hit** is any hit that does not come from the card you are playing
 - Never DISSONANT: a dissonant relation is treated as neutral (x1) and gives no Flare.
 - No Nerve and no Heavy apply.
 - Can't Suppress: see WAVERING (4.8). Can Resolve (if OPPOSITE), and can Fade Fleeting Shades.
-- Can be MUFFLED (x1/2) against The Numbness/Apathy; FELT if it carries 2 Lights. A FELT automatic finishing hit Resolves them; a MUFFLED one leaves them Wavering (4.16).
+- Can be MUFFLED (x1/2) against The Numbness/Apathy; FELT if it carries 2 Lights. A FELT automatic finishing hit Resolves them. A MUFFLED one leaves them Wavering (4.16).
 - An automatic OPPOSITE hit does turn faces and removes 1 Flare (it is still being understood).
 
 ### 4.12 Understood (R-12)
@@ -344,6 +344,13 @@ Applies to `shade.numbness` (final boss) and `shade.apathy` (Act 2 elite).
 
 ---
 
+### 4.18 Lead rulings (v1.1, resolve editor-noted gaps)
+- **R-8b ordering:** the finishing hit is handled completely before the win check: its lethal outcome, the Afterglow it earns, and Keepsake `resolved` triggers (Pressed Flower) all apply. Then the win check ends the combat: the rest of the card's effect list, end-of-turn steps and the enemy phase do not run. Keepsake `combatWon` hooks (Warm Locket) then run, then `buildCombatResult`.
+- **Intent conditions:** card conditions that read intents ("if the target intends to attack", Lionheart's "any Shade intends to attack", Instinct's "incoming" total) read the **current** intent (the stored move with current Flare and Hush), not the M2 projection. The pill shows the projection with its "after end of turn" tag; the card-face number and preview use the current intent. Both are engine data, so they never disagree with what actually resolves at the moment the card is played.
+- **Unconditional:** `MoodDef.oncePerEnemyPhase` with `CombatState.moodFiredThisPhase` (reset at the start of each enemy phase).
+
+---
+
 ## 5. Combat procedure (exact order)
 
 The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit and every Shade removal, in any step below, and end the combat on the spot.
@@ -374,7 +381,7 @@ The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit a
 6. **Cleanse:** outward: -1 stack per effective Light's affliction. Inward: all stacks, then Tend (4.7), then skip to step 8.
 7. **Effects:** run the card's effect list in order through the interpreter. Hits go through 5.4. Triggers queued by effects (Afterglows, passives such as Kettle Pressure) run FIFO after each effect completes.
 8. **Cleanup:** move the card to discard (Let Go -> `letGo` pile for this combat; outward Mood -> `moods` pile, its effect registered). `played += 1`, `timesPlayed += 1` on the card. Fire Shade passives `cardHitResolved` (Kettle Pressure, Fret Worry removal) for each Shade the card hit, then `cardPlayed` (Knot Tension, Spiral unwind).
-9. Win check: R-8b (it has already run after every hit and removal in steps 6 to 8; a win there skips the rest of the play).
+9. Win check: R-8b (it has already run after every hit and removal in steps 6 to 8, and a win there skips the rest of the play).
 
 ### 5.4 Damage pipeline (player-side hits)
 `computeHit(state, spec)` is pure and returns a `HitBreakdown`. `applyHit` writes exactly that breakdown. The order is fixed:
@@ -386,7 +393,7 @@ The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit a
 5. **Damage** `D = floor((B + F) * H * T / 10000)`; if `B + F > 0` and `T > 0` then `D = max(1, D)`.
 6. **Guard:** `blocked = min(guard, D)`, `hpLoss = D - blocked`, `guardAfter = guard - blocked`.
 7. **Lethal check:** if `hp - hpLoss <= 0` -> outcome by 4.8 (Wavering sets hp to 1).
-8. **Side effects (non-lethal only):** dissonant (card hit) -> +1 Flare; opposite -> -1 Flare, then turn face; Understood consumed; Wavering cleared if card hit. Emit `hit` event with the breakdown.
+8. **Side effects (non-lethal only):** dissonant (card hit) -> +1 Flare; opposite -> -1 Flare, then turn face (The Mask: at most twice per player turn from your hits, 7.1; the Spiral unwinds 1 Coil when it turns, 7.2); Understood consumed; Wavering cleared if card hit. Emit `hit` event with the breakdown.
 
 Worked example: Kind Word (Ease 6), you have 1 Nerve and Heavy, the card is Harmonized after Joy (Love+Joy), target Old Grudge showing Sadness with 4 Guard. `B=6, F=1, H=75`, Joy is opposite to Sadness so `T=200`: `D = floor(7*75*200/10000) = floor(10.5) = 10`. Guard blocks 4, Intensity -6. Non-lethal OPPOSITE: -1 Flare, face turns to Anger.
 
@@ -395,33 +402,39 @@ Worked example: Kind Word (Ease 6), you have 1 Nerve and Heavy, the card is Harm
 ### 5.5 Guard, Mend and Shade strikes
 - **Player Guard from cards:** `G = floor(base * Tr / 100)`, `Tr = 75` if Trembling >= 1 else 100. Guard from Keepsakes, Companions and Afterglows ignores Trembling.
 - **Mend:** `min(amount, maxHp - hp)`. No modifiers.
-- **Shade strike vs player:** per strike `S = max(0, base + Flare + passiveFlat - Hush)`. Guard absorbs, the rest is lost Heart. Hush is removed after the Shade's next attack move completes (all its strikes). Shade Guard gain is unmodified.
-- If Heart reaches 0: Paper Crane (once per run: Mend to 25) or defeat, immediately.
+- **Shade strike vs player:** per strike `S = max(0, base + Flare - Hush)`, where `base` is the move's own amount expression (for example Old Grudge's `rehash`: 4 + 3 per Tally). Guard absorbs, the rest is lost Heart. Hush is removed after the Shade's next attack move completes (all its strikes). Shade Guard gain is unmodified.
+- If Heart reaches 0: Paper Crane (once per run: Mend to 25) or defeat, immediately. In combat, Paper Crane's use is tracked in `combat.paperCraneUsed` (copied from the run at combat start) and committed through `CombatResult.keepsakeCounters`. The run is never written mid-combat.
 
 ### 5.6 Player turn end (action `endTurn`)
-1. End-of-turn Moods and Keepsakes: Unhurried (Guard per unspent Spirit), Serenity (mark hand as Linger).
-2. **Companions act** in summon order (skip if none).
-3. **Ticks:** Seething: lose Heart = stacks. Warmth: Mend = stacks.
+1. End-of-turn Moods and Keepsakes: Unhurried (Guard per unspent Spirit), Serenity (mark every non-Buried card in hand as Linger).
+2. **Companions act** in summon order (skip if none, or if you have 1+ Isolated). Win check: R-8b after each Companion hit. A win here ends the combat before step 3 (no ticks, no enemy phase).
+3. **Ticks:** Seething: lose Heart = stacks. Warmth: Mend = stacks (Warmth max 6).
 4. **Decay:** each affliction -1 stack; Warmth -1.
 5. **Buried in hand:** each gives Weight stacks of its affliction (after decay, so they last through your next turn).
 6. **Shade end-of-your-turn passives** (position order): Grumble Short Fuse, The Looming Grows in the Dark, Dread's push reset.
-7. **Discard hand** except Linger cards; each Lingering card's `lingered += 1`.
-8. Store `playedLastTurn = played`, then reset per-turn flags (`played`, `harmonies`, `firstCardDone`, `lightsThisTurn`, Center, Prism Shard, Tuning Fork). The Note is **not** reset.
+7. **Discard hand** except Linger cards (never Buried cards); each Lingering card's `lingered += 1`.
+8. Store `playedLastTurn = played`, then reset per-turn flags (`played`, `harmonies`, `firstCardDone`, `lightsThisTurn`, Center, Prism Shard, Tuning Fork, and each Mask's hit-turns counter back to 2). The Note is **not** reset.
 9. Go to 5.7.
 
+Steps 1 to 6 are deterministic, so IntentView projects them: every intent pill shows the intent the Shade will have after step 6 (5.7.1).
+
 ### 5.7 Enemy phase
+**Order and override rules.** 5.7 iterates over a snapshot of Shade uids taken at phase start. Summoned Shades act from the next phase. Every override applies only while its condition holds, re-derived on each gauge change. Override moves don't advance `pattern.index`. When an override lifts, the intent is the cycle move at the current index. The snapshot rule also covers Surfaced Shades spawned at combat start: they exist before the first enemy phase starts, so they act in it. The Heart-0 check and R-8b are immediate throughout.
+
 1. If `turn >= 12`: every Shade gains 1 Flare (Festering).
-2. For each Shade, left to right, if still present:
+2. For each Shade uid in the phase-start snapshot, left to right, if still present:
    a. Remove its Guard.
-   b. Execute its intent move (effects in order). Summons are inserted directly to the right of the summoner and roll their intent immediately.
-   c. Its own end-of-action passives (Mope Wallow, Fret Worry, Dread countdown, The Mask turning, Spiral Coil, Slump Heavy Silence).
+   b. Execute its intent move (effects in order). Summons are inserted directly to the right of the summoner and roll their intent immediately. They are not in the snapshot, so they act from the next phase (Skitter's `hide` Doubt does not act this phase).
+   c. Its own end-of-action passives (Mope Wallow, Longing Wallow, Fret Worry, Dread countdown, The Mask turning, Spiral Coil, Slump Heavy Silence).
    d. Roll its next intent (5.7.1).
 3. Go to 5.2.
 
-**5.7.1 Intent patterns.** Stored intent is only `{ moveId }`; displayed numbers are derived live. Pattern kinds used in v1: `cycle` (moves in order, starting at the rolled offset), `byFace` (the move is chosen by the face showing when it acts; intent re-derives whenever the face turns), `override` (a gauge or countdown forces a move, section 7), `phases` (switch pattern at an Intensity threshold; the current intent is re-derived immediately on crossing). All v1 intents are fully known; there is no `unknown` intent.
+**5.7.1 Intent patterns.** Stored intent is only `{ moveId }`; displayed numbers are derived live. Pattern kinds used in v1: `cycle` (moves in order, starting at the rolled offset), `byFace` (the move is chosen by the face showing when it acts; intent re-derives whenever the face turns), `override` (a gauge or countdown forces a move, section 7; order and override rules above), `phases` (switch pattern at an Intensity threshold; the current intent is re-derived immediately on crossing). All v1 intents are fully known; there is no `unknown` intent.
+
+**Projected intents.** IntentView shows the projected intent after 5.6 steps 1 to 6, taken from `preview({t:'endTurn'})`. When it differs from the current intent, the pill shows the projected one with an "after end of turn" tag. Tooltip: "Lantern Moth will turn it to Fear." (Other causes: Short Fuse and Grows in the Dark adding Flare, a Companion hit turning a face or moving a gauge.)
 
 ### 5.8 Combat end
-- **Won:** all non-Fleeting Shades gone. Build `CombatResult` (heart after, Glimmers, deck mutations in order: Buried adds/Weight changes, Tends, Insight transforms; Keepsake counters; stats). Warm Locket Mends 5. Go to rewards (12).
+- **Won:** all non-Fleeting Shades gone (R-8b). Build `CombatResult` (heart after, Glimmers, deck mutations in order: Buried adds/Weight changes, Tends, Insight transforms, removals of Buried cards whose Insight was already created (4.10); Keepsake counters incl. Paper Crane; stats). Warm Locket Mends 8. Go to rewards (12).
 - **Lost:** Heart 0 with no Paper Crane, or turn limit. Go to defeat screen.
 
 ---
@@ -448,7 +461,7 @@ Worked example: Kind Word (Ease 6), you have 1 Nerve and Heavy, the card is Harm
 **Starter deck (11 cards):** Kind Word x2, Bright Spark x2, Reach Out x2, Brave Strike x2, Stand Firm x3. The starting Charm adds 1 more card (12 total). Every Act 1 Shade has 2 OPPOSITE attacks in the starter; all starter cards are typed (every play moves the Note); no starter card has Harmony riders, Companions, Promises or conditions.
 
 ### 6.2 Love: *Warmth* (Mend, Warmth). Cures Anger, clears Seething, DISSONANT vs Sadness.
-`warmth` (player status): at the end of your turn, Mend equal to its stacks, then it loses 1 stack.
+`warmth` (player status, max 6): at the end of your turn, Mend equal to its stacks, then it loses 1 stack.
 
 | id | name | kind | cost | rar | target | text | upgrade |
 |---|---|---|---|---|---|---|---|
@@ -457,7 +470,7 @@ Worked example: Kind Word (Ease 6), you have 1 Nerve and Heavy, the card is Harm
 | `love.unguarded` | Unguarded | ease | 1 | C | enemy | Ease 5. If you have no Guard, Ease 11 instead. | Ease 7, or 15. |
 | `love.forgive` | Forgive | ease | 2 | U | enemy | Ease 8, +4 for each Flare on the target. Then remove all its Flare. | Ease 11, +5 per Flare. |
 | `love.tender_tune` | Tender Tune | skill | 1 | U | self | Gain 4 Warmth. Harmony: also gain 5 Guard. Let Go. | 6 Warmth, Harmony 7 Guard. |
-| `love.unconditional` | Unconditional | mood | 2 | R | none | Whenever a Shade's move makes you lose Heart, gain 2 Warmth. | Cost 1. |
+| `love.unconditional` | Unconditional | mood | 2 | R | none | The first time each enemy phase a Shade's move makes you lose Heart, gain 2 Warmth. | Cost 1. |
 
 Forgive counts Flare **before** the hit (the OPPOSITE hit's -1 Flare happens after damage; "remove all" then clears the rest).
 
@@ -483,7 +496,7 @@ Forgive counts Flare **before** the hit (the OPPOSITE hit's -1 Flare happens aft
 | `friendship.pile_on` | Pile On | ease | 2 | U | all | Ease 5 to ALL Shades, +2 per Companion. | Ease 7, +3 per Companion. |
 | `friendship.best_friend` | Best Friend | skill | 2 | R | none | Summon an Old Dog. | Cost 1. |
 
-"Your Companions act now" runs each Companion's action immediately (automatic hits), in addition to their normal end-of-turn action.
+"Your Companions act now" runs each Companion's action immediately (automatic hits, R-8b after each), in addition to their normal end-of-turn action. While you have Isolated, Companions don't act (4.13).
 
 ### 6.5 Courage: *Stand* (Guard, big hits, Nerve). Cures Fear, clears Trembling, DISSONANT vs Despair.
 
@@ -504,10 +517,10 @@ Forgive counts Flare **before** the hit (the OPPOSITE hit's -1 Flare happens aft
 |---|---|---|---|---|---|---|---|
 | `hope.wish_on_a_star` | Wish on a Star | ease | 1 | C | enemy | Ease 4. Promise: Ease 8 to the same Shade. Harmony: the Promise Eases 12 instead. | Ease 5. Promise 11 (Harmony 15). |
 | `hope.silver_lining` | Silver Lining | skill | 1 | C | self | Gain 5 Guard. Promise: gain 5 Guard and draw 1. | 7 Guard, Promise 7 Guard. |
-| `hope.plant_a_seed` | Plant a Seed | skill | 0 | C | none | Promise: gain 1 Spirit and draw 1. | Promise: 1 Spirit, draw 2. |
+| `hope.plant_a_seed` | Plant a Seed | skill | 0 | C | none | Promise: gain 1 Spirit and draw 1. Let Go. | Promise: 1 Spirit, draw 2. |
 | `hope.growing_light` | Growing Light | ease | 1 | U | enemy | Ease 6. Each time you play this, it Eases 3 more for the rest of this combat. | Ease 8, grows 4. |
 | `hope.better_days` | Better Days | mood | 1 | U | none | At the start of your turn, gain Guard equal to the turn number (max 8). | Cost 0. |
-| `hope.daybreak` | Daybreak | ease | 3 | R | all | Ease 18 to ALL Shades. Costs 1 less for each Promise you made this combat. | Ease 24. |
+| `hope.daybreak` | Daybreak | ease | 3 | R | all | Ease 18 to ALL Shades. Costs 1 less for each Promise you made this combat. Let Go. | Ease 24. |
 
 ### 6.7 Calm: *Stillness* (Hush, Linger, unspent Spirit). Cures Anxiety, clears Restless, DISSONANT vs Anger. (Act 2+)
 `hush` (Shade status): its next attack move deals X less per strike (min 0), then Hush is removed. Stacks add.
@@ -519,10 +532,10 @@ Forgive counts Flare **before** the hit (the OPPOSITE hit's -1 Flare happens aft
 | `calm.count_to_ten` | Count to Ten | ease | 2 | C | enemy | Ease 13. Linger. Costs 1 less for each turn it has Lingered this combat. | Ease 17. |
 | `calm.center` | Center | skill | 1 | U | none | The next card you play this turn costs 0. Draw 1. | Cost 0. |
 | `calm.unhurried` | Unhurried | mood | 1 | U | none | At the end of your turn, gain 4 Guard for each unspent Spirit. | 6 per Spirit. |
-| `calm.serenity` | Serenity | mood | 2 | R | none | At the end of your turn, every card in your hand Lingers. | Cost 1. |
+| `calm.serenity` | Serenity | mood | 2 | R | none | At the end of your turn, every non-Buried card in your hand Lingers. | Cost 1. |
 
 ### 6.8 Blend cards (pool `blend`, rarity B = priced and weighted as uncommon)
-Offered: the 4th option of a Full Bloom reward, one guaranteed option in every elite card reward, 2 Sanctuary slots (3 in The Deep). All are `ease` so a Blend can land a DEEP RESOLVE.
+Offered: the 4th option of a Full Bloom reward, one guaranteed option in every elite card reward, slot 3 of the card offer after your 2nd combat win (an Act 1 Blend, 12.2), 2 Sanctuary slots (3 in The Deep, always including both Blends that contain your most common Light, and one Blend slot is the sale item, 13). All are `ease` so a Blend can land a DEEP RESOLVE.
 
 | id | name | Lights (Blend) | cost | target | text | upgrade | Key to |
 |---|---|---|---|---|---|---|---|
@@ -533,7 +546,7 @@ Offered: the 4th option of a Full Bloom reward, one guaranteed option in every e
 | `blend.wait_it_out` | Wait It Out | Hope+Calm (Patience) | 1 | enemy | Ease 7. Linger. Eases 4 more for each turn it has Lingered this combat. | Ease 10, +5 per turn. | The Spiral |
 | `blend.gentle_hands` | Gentle Hands | Calm+Love (Compassion) | 1 | enemy | Ease 6. Hush 5. Mend 3. | Ease 8. Hush 7. Mend 4. | The Knot |
 
-A Blend card's Note is both Lights. A Blend card can be Harmonized (its riders would trigger), but never gains a third Light.
+A Blend card's Note is both Lights. A Blend card is Harmonized only by an adjacent Note Light outside its own pair (4.4 rule 3: Sunbeam after Sunbeam is not Harmonized, Sunbeam after Friendship is). When Harmonized it counts for Prism Shard, Tuning Fork and the Harmony count, but never gains a third Light.
 
 ### 6.9 Neutral cards (no Light; never change the Note; can't be played Inward)
 
@@ -550,26 +563,30 @@ Look Inward and Sit With It open a choice (`pending`) only if 2+ cards qualify; 
 ### 6.10 Buried cards (rarity X, kind `buried`, cost `unplayable`, no Lights)
 See 4.10 for the full table. Text template: *"Weight [W]. Unplayable. End of turn in hand: gain [W] <Affliction>. Play a <Light> card Inward to Tend."*
 
-### 6.11 Insight cards (rarity X; never offered as rewards; only created by Tending)
+### 6.11 Insight cards (rarity X; never offered as rewards; created only by Tending a Buried card to Weight 0 or by Resolving its Surfaced Shade; each id at most once per run, 4.10)
 
 | id | name | Lights | kind | cost | target | text | upgrade (created upgraded if peakWeight >= 2) |
 |---|---|---|---|---|---|---|---|
 | `insight.passion` | Passion | Love | ease | 1 | enemy | Ease 9, +3 for each Flare on the target. Gain 1 Nerve. | Ease 12, +4 per Flare. |
 | `insight.bittersweet` | Bittersweet | Joy | skill | 1 | self | Mend 4. Draw 2. Linger. | Mend 6. |
 | `insight.solitude` | Solitude | Friendship | ease | 2 | enemy | Ease 10. If you have no Companions, Ease 20 instead. Then Summon a Lantern Moth. | 13, or 26. |
-| `insight.instinct` | Instinct | Courage | skill | 1 | self | Innate. Gain Guard equal to all incoming strike damage (max 30). | Cost 0. |
+| `insight.instinct` | Instinct | Courage | skill | 1 | self | Innate. Gain Guard equal to the total of all Shades' incoming strikes (max 30). | Cost 0. |
 | `insight.resilience` | Resilience | Hope | skill | 0 | self | Gain 6 Guard. Promise: gain 1 Spirit and draw 1. | Gain 9 Guard. |
 | `insight.foresight` | Foresight | Calm | skill | 0 | none | Draw 2. Hush 3 on ALL Shades. Linger. | Hush 5. |
 
-"All incoming strike damage" = the sum of every Shade's displayed intent strike damage (after Flare and Hush, before your Guard). Instinct and Passion use Trembling / Heavy normally.
+"The total of all Shades' incoming strikes" = the sum of every Shade's displayed intent strike totals (after Flare and Hush, before your Guard). Instinct and Passion use Trembling / Heavy normally.
+
+A Surfaced Resolve creates the Insight with the same upgrade rule (peakWeight >= 2 or Worn Diary). If the Insight was already created this run, no Insight is created and the Buried card is removed instead (4.10).
 
 ### 6.12 Companions (see 4.13)
 
 | id | name | End of your turn | Summoned by |
 |---|---|---|---|
-| `comp.lantern_moth` | Lantern Moth | Ease 3 to your last target (Friendship, automatic). | Call a Friend, Tag You're It!, Solitude, Woven Bracelet |
+| `comp.lantern_moth` | Lantern Moth | Ease 3 to your last target (Friendship, automatic). | Call a Friend, "Tag, You're It!", Solitude, Woven Bracelet |
 | `comp.burrow_hare` | Burrow Hare | You gain 3 Guard. | Buddy Up |
 | `comp.old_dog` | Old Dog | Ease 6 to your last target (Friendship, automatic). | Best Friend |
+
+Companions don't act while you have 1+ Isolated (4.13).
 
 ---
 
@@ -578,7 +595,9 @@ See 4.10 for the full table. Text template: *"Weight [W]. Unplayable. End of tur
 ### 7.0 Conventions
 - **Move notation:** `Strike N` (one strike), `Strike N x K` (K strikes), `Guard N` (the Shade gains N Guard), `N <Affliction>` (applies stacks to you), `Flare +N`, `Summon <id> (max M)` (M = this summoner's live Fleeting count cap; field cap 4), `Scatter N` (your N oldest Companions leave), `<Gauge> +N`.
 - **HP** is `[min, max]`, rolled (integer, uniform) at map generation with the node's encounter stream. Encounter entries may override HP.
-- **Pattern:** `cycle` unless stated. Normal Shades start at a random offset (combat `ai` stream); elites, bosses, tutorial and Surfaced Shades start at offset 0.
+- **Pattern:** `cycle` unless stated. Normal Shades start at a random offset (combat `ai` stream); elites, bosses, Surfaced Shades and every member of `enc.t1` to `enc.t4` (including the full Grumble in `enc.t4`) start at offset 0.
+- **Overrides** follow the 5.7 order and override rules: an override holds only while its condition holds (re-derived on each gauge change), doesn't advance `pattern.index`, and when it lifts the intent is the cycle move at the current index.
+- **"A card/hit with <Light>"** in any passive means its effective Lights at play time (R-2b). A Numb-greyed card has none.
 - **Design principle:** each Shade's mechanic makes its DISSONANT Light look tempting (e.g. Despair's Guard shell tempts Courage's big hits; Anger's big telegraphed hits tempt Calm's Hush). The correct cure also shuts the mechanic down.
 - All barks are speech bubbles shown on spawn and on its first action; farewells show for 1.2 s on Resolve/Suppress.
 
@@ -593,9 +612,9 @@ See 4.10 for the full table. Text template: *"Weight [W]. Unplayable. End of tur
 | `shade.echo` | Echo | loneliness | 32-36 | **Last One Left:** the first time it is the only Shade on the field (checked at combat start and whenever a Shade leaves), Flare +2 and Guard 10. | `call_out` Strike 6 -> `cold_shoulder` Strike 4, 2 Isolated -> `drift` Guard 8, Scatter 1 |
 | `shade.looming` | The Looming (elite) | fear | 84-88 | **Summoner:** combat start: Summon Doubt x2. **Grows in the Dark:** at the end of your turn, if you played no card with Courage this turn, Flare +1. | `loom` Guard 12, Summon Doubt (max 3) -> `pounce` Strike 14 -> `shriek` Strike 4 x 3, 2 Trembling |
 | `shade.kettle` | The Kettle (elite) | anger | 90-94 | **Pressure** (gauge 0 to 6, starts 0): after each of your cards that hit it resolves, Pressure +1 if the card has no Love, or -2 (min 0) if it has Love. While Pressure is 6, its intent is overridden to `boil_over` (lifted again if Pressure drops below 6 before it acts). After `boil_over`, Pressure = 0. | `rattle` Strike 8 -> `whistle` Strike 5 x 2, 2 Seething -> `simmer` Guard 12, Pressure +2; override `boil_over` Strike 24, 3 Seething |
-| `shade.mask` | The Mask (boss) | anger, sadness, loneliness, fear | 150 | **Many Faces:** turns on OPPOSITE hits (R-5) and also at the end of each of its actions. Its forehead shows the next face. **Cracked:** the first time it is at 75 or less, Flare +3. | `byFace`: anger -> `rage` Strike 12; sadness -> `weep` Strike 5 x 2, 2 Heavy; loneliness -> `turn_away` Guard 15, 2 Isolated; fear -> `startle` Strike 8, 2 Trembling |
+| `shade.mask` | The Mask (boss) | anger, sadness, loneliness, fear | 150 | **Many Faces:** turns on OPPOSITE hits (R-5) and also at the end of each of its actions. Its forehead shows the next face. Your hits (card or automatic) can turn it at most twice per player turn. Further OPPOSITE hits still deal x2 and remove Flare but don't turn it. Chip: "Turns left 2/1/0" (resets at the end of your turn, 5.6 step 8). **Cracked:** the first time it is at 75 or less, Flare +3. | `byFace`: anger -> `rage` Strike 12; sadness -> `weep` Strike 5 x 2, 2 Heavy; loneliness -> `turn_away` Guard 15, 2 Isolated; fear -> `startle` Strike 8, 2 Trembling |
 
-The Mask is the Harmony walk made into a boss: Love, then Joy, then Friendship, then Courage each hit x2 because every OPPOSITE hit turns it to the face the next Light cures, and a Harmonized card covers two faces. Turning it on purpose also chooses which move it makes (turn it to Loneliness and it only Guards).
+The Mask is the Harmony walk made into a boss: Love, then Joy, then Friendship, then Courage each hit x2 because every OPPOSITE hit turns it to the face the next Light cures, and a Harmonized card covers two faces. Turning it on purpose also chooses which move it makes (turn it to Loneliness and it only Guards). Because your hits can turn it at most twice per player turn, its face moves 1 to 3 steps per cycle of 4, so Loneliness comes up at most every other turn and the turns in between cost you `weep`, `startle` or `rage`: it can't be locked on `turn_away`.
 
 **Tutorial variants** (used only by the tutorial encounters, no passives, offset 0):
 
@@ -612,21 +631,21 @@ Compound faces are listed outer first; the outer face's cure is DISSONANT agains
 
 | id | name | faces | HP | passives | moves (pattern order) |
 |---|---|---|---|---|---|
-| `shade.fret` | Fret | anxiety | 42-46 | **Worry** (starts 0): after its action, Worry +1. Each of your cards with Calm that hits it removes 2 Worry. | `flurry` Strike 3 x (1 + Worry) -> `fidget` Worry +2, 2 Restless -> `pace` Guard 8 |
+| `shade.fret` | Fret | anxiety | 42-46 | **Worry** (starts 0, max 6): after its action, Worry +1. Each of your cards with Calm that hits it removes 2 Worry. | `flurry` Strike 3 x (1 + Worry) -> `fidget` Worry +2, 2 Restless -> `pace` Guard 8 |
 | `shade.slump` | Slump | despair | 50-54 | **Heavy Silence:** after its action, if you played 2 or fewer cards during your last turn, Guard 8. | `sigh_deeply` Strike 6, 1 Hollow -> `sink` Guard 12 -> `collapse` Strike 15 |
 | `shade.old_grudge` | Old Grudge | anger / sadness | 60-64 | **Keeps Score:** each hit from your cards that isn't OPPOSITE adds 1 Tally (max 6). | `mutter` Strike 6, 2 Seething -> `rehash` Strike 4 + 3 per Tally, then Tally = 0 -> `brood` Guard 10, 1 Heavy |
 | `shade.longing` | Longing | sadness / loneliness | 58-62 | **Wallow:** after its action, restores 5 Intensity unless a hit with Joy or Friendship landed on it since its previous action. | `reach_back` Strike 9 -> `remember` Guard 10, 1 Heavy, 1 Isolated -> `ache` Strike 4 x 3 |
 | `shade.wallflower` | Wallflower | loneliness / fear | 38-42 | **Shy:** while another Shade stands, cards can't target it unless they Reach Shy (ALL hits and Companions still reach it). **Cornered:** the first time it is the only Shade, Flare +3. | `peek` 2 Trembling -> `wilt` Scatter 1, 2 Isolated -> `prickle` Strike 8 |
 | `shade.dread` | Dread | fear / despair | 56-60 | **Countdown** (starts 3): while 0, intent is overridden to `the_thing`. After it acts: Countdown = 3 if it used `the_thing`, else -1. Once per your turn, a hit from a card with Courage or Hope pushes Countdown +1 (max 3). | `creak` Strike 6 -> `shadow` 2 Trembling, 1 Hollow; override `the_thing` Strike 24 |
 | `shade.knot` | The Knot (elite) | anxiety / anger | 108-112 | **Tension** (0 to 6): +1 for each card you play (outward or Inward) whose effective Lights include neither Calm nor Love. Each hit on it from a card with Calm or Love: -1 (min 0). While 6, intent is overridden to `snap`; after `snap`, Tension = 0. | `twist` Strike 6 x 2 -> `clench` Guard 16, Tension +2 -> `lash` Strike 14; override `snap` Strike 22 |
-| `shade.apathy` | Apathy (elite) | none (numb rules) | 90-94 | **Muffled, Veiled, Surfacing (your 1 heaviest Buried card)** (R-16). Can't be Understood. Suppress adds no Buried card. | `shrug` Strike 10 -> `grey_out` 2 Numb, Guard 10 -> `sigh` Strike 6 x 2 |
-| `shade.spiral` | The Spiral (boss) | despair / anxiety | 200 | **Coil** (starts 2, max 8): after its action, Coil +1. Each card you play (outward or Inward) with Hope or Calm unwinds 1 Coil, or 2 if it has both (min 1). **Deepening:** the first time it is at 100 or less, Flare +2. | `what_if` Strike 3 x Coil, 1 Restless -> `whats_the_point` 2 Hollow, Guard 15 -> `around_again` Strike 12, Coil +1 |
+| `shade.apathy` | Apathy (elite) | none (numb rules) | 90-94 | **Muffled, Veiled, Surfacing (your 1 heaviest Buried card)** (R-16). Suppressing its Surfaced Shade: Apathy gains +10 x Weight max Intensity and Intensity. Can't be Understood. Suppress adds no Buried card. | `shrug` Strike 10 -> `grey_out` 2 Numb, Guard 10 -> `sigh` Strike 6 x 2 |
+| `shade.spiral` | The Spiral (boss) | despair / anxiety | 200 | **Coil** (starts 2, max 6): after its action, Coil +1. Each card you play (outward or Inward) with Hope or Calm unwinds 1 Coil, or 2 if it has both (min 1). It also unwinds 1 whenever the Spiral's face turns (so Name It gives any deck a way to unwind it). `what_if` peaks at Strike 3 x 6 = 18 (30 with Deepening). **Deepening:** the first time it is at 100 or less, Flare +2. | `what_if` Strike 3 x Coil, 1 Restless -> `whats_the_point` 2 Hollow, Guard 15 -> `around_again` Strike 12, Coil +1 |
 
 ### 7.3 The Deep
 
 | id | name | faces | HP | passives | moves |
 |---|---|---|---|---|---|
-| `shade.numbness` | The Numbness (final boss) | none (numb rules) | 240 | **Muffled, Veiled, Surfacing (your 3 heaviest Buried cards)**, +6 Guard per Weight of Buried cards not Surfaced (R-16). Can't be Understood. **Thaw:** when it first drops to 120 or less, its pattern switches to Phase 2 and its intent re-derives to `flatline`. | Phase 1: `static` Strike 12 -> `fog` Guard 20, 1 Numb -> `nothing_much` Strike 8, 1 Heavy, 1 Hollow. Phase 2: `flatline` Strike 18 -> `fog2` Guard 20, 2 Numb -> `static_storm` Strike 4 x 4 |
+| `shade.numbness` | The Numbness (final boss) | none (numb rules) | 180 | **Muffled, Veiled, Surfacing (your 3 heaviest Buried cards)** (R-16). Combat start: +6 max Intensity and Intensity per Weight of Buried cards not Surfaced. Suppressing a Surfaced Shade: +10 x Weight max Intensity and Intensity. Can't be Understood. **Thaw:** when it first drops to 90 or less, its pattern switches to Phase 2 and its intent re-derives to `flatline`. | Phase 1: `static` Strike 12 -> `fog` Guard 14, 1 Numb -> `nothing_much` Strike 8, 1 Heavy, 1 Hollow. Phase 2: `flatline` Strike 18 -> `fog2` Guard 14, 2 Numb -> `static_storm` Strike 4 x 4 |
 | `shade.surfaced_anger` | Surfaced Anger | anger | 12 x Weight | none | `flare_up` Strike 8 -> `smolder` Strike 5, 2 Seething |
 | `shade.surfaced_sadness` | Surfaced Sadness | sadness | 12 x Weight | none | `sigh` Strike 6, 1 Heavy -> `curl_up` Guard 8 |
 | `shade.surfaced_loneliness` | Surfaced Loneliness | loneliness | 12 x Weight | none | `call_out` Strike 6 -> `cold_shoulder` Strike 4, 2 Isolated |
@@ -634,7 +653,7 @@ Compound faces are listed outer first; the outer face's cure is DISSONANT agains
 | `shade.surfaced_despair` | Surfaced Despair | despair | 12 x Weight | none | `sigh_deeply` Strike 7, 1 Hollow -> `sink` Guard 10 |
 | `shade.surfaced_anxiety` | Surfaced Anxiety | anxiety | 12 x Weight | none | `flurry` Strike 3 x 3 -> `fidget` 2 Restless, Guard 6 |
 
-Surfaced Shades are named (not Fleeting). Their Resolve gives an Afterglow and turns the Buried card into Insight in your hand; no Glimmers are paid in The Deep.
+Surfaced Shades are named (not Fleeting). They act in the first enemy phase (5.7 snapshot). Their Resolve gives an Afterglow and turns the Buried card into Insight in your hand (or removes it if that Insight was already created this run, 4.10); no Glimmers are paid in The Deep. Their Suppress returns the card unchanged and grows the boss (4.16). Apathy and The Numbness use a grey oval sigil labelled "NUMB" on map nodes and nameplates (16.0).
 
 ### 7.4 Barks and farewells
 
@@ -664,7 +683,7 @@ Surfaced Shades are named (not Fleeting). Their Resolve gives an Afterglow and t
 
 ## 8. Encounters
 
-`EncounterDef = { id, members: { enemy, hp? }[] }`. Members spawn left to right. All weights are 1 (uniform). A node's encounter must differ from each parent node's encounter (reroll up to 5 times).
+`EncounterDef = { id, members: { enemy, hp? }[] }`. Members spawn left to right. All weights are 1 (uniform). A node's encounter must differ from each parent node's encounter (reroll up to 5 times, then keep the last roll). Every member of `enc.t1` to `enc.t4` starts at pattern offset 0.
 
 | id | members (HP override) | used in |
 |---|---|---|
@@ -697,7 +716,7 @@ Surfaced Shades are named (not Fleeting). Their Resolve gives an Afterglow and t
 | `enc.a2.apathy` | apathy | Act 2 elite |
 | `enc.a2.spiral` | spiral | Act 2 boss |
 | `enc.deep.numbness` | numbness (+ Surfaced) | The Deep |
-| `enc.mem.echo` | echo (32-36) | Memory "The Wishing Well" |
+| `enc.mem.echo` | echo (32-36) | Memory "The Wishing Well" (pays base 10 + Resolve 8, counts as a win, no card reward) |
 
 **Pools by row** (normal run; tutorial differences in 11.3):
 
@@ -707,6 +726,8 @@ Surfaced Shades are named (not Fleeting). Their Resolve gives an Afterglow and t
 | 2 | early: a2.fret, a2.slump | standard: 7 encounters | standard | a2.knot, a2.apathy | a2.spiral |
 
 Act 2 row 3 fight nodes draw only from `{a2.old_grudge, a2.longing, a2.dread}` so the first compound is met early and alone.
+
+**Elites per row:** each act's two elites are split by row so one path never meets the same elite twice. The `map` stream orders the act's elite pool: every row-6 Elite node uses the first, every row-8 Elite node uses the second, and each row-7 Elite node picks one of the two at random (`map` stream).
 
 ---
 
@@ -722,7 +743,7 @@ No duplicates in a run. Pool draws skip owned Keepsakes; if a rarity is exhauste
 ### 9.2 Charms (choose 1 of 4 at run start; the profile's first run gets Warm Locket automatically)
 | id | name | effect | adds card |
 |---|---|---|---|
-| `ks.warm_locket` | Warm Locket | At the end of each combat you win, Mend 5. | Kind Word |
+| `ks.warm_locket` | Warm Locket | At the end of each combat you win, Mend 8. | Kind Word |
 | `ks.sun_charm` | Sun Charm | On turn 1 of each combat, draw 2 extra cards. | Bright Spark |
 | `ks.woven_bracelet` | Woven Bracelet | At the start of each combat, Summon a Lantern Moth. | Reach Out |
 | `ks.brave_pebble` | Brave Pebble | At the start of each combat, gain 1 Nerve. | Brave Strike |
@@ -732,23 +753,23 @@ No duplicates in a run. Pool draws skip owned Keepsakes; if a rarity is exhauste
 |---|---|---|---|
 | `ks.tuning_fork` | Tuning Fork | common | The first time a card is Harmonized each turn, draw 1. |
 | `ks.pressed_flower` | Pressed Flower | common | Whenever you Resolve a Shade, Mend 3. |
-| `ks.yellow_umbrella` | Yellow Umbrella | common | The first time each combat you would gain affliction stacks, gain none. |
+| `ks.yellow_umbrella` | Yellow Umbrella | common | The first time each combat you would gain affliction stacks, gain none (from any source, including Chipped Teacup and Numb). |
 | `ks.morning_tea` | Morning Tea | common | On turn 1 of each combat, gain 1 extra Spirit. |
 | `ks.warm_socks` | Warm Socks | common | On turn 1 of each combat, gain 6 Guard. |
 | `ks.prism_shard` | Prism Shard | uncommon | Your first Harmonized card each turn costs 1 less. |
-| `ks.journal` | Journal | uncommon | Whenever you Tend a Buried card in combat, draw 1 and gain 3 Guard. |
+| `ks.journal` | Journal | uncommon | Whenever you Tend a Buried card in combat, draw 1 and gain 3 Guard. (A Surfaced Resolve is not a Tend.) |
 | `ks.ember_lantern` | Ember Lantern | uncommon | Whenever a Shade gains Flare, gain 2 Guard. |
 | `ks.welcome_mat` | Welcome Mat | uncommon | Whenever you Summon a Companion, gain 3 Guard. |
-| `ks.paper_crane` | Paper Crane | rare | Once per run, when your Heart would drop to 0, Mend to 25 instead. |
-| `ks.worn_diary` | Worn Diary | rare | At the start of each combat, put your heaviest Buried card into your opening hand. Insights you create are always upgraded. |
+| `ks.paper_crane` | Paper Crane | rare | Once per run, when your Heart would drop to 0, Mend to 25 instead. (In combat: `combat.paperCraneUsed`, committed through `CombatResult.keepsakeCounters`, 5.5.) |
+| `ks.worn_diary` | Worn Diary | rare | At the start of each combat, put your heaviest Buried card into your opening hand. Insights you create are always upgraded (including by a Surfaced Resolve). |
 | `ks.friendship_bracelet` | Friendship Bracelet | rare | Your Companions' hits count as the Lights of the Note (if the Note is empty: Friendship). |
 
 ### 9.4 Boss Keepsakes (after each act boss, choose 1 of 3 random from these 6; you may skip)
 | id | name | effect |
 |---|---|---|
 | `ks.chipped_teacup` | Chipped Teacup | +1 Spirit each turn. At the start of each combat, gain 3 Seething. |
-| `ks.spiral_shell` | Spiral Shell | +1 Spirit each turn. You can't Rest at Havens. |
-| `ks.lead_box` | Lead Box | Buried cards in your hand never afflict you. You can't Tend. Surfaced Shades have +50% Intensity. |
+| `ks.spiral_shell` | Spiral Shell | +1 Spirit each turn. You can't Rest at Havens, and between acts you Mend only 50% of your missing Heart instead of to full. |
+| `ks.lead_box` | Lead Box | Buried cards in your hand never afflict you. You can't Tend. Surfaced Shades have +50% Intensity. (Resolving a Surfaced Shade still creates its Insight: it is not a Tend.) |
 | `ks.mirror_shard` | Mirror Shard | Lights directly across the wheel also Harmonize (Love-Courage, Joy-Hope, Friendship-Calm). |
 | `ks.skeleton_key` | Skeleton Key | Inward plays can Tend any Buried card, whatever its type. |
 | `ks.lightning_rod` | Lightning Rod | DISSONANT hits deal x1 instead of x1/2 (the Shade still gains 1 Flare). |
@@ -757,7 +778,7 @@ No duplicates in a run. Pool draws skip owned Keepsakes; if a rarity is exhauste
 
 ## 10. Memories (events)
 
-Memory nodes pick an unused event (uniform, `event` stream); each event appears at most once per run. If all are used: "A Quiet Moment: Mend 10." Every option shows its mechanical result in brackets. Options whose requirement fails are shown disabled with the reason.
+Memory nodes pick an unused event (uniform, `event` stream); each event appears at most once per run. If all are used: "A Quiet Moment: Mend 10." Every option shows its mechanical result in brackets. Options whose requirement fails are shown disabled with the reason. Options whose Heart cost is >= your current Heart are disabled ("Not enough Heart").
 
 **`mem.unsent_letter` The Unsent Letter**
 *Tucked in the reeds is a letter in your handwriting. You never sent it. You remember exactly what it says.*
@@ -773,7 +794,7 @@ Memory nodes pick an unused event (uniform, `event` stream); each event appears 
 
 **`mem.mirror_pond` The Mirror Pond**
 *The water is perfectly still. Your reflection looks like it's been waiting for you.*
-1. Look closer [Duplicate a card of your choice (not Buried).]
+1. Look closer [Duplicate a card of your choice (not Buried, not Insight).]
 2. Make a face [Transform a card of your choice into a random upgraded card of a Light adjacent to its own (available Lights only). Neutral, Buried and Blend cards can't be chosen.]
 3. Skip a stone [Gain 20 Glimmers.] *It skips four times. You'll take that as a sign.*
 
@@ -793,7 +814,7 @@ Memory nodes pick an unused event (uniform, `event` stream); each event appears 
 *A well with a tin cup on a string. Someone scratched WISHES 10G on the rim, crossed out the 10, and wrote "whatever you can spare."*
 1. Toss in 20 Glimmers [Add a random upgraded card: Hope in Act 2, any available Light in Act 1.] (requires 20)
 2. Toss in everything [Pay all Glimmers (min 1). Add a random rare card. If you paid 80+, also gain a random Keepsake.] (requires 1)
-3. Shout into it [Fight an Echo (`enc.mem.echo`). Resolve it: gain a random uncommon Keepsake. Suppress it: gain 30 Glimmers.] (no card reward after this fight)
+3. Shout into it [Fight an Echo (`enc.mem.echo`). Resolve it: gain a random uncommon Keepsake. Suppress it: gain 30 Glimmers.] The fight pays Glimmers as a normal fight (base 10, +8 if Resolved), counts as a win (`combatsWon`), and gives no card reward.
 
 "Random upgraded card" / "random rare card" draw from the Light cards available in the current act (6.0), uniform, `event` stream.
 
@@ -810,7 +831,7 @@ Memory nodes pick an unused event (uniform, `event` stream); each event appears 
 For consecutive rows of sizes `a` and `b` (columns indexed left to right): build a monotone path of index pairs from `(0,0)` to `(a-1, b-1)` and add one edge per visited pair.
 1. Let `dA = a-1`, `dB = b-1`. Roll `k` (number of "advance both" steps) uniformly in `[0, min(dA, dB)]` with the `map` stream.
 2. Form the move multiset `{both x k, i x (dA-k), j x (dB-k)}` and shuffle it (`map` stream). Reject and reshuffle if two identical single moves (`i,i` or `j,j`) are consecutive, because that would give a node 3 edges. After 50 rejections, use `k = min(dA, dB)`.
-3. Walk the moves from `(0,0)`, adding edge `(i,j)` after each move.
+3. Add edge `(0,0)`, then walk the moves from `(0,0)`, adding edge `(i,j)` after each move.
 
 Result: edges never cross, every node has 1 or 2 out-edges and 1 or 2 in-edges. All row-9 nodes connect to the boss.
 
@@ -830,14 +851,14 @@ Result: edges never cross, every node has 1 or 2 out-edges and 1 or 2 in-edges. 
 
 **Repair pass** (in order, max 10 rerolls per node, then set to Fight):
 1. No edge may connect two Havens, two Sanctuaries or two Elites.
-2. At least 2 Elite nodes in rows 6 to 8 (convert random Fight nodes in rows 6 to 8).
+2. At least 2 Elite nodes in rows 6 to 8 (convert random Fight nodes in rows 6 to 8 that have no Elite neighbour). Then re-run rule 1.
 3. At least 1 Sanctuary in rows 3 to 8 (convert a random Fight or Memory node in rows 3 to 8; never in the tutorial rows 3 to 4).
-4. Encounters: roll per fight/elite node from its row pool (section 8), differing from parents; roll member HP.
+4. Encounters: roll per fight/elite node from its row pool (section 8), differing from parents (up to 5 rerolls, then keep the last roll); Elite nodes follow the per-row elite split (section 8); roll member HP.
 
 Each node stores `seed = hash32(runSeed, act, nodeId)`; all node-local streams derive from it.
 
 ### 11.4 What the map shows
-- Fight and Elite nodes show the sigils of their Shades' faces (1 to 3 sigils; a compound shows its two sigils joined by a small bar). Memory contents are hidden until entered.
+- Fight and Elite nodes show the sigils of their Shades' faces (1 to 3 sigils; a compound shows its two sigils joined by a small bar; Apathy shows the grey "NUMB" oval). Memory contents are hidden until entered.
 - The boss node shows its silhouette and name from the start of the act.
 - Hover or focus on a fight node shows the node detail card (16.4).
 
@@ -847,17 +868,19 @@ Each node stores `seed = hash32(runSeed, act, nodeId)`; all node-local streams d
 
 ### 12.1 Glimmers
 - Start of run: 50.
-- Combat win, base: normal 10, elite 25, boss 60, The Numbness 0.
-- Resolve bonus per Shade Resolved (not Fleeting, not Surfaced): normal Shade +8, elite +20, boss +40. Deep Resolve pays the same bonus.
+- Combat win, base: normal 10, elite 25, boss 60, The Numbness 0 (`glimmersBase.final`).
+- Resolve bonus per Shade Resolved (not Fleeting, not Surfaced): normal Shade +8, elite +20, boss +40, The Numbness 0 (`glimmersResolve.final`). Deep Resolve pays the same bonus.
 - Suppress: +0.
+- The Wishing Well's Echo fight (`enc.mem.echo`) pays as a normal fight: base 10, +8 if Resolved.
 
 ### 12.2 Card reward (after normal and elite fights; not after The Numbness or `enc.mem.echo`)
 - **3 options**, rolled with the node's `reward` stream. Per slot rarity: normal fight C 60 / U 33 / R 7; elite C 45 / U 40 / R 15.
-- **Slot rules:** slot 1 = a random Light among your two most common deck Lights (ties: wheel order); slot 2 = a uniformly random available Light; slot 3 = the Light that Tends your heaviest Buried card if you have one, else a uniformly random available Light. Each slot independently has an 8% chance to be a random neutral card instead (rarity rolled the same way). No duplicate card ids within one offer.
+- **Most common Light** (used here, in the node detail (16.4), in The Deep's Sanctuary (13) and by bots): count only `ease` cards in the deck, by printed Light (a Blend counts for both of its Lights), ties broken by wheel order.
+- **Slot rules:** slot 1 = a random Light among your two most common deck Lights; slot 2 = a uniformly random available Light; slot 3 = the Light that Tends your heaviest Buried card if you have one, else a uniformly random available Light. Each slot independently has an 8% chance to be a random neutral card instead (rarity rolled the same way). No duplicate card ids within one offer (reroll the slot up to 5 times, then keep the last roll).
 - **Elite:** slot 3 is replaced by a random available Blend card.
 - **Full Bloom:** if every non-Fleeting Shade in the fight was Resolved (or Deep Resolved), add a 4th option: a random available Blend if you own The Compass, otherwise a random available Light card.
 - The player may take 1 or skip.
-- After the 2nd combat win of the run, The Compass is granted first on the same screen, and the offer's slot 3 is always a random Act 1 Blend (Sunbeam, Tag You're It!, or Shoulder to Shoulder).
+- After the 2nd combat win of the run, The Compass is granted first on the same screen, and the offer's slot 3 is always a random Act 1 Blend (Sunbeam, "Tag, You're It!", or Shoulder to Shoulder).
 
 ### 12.3 Keepsake rewards
 - Elite: 1 random pool Keepsake (weights 9.3).
@@ -865,7 +888,7 @@ Each node stores `seed = hash32(runSeed, act, nodeId)`; all node-local streams d
 - Boss: choose 1 of 3 boss Keepsakes (9.4) or skip.
 
 ### 12.4 Boss reward
-Glimmers (60 + Resolve bonus), choose 1 of 3 random rare Light cards from the available Lights (or skip), choose 1 of 3 boss Keepsakes (or skip), then Mend to full.
+Glimmers (60 + Resolve bonus), choose 1 of 3 random rare Light cards from the available Lights (or skip), choose 1 of 3 boss Keepsakes (or skip), then Mend to full. With Spiral Shell (including one just taken), Mend 50% of your missing Heart instead (rounded down).
 
 ### 12.5 "The wheel closes" (entering Act 2)
 Hope and Calm unlock. Choose 1 of 3 (or skip): a random Hope common, a random Calm common, a random Hope-or-Calm uncommon.
@@ -878,14 +901,14 @@ Stock rolled on entry with the node's `shop` stream.
 | Slot | Count | Base price |
 |---|---|---|
 | Light cards | 5: 2 common, 2 uncommon, 1 rare (available Lights) | C 45, U 70, R 115 |
-| Blend cards | 2 (3 in The Deep) | 85 |
+| Blend cards | 2 (3 in The Deep: always both Blends that contain your most common Light (12.2), plus 1 random other Blend) | 85 |
 | Neutral card | 1 (rarity rolled C 60 / U 30 / R 10) | by rarity (C 45, U 70, R 115) |
 | Keepsakes | 3: one each of common, uncommon, rare (pool) | C 130, U 170, R 220 |
 | Service: Set Down a card | once per visit | 60, +20 for each earlier use this run: remove a card of your choice from your deck (any card, including Buried) |
 | Service: Talk it through | once per visit, only with a Buried card | 35: Tend a Buried card of your choice |
 
 - Price jitter: each item's price x one of {0.90, 0.95, 1.00, 1.05, 1.10} (uniform), rounded to the nearest integer. Services are not jittered.
-- One random card slot is on sale at 50% (rounded down).
+- One random card slot is on sale at 50% (rounded down). In The Deep, the sale item is always one of the 3 Blend slots (chosen with the `shop` stream).
 - Bought slots show "Sold". Leaving is free.
 - Mo's lines (random on entry): "Found it on a Tuesday." / "No refunds. Herons don't do refunds." / "Shiny. Very shiny. You'll want that."
 
@@ -898,15 +921,15 @@ Choose exactly one:
 |---|---|---|
 | Rest | Mend 30% of max Heart (rounded down). | Not with Spiral Shell. |
 | Kindle | Upgrade a card of your choice (before/after preview). | If any upgradable card. |
-| Reflect | Tend a Buried card of your choice (any type). At Weight 0 it becomes Insight (upgraded if peakWeight >= 2). | If you own a Buried card and not Lead Box. |
+| Reflect | Tend a Buried card of your choice (any type). At Weight 0 it becomes Insight (upgraded if peakWeight >= 2 or with Worn Diary), or is removed if that Insight was already created this run (4.10). | If you own a Buried card and not Lead Box. |
 
 ---
 
 ## 15. Act flow, victory, defeat
 
 ### 15.1 Transitions
-- **Act 1 -> 2:** boss reward (12.4) -> Mend to full -> "The wheel closes" cinematic (1.5 s: Hope and Calm segments ignite on the Compass; the three new Blend edges light) -> 12.5 card choice -> Act 2 map.
-- **Act 2 -> The Deep:** boss reward -> Mend to full -> "The Deep" title card: *"It's very quiet down here."* -> Sanctuary.
+- **Act 1 -> 2:** boss reward (12.4) -> Mend to full (Spiral Shell: 50% of missing Heart) -> "The wheel closes" cinematic (1.5 s: Hope and Calm segments ignite on the Compass; the three new Blend edges light) -> 12.5 card choice -> Act 2 map.
+- **Act 2 -> The Deep:** boss reward -> Mend to full (Spiral Shell: 50% of missing Heart) -> "The Deep" title card: *"It's very quiet down here."* -> Sanctuary.
 
 ### 15.2 Defeat
 Heart 0 (after Paper Crane) or turn limit. Screen: *"Your Heart needs rest. The Lights will keep until you're back."* Show run stats (15.4). Buttons: New Run, Title.
@@ -923,7 +946,7 @@ Floors reached, Shades Resolved / Deep Resolved / Suppressed, Insights found, Li
 ## 16. UI specification
 
 ### 16.0 Global
-- **Reference canvas 1280x720.** Size everything in `calc(var(--u) * Npx)` with `--u = min(100vw/1280, 100vh/720)` (no CSS transform scaling; it blurs text). Minimum 1024x576. Desktop first; tablet landscape fully supported through tap-to-select; phone portrait out of scope.
+- **Reference canvas 1280x720.** Size everything in `calc(var(--u) * Npx)` with `--u = min(100vw/1280, 100vh/720)` (no CSS transform scaling; it blurs text). Minimum 1024x576. Desktop first; tablet landscape fully supported through tap-to-select; phone portrait out of scope. **Every tappable element is at least 56 reference px** in both dimensions (about 45 CSS px at `--u = 0.8`, a 1024-wide tablet).
 - **Fonts:** `ui-rounded, system-ui, sans-serif` for UI; `ui-serif, Georgia, serif` for banners and titles; `font-variant-numeric: tabular-nums` for all numbers.
 - **Neutral tokens (CSS custom properties on `:root`):** `--bg-0 #0E0C16`, `--bg-1 #1C1830` (background gradient), `--surface #231E33`, `--text #EDE8F5`, `--text-2 #A89FBF`, `--pearl #F4EFE6` (Heart, Spirit, focus), `--silver #C7CEDB` (Guard), `--ink #15121F` and `--ink-rim #2E2645` (Shades). The game is dark by design; there is no light theme.
 - **Light colours** (default / colour-blind Okabe-Ito) and sigils:
@@ -937,7 +960,7 @@ Floors reached, Shades Resolved / Deep Resolved / Suppressed, Insights found, Li
 | Hope | `#B18CFF` | `#0072B2` | 4-point star | tiny stars | A5 |
 | Calm | `#4CC9F0` | `#56B4E9` | horizontal wave | horizontal waves | C6 |
 
-- **Shade sigils (closed, pointed):** Anger jagged crown, Sadness falling teardrop, Loneliness lone dot in an empty ring, Fear wide eye, Despair downward funnel, Anxiety tangled scribble. All sigils on a 24-unit grid, legible at 14px, distinct in greyscale.
+- **Shade sigils (closed, pointed):** Anger jagged crown, Sadness falling teardrop, Loneliness lone dot in an empty ring, Fear wide eye, Despair downward funnel, Anxiety tangled scribble. Apathy and The Numbness: a grey oval labelled "NUMB" (map nodes, nameplates, the Numbness meter). All sigils on a 24-unit grid, legible at 14px, distinct in greyscale.
 - **Colour rule:** saturated hue always means a Light. Shades are ink-dark; their cracks glow in the colour of the Light that Resolves their showing face. Affliction chips and Buried cards use an ink body with a rim in the cure's colour. Every colour signal is backed by a sigil and a text label.
 - **Layers (bottom to top):** stage, hand, lifted card, overlays, tooltips, coach marks.
 - **Rendering:** vanilla DOM + inline SVG, keyed reconciliation by `uid` (no framework). The UI never computes game rules; every number comes from the engine (`preview`, `intents`, `cardText`, `handHints`).
@@ -958,21 +981,23 @@ Floors reached, Shades Resolved / Deep Resolved / Suppressed, Insights found, Li
 +------------------+------------------------+-----------------------------+----------------+
 | COMPASS x16-216  | PLAY LINE y470-492                                   | END TURN (E)   |
 | ring + Spirit    | HAND x232-1048: fan, wheel-ordered, up to 10 cards   | 2 Spirit unused|
-| Note, Harmony ct | of 130x182                                           | Undo (Z)       |
+| Note, Harmonies  | of 130x182                                           | Undo (Z)       |
 | Draw 7           |                                                      | Discard 3 | Log|
 +------------------+------------------------------------------------------+----------------+
 ```
 Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216, hand x 232-1048, right column x 1064-1264).
 
+Targeting: click/tap a card to select, then click/tap a Shade or the INWARD heart; keys as in 19. There is no drag targeting.
+
 ### 16.2 Combat components
 **Shade slot (205px wide, top to bottom)**
-- Intent pill (y 64-104): intent icon(s) + final number(s); order badge 1-4 when 2+ Shades act.
+- Intent pill (y 64-104): intent icon(s) + final number(s); order badge 1-4 when 2+ Shades act. The pill shows the projected intent after end-of-turn steps 1 to 6 (5.7.1). When it differs from the current intent it carries an "after end of turn" tag and its tooltip names the cause ("Lantern Moth will turn it to Fear.").
 - Silhouette (y 108-316): procedural SVG (16.7) with ground shadow. Pending Promise chips and the Wavering chip sit at its feet.
 - Nameplate (y 320-460):
   - Row 1: showing-face sigil (18px), TYPE caps 12px, name bold 14px (e.g. `ANGER . Grumble`). Two-faced Shades add a small "beneath:" sigil of the other face and a turn arrow; The Mask adds the next-face sigil.
   - Row 2: Intensity bar 180x14 with "24/42" inside; silver Guard badge left of the bar when Guard > 0.
   - Row 3 (always visible): matchup chips for the showing face: `[cure sigil] x2` in the cure colour with a double up-chevron; `[bad-advice sigil] x1/2` in grey with a down-chevron. The Numbness/Apathy show `FELT x2: two Lights` and `MUFFLED x1/2: one Light`. Tooltips: "OPPOSITE: Love deals double and Resolves Anger." / "DISSONANT: 'Just calm down.' Calm deals half and gives Anger 1 Flare."
-  - Row 4: status chips: Flare n, gauges (Pressure 4/6, Tension 3/6, Worry 2, Tally 3, Countdown 2, Coil 5), passive name, Shy, Fleeting, Understood, Hush n, Veiled. More than 3 chips collapse to "+N" (expand on hover).
+  - Row 4: status chips: Flare n, gauges (Pressure 4/6, Tension 3/6, Worry 2, Tally 3, Countdown 2, Coil 5, The Mask's "Turns left 2/1/0"), passive name, Shy, Fleeting, Understood, Hush n, Veiled. More than 3 chips collapse to "+N" (expand on hover).
 - Preview overlay while a card is selected: hatched ghost on the Intensity bar, callout "-12 OPPOSITE x2" (or "-3 x1/2 DISSONANT +1 Flare" with an arrow into the intent "8 -> 9"), face-turn arrow if the hit turns it, gauge change ("Pressure 5 -> 6: next move BOIL OVER"). Lethal replaces the callout with a banner (below).
 
 **Intent icons** (unique shapes, never colour-only): Strike = jagged starburst (number, or "3x4"), Guard = shield, Afflict = the affliction's drop chip with stacks, Buff (Flare/gauge) = upward notched triangle, Mend = cross in a drop, Summon = small silhouette with "+", Scatter = two figures drifting apart. Combined intents show icons side by side. The tooltip gives the consequence: "Strikes for 8 (7 + 1 Flare). Your Guard blocks 5. You lose 3."
@@ -983,14 +1008,14 @@ Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216
 - Heart bar 240x18 pearl, "54/70" inside. Predicted loss = hatched segment at the fill's right edge (this turn's Seething tick + enemy strikes after Guard, from `preview({t:'endTurn'})`). "Incoming" line lists parts. If predicted loss >= Heart: bar outline pulses and the line reads "Lethal: you will fall" with a broken-heart icon. Mend previews show a bright outline extension "+4".
 - **Inward target:** when a selected card can be played Inward, a heart-shaped outline appears around the avatar labelled "INWARD" with a preview: "Clear 2 Seething. Tend Buried Anger (W2 -> W1)." Not shown when illegal.
 - Afflictions row: drop chips (ink body, cure-colour rim, Shade sigil, stacks). Tooltip: "Seething 2: at the end of your turn you lose 2 Heart, then it drops to 1. Love cards soothe 1. Play Love Inward to clear it all."
-- Companions row (only after you first own a Companion card): three 48px slots with icon, action number, and a dotted line to the last target.
+- Companions row (only after you first own a Companion card): three 56px slots with icon, action number, and a dotted line to the last target. While you have Isolated the slots grey out with the label "Isolated: won't act".
 - Promise tray: pending Promises that target you ("Next turn: +5 Guard, draw 1").
 
 **Compass HUD (200x200, bottom-left)**
 - Before The Compass: only the Spirit orb. When granted, the ring grows out of the orb (1.2 s).
 - Ring of 6 segments clockwise from the top: Love, Joy, Friendship, Courage, Hope, Calm, each with its sigil (24px). In Act 1, Hope and Calm are dark ("Awakens in Act 2"). Segments for Lights you own no cards of are dimmed.
 - Centre: Spirit orb 72px, "3" large, "/3" small; Hollow draws a crack across it.
-- **Note:** the Note's segment(s) fill bright with a notch; the two neighbours get a pulsing outline and a small chevron ("next"). Label under the ring: "Harmony x2 this turn".
+- **Note:** the Note's segment(s) fill bright with a notch; the two neighbours get a pulsing outline and a small chevron ("next"). Label under the ring: "Harmonies this turn: 2".
 - Outer markers: outside each segment, a 14px ink sigil of the Shade that Light cures; its rim lights up while that Shade (showing face) is in the fight. Hover: "Love answers Anger." A small grey arrow from each segment to the next segment's marker shows the DISSONANT rule ("Love alone deepens Sadness").
 - Edges: hovering the edge between two segments shows the Blend name. A two-faced Shade in the fight makes its matching edge glow.
 - Isolated lays grey fog over the ring ("Isolated 1"); a Friendship play blows it away.
@@ -1006,17 +1031,16 @@ Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216
 - **Buried cards:** ink body, cracked border in the cure's colour, Weight pips (1 to 3), text per 6.10. When an eligible Light card is selected, an SVG thread of light joins the two cards and the Inward target lights up.
 - **Insight cards:** pearl frame with an iridescent six-hue sheen, label "INSIGHT" (no gold: gold belongs to Joy).
 
-**Targeting flow**
-1. Select: click, tap, or keys 1-9, 0. All valid targets (Shades and, if legal, INWARD) show previews at once.
-2. Confirm: click a target, or cycle with Left/Right (INWARD is the leftmost target) and press Enter/Space. Drag also works (SVG arrow in the card's colour; over a lethal target the arrowhead becomes a sunburst for Resolve or a seal for Suppress).
-3. Untargeted cards: click the card then the stage, press Enter, or drag above the hand line. ALL cards preview on every Shade.
+**Targeting flow** (click, tap or keyboard only: no drag, no target-first hover)
+1. Select: click or tap a card, or keys 1-9, 0. All valid targets (Shades and, if legal, INWARD) show previews at once.
+2. Confirm: click or tap a Shade or the INWARD heart, or cycle with Left/Right (INWARD is the leftmost target) and press Enter/Space.
+3. Untargeted cards: click or tap the card then the stage, or press Enter. ALL cards preview on every Shade.
 4. Cancel: Esc, right-click, or clicking the card again.
-5. Target-first: hovering a Shade with nothing selected shows every hand card's final number against it plus a tiny RESOLVE or SUPPRESS tag if lethal.
 
 **Lethal banners** (replace the callout on the target)
-- RESOLVE: banner in the finishing Light's colour, sunburst, "RESOLVE", sub-line "+8 Glimmers . Caution: +6 Guard".
+- RESOLVE: banner in the finishing Light's colour, sunburst, "RESOLVE", sub-line "+8 Glimmers . Caution: +6 Guard". Surfaced Shade: "Insight: Passion joins your hand" or, if that Insight was already created this run, "Buried Anger is released".
 - DEEP RESOLVE: two-colour banner, "DEEP RESOLVE", both Afterglows listed.
-- SUPPRESS: ink banner, pearl text, seal, "SUPPRESS", sub-line "Buried Anger joins your deck (Weight 1)" or "Buried Anger W2 -> W3" or "Buried Anger is full: lose 3 max Heart". If another card in hand could Resolve this target this turn, add "Resolve with: Kind Word" and make that card glow.
+- SUPPRESS: ink banner, pearl text, seal, "SUPPRESS", sub-line "Buried Anger joins your deck (Weight 1)" or "Buried Anger W2 -> W3" or "Buried Anger is full: lose 3 max Heart". Surfaced Shade: "The Numbness +20 Intensity" (10 x Weight; "Apathy +10 Intensity" at W1). If another card in hand could Resolve this target this turn, add "Resolve with: Kind Word" and make that card glow.
 - FADES: grey banner (Fleeting).
 - WAVERING: Companion/Promise previews show "stops at 1".
 
@@ -1024,14 +1048,15 @@ Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216
 
 **Piles, End Turn, Undo, Log**
 - Draw pile count under the Compass; click or D opens a grid grouped by Light (order hidden). Discard pile in the right column (F). Buried count in the top bar.
-- End Turn button 180x56 "End Turn (E)". If Spirit and a playable card remain: second line "2 Spirit unused" (information, no confirmation). Pulses gently when nothing is playable.
+- End Turn button 180x56 "End Turn (E)". If Spirit and a playable card remain: second line "2 Spirit unused" (information, no confirmation). Pulses gently when nothing is playable. From turn 30, a "Turn 32/40" counter sits above the button (the run is lost at the end of turn 40, 4.17).
 - Undo (Z): undoes the last card played this turn if the engine flagged it `revealedHiddenInfo = false` (no draw, no shuffle). Disabled tooltip gives the reason ("New cards were revealed").
 - Log (L): slide-out panel with every event in plain text.
 
-**Enemy turn presentation:** banner "The Shades stir" (400 ms). Shades act in order: each steps 60px toward the player, acts, returns (about 350 ms per action at 1x). Whole enemy phase <= 1.5 s at 1x. Next intents pop in immediately. Input is never blocked more than 250 ms; any click or Space fast-forwards the queue.
+**Enemy turn presentation:** banner "The Shades stir" (250 ms). Shades act in order: each steps 60px toward the player, acts, returns (about 300 ms per action at 1x). Whole enemy phase <= 1.5 s at 1x (1.45 s with 4 Shades). Next intents pop in immediately. Input is never blocked more than 250 ms; any click or Space fast-forwards the queue.
 
 ### 16.3 Title and Charm select
 - Title: game name (serif), premise text on first launch only, buttons Continue (if a save exists), New Run, Codex, Settings. Background: slow ink-water drift with six faint Light motes.
+- New Run: if `tutorialDone` can't be read (blocked storage), a "Skip tutorial" option appears so the player isn't sent through the tutorial every time.
 - Charm select (not on the profile's first run): 4 large cards (Warm Locket, Sun Charm, Woven Bracelet, Brave Pebble) showing effect and the added card; keys 1-4, Enter.
 - First run: Begin drops straight into combat `enc.t1` (the map appears after it). Goal: first card played within 20 s of pressing Begin.
 
@@ -1039,9 +1064,9 @@ Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216
 - Centre column x 240-1040: vertical scroll, start at the bottom, boss at the top.
 - Left panel x 16-224: Heart, Glimmers, Keepsakes, Buried cards (with Weight), Numbness meter.
 - Right panel x 1056-1264: legend (icon + label for every node kind, always visible) and the detail card of the hovered/focused node.
-- Nodes (48px circles, unique icons): Fight = ink circle with the Shade sigils; Elite = ink circle with a spiked double ring + sigils; Haven = lantern; Sanctuary = open door with a Glimmer; Memory = open book; Chest = small gift box; Boss = 80px circle with its silhouette.
+- Nodes (56px circles, unique icons): Fight = ink circle with the Shade sigils; Elite = ink circle with a spiked double ring + sigils; Haven = lantern; Sanctuary = open door with a Glimmer; Memory = open book; Chest = small gift box; Boss = 80px circle with its silhouette.
 - States: visited (filled, solid trail), reachable (pulsing ring + key number 1-4), unreachable (40% opacity). Future edges dotted, travelled solid; hover brightens the route to that node.
-- Node detail card (engine-computed): "Fight: Fear + Anger. Fear inflicts Trembling. Your deck: 2 cards OPPOSITE to Fear (Courage), 2 OPPOSITE to Anger (Love), 2 DISSONANT to Fear (Friendship). Rewards: card, Glimmers."
+- Node detail card (engine-computed): "Fight: Fear + Anger. Fear inflicts Trembling. Your deck: 2 cards OPPOSITE to Fear (Courage), 2 OPPOSITE to Anger (Love), 2 DISSONANT to Fear (Friendship). Rewards: card, Glimmers." The counts use only `ease` cards, the same definition as "most common Light" (12.2).
 - Light Mix bar (x 240-1040, y 680-704): one segment per Light in wheel order with sigil and count; Blends split; Buried = ink segment with cure rim; Insight = pearl. Click -> deck view.
 - Keys: 1-4 or Left/Right to pick a reachable node, Enter to travel, Up/Down to scroll, D deck, C Codex.
 
@@ -1058,12 +1083,12 @@ Regions: top bar y 0-44; stage y 44-468; bottom band y 468-720 (Compass x 16-216
 - **Deck view (D):** grouped by Light in wheel order, Blends, neutral, then Insight and Buried groups; upgrade toggle.
 - **Deck select (remove/upgrade/transform/duplicate/Tend):** same grid, eligible cards highlighted, confirm button.
 - **Codex (C):** tab 1: 6x6 chart with x2 / x1/2 marks and the bad-advice lines (opposites always shown; a Shade's row fills in once met). Tab 2: Blends, compounds and which Blend answers each. Tab 3: afflictions. Tab 4: rules summary (4.2 to 4.16 in one sentence each).
-- **Settings:** master/SFX/ambience volume, mute (M), animation speed (1x, 2x, Instant), reduced motion (default follows `prefers-reduced-motion`), colour-blind palette, pattern strength (low/strong), UI scale 90-130%, reset tips.
+- **Settings:** master/SFX/ambience volume, mute (M), animation speed (1x, 2x, Instant), reduced motion (default follows `prefers-reduced-motion`), colour-blind palette, reset tips. (Pattern strength and UI scale settings are cut, 24.2.)
 - **Pause (Esc with nothing selected):** Resume, Settings, Codex, Abandon run.
 - **Act transition / The Deep title cards** per 15.1. **Victory / Defeat** per 15.2 to 15.4.
 
 ### 16.7 Procedural Shade silhouettes (SVG, no bitmaps)
-Each instance varies by a UI-side hash of its uid (not the engine RNG): height +/-10%, spike count, eye/limb count, sway timing, crack path. 3 or 4 path generators per type.
+Each instance varies by a UI-side hash of its uid (not the engine RNG): height +/-10%, spike count, eye/limb count, sway timing, crack path. One path generator per family (`EnemyDef.visual.family`). All variety comes from the uid hash.
 
 | Shade | Silhouette | Idle | Crack glow | Flare look | Resolved form |
 |---|---|---|---|---|---|
@@ -1074,8 +1099,8 @@ Each instance varies by a UI-side hash of its uid (not the engine RNG): height +
 | Despair | a pit with a figure sinking into it | particles flow inward and down | violet glint at the bottom | pit widens | violet star rising |
 | Anxiety | tangled scribble mass with small arms | constant vibration, scribble redraws | sky-blue threads | tangles thicken | ripple settling into a still circle |
 | Doubt | question-mark wisp | bobbing | orange flicker | n/a | pops |
-| Compounds | the outer face's silhouette with the inner face's features showing through at 30% | outer face idle | showing face's cure | as face | both forms at once |
-| The Mask | floating mask with an ink hood; face morphs between the four sigils | slow rotation; next face on the forehead | eyes in the showing face's cure | cracks spread | falls away to a pearl face |
+| Compounds | the outer face's silhouette plus a sigil badge of the inner face (the badge lights while the inner face shows) | outer face idle | showing face's cure | as face | both forms at once |
+| The Mask | floating mask with an ink hood; face changes crossfade between the four sigils | slow rotation; next face on the forehead | eyes in the showing face's cure | cracks spread | falls away to a pearl face |
 | Apathy / The Numbness | smooth featureless grey oval (Apathy smaller, slouched) | deliberately still, faint static | none until a FELT hit, which leaves a lasting two-colour crack | n/a | every crack colour floods out at once |
 
 Hover reactions (extra feedback only): hovering an OPPOSITE card makes the Shade flinch back 6px; a DISSONANT card makes it swell 3% and glow brighter.
@@ -1089,9 +1114,9 @@ Hover reactions (extra feedback only): hovering an OPPOSITE card makes the Shade
 |---|---|---|---|---|
 | T1 (row 1) | `enc.t1` Little Grumble (18; strikes 5, 6, 7) | Spirit, playing cards, intents, Guard, OPPOSITE x2, lethal preview, RESOLVE, Afterglow, Glimmers | Dissonance, afflictions, passives, multiple Shades, Harmony | Resolves with Love |
 | T2 (row 2) | `enc.t2` Little Mope (22) | DISSONANT x1/2 and Flare, taught through Love (T1's hero card); Shade Guard | afflictions, passives | Sees the DISSONANT preview and switches to Joy |
-| after T2 | Reward: **The Compass** + card choice whose slot 3 is an Act 1 Blend (Sunbeam, Tag You're It! or Shoulder to Shoulder) | Harmony, Compass HUD, the Note | | |
+| after T2 | Reward: **The Compass** + card choice whose slot 3 is an Act 1 Blend (Sunbeam, "Tag, You're It!" or Shoulder to Shoulder) | Harmony, Compass HUD, the Note | | |
 | T3 (row 3) | `enc.t3` Little Echo (24) + Little Mope (14) | Two Shades, targeting, Harmony: Bright Spark then Reach Out = Playfulness, x2 on both. Joy alone vs Echo is DISSONANT (trap the preview reveals) | afflictions, passives | At least one Harmonized play |
-| T4 (row 4) | `enc.t4` Little Skitter (24) + Grumble (28-30) | Afflictions (Trembling), outward soothing, **Inward** (coach mark), first passive chip (Short Fuse). First Suppress is likely here | Doubts | Clears an affliction (outward or Inward) |
+| T4 (row 4) | `enc.t4` Little Skitter (24) + Grumble (28-30), both at pattern offset 0 | Afflictions (Trembling), outward soothing, **Inward** (coach mark), first passive chip (Short Fuse). First Suppress is likely here | Doubts | Clears an affliction (outward or Inward) |
 | Chest (row 5) | Keepsake | Keepsakes | | |
 | Rows 6-8 | Act 1 standard pool + elites | Passives (Wallow, Last One Left), Seething, Isolated, Fleeting Doubts, gauges (Kettle) | | |
 | Boss | The Mask | Faces turning, choosing its move by turning it | | |
@@ -1109,7 +1134,7 @@ Taught when they first happen (any run, first time per profile):
 - The Numbness: coach mark "One feeling isn't enough here. Feel two at once."
 
 ### 17.3 Coach marks
-First run of a profile; never block input; one visible at a time, others queue; max 18 words; anchored with an arrow; dismissed by the relevant action or a click; each shows once per profile; Settings has "Reset tips".
+First run of a profile; never block input; one visible at a time, others queue; max 18 words; anchored with an arrow; dismissed by the relevant action or a click; each shows once per profile; Settings has "Reset tips". Braced names (`{Shade}`, `{Light}`, `{Card}`, `{Affliction}`, `{line}`) are filled from the trigger event, never hard-coded.
 
 | id | Trigger | Anchor | Copy |
 |---|---|---|---|
@@ -1117,13 +1142,13 @@ First run of a profile; never block input; one visible at a time, others queue; 
 | C2 | T1 start | Kind Word | "Kind Word is Love. Love is Anger's opposite, so it Eases double." |
 | C3 | T1, Spirit reaches 0 | End Turn | "Out of Spirit. End your turn and you get 3 back." |
 | C4 | first RESOLVE preview | banner | "Finish a Shade with its opposite to Resolve it. It heals instead of vanishing." |
-| C5 | first DISSONANT preview | x1/2 badge | "'At least people love you.' Love alone deepens Sadness: half, and it Flares." |
+| C5 | first DISSONANT preview | x1/2 badge | "'{line}' {Light} alone deepens {Shade}: half, and it Flares." ({line} = that Shade's exact bad-advice line, 4.2; T2 gives "'At least you have people who love you.' Love alone deepens Sadness: half, and it Flares.") |
 | C6 | Compass granted | Compass | "The Compass remembers your last Light. Its neighbours Harmonize and count as both." |
-| C7 | first Harmony chip in hand | that card | "Reach Out sits next to Joy. Play it now and it counts as both." |
+| C7 | first Harmony chip in hand | that card | "{Card} sits next to {Light}. Play it now and it counts as both." ({Light} = the Note Light it would gain) |
 | C8 | first SUPPRESS preview | banner | "Not its opposite, so this Suppresses it. You'll carry it as a Buried card." |
-| C9 | first affliction received | affliction chip | "Trembling weakens your Guard. Courage soothes it. Play Courage on yourself to clear it." |
+| C9 | first affliction received | affliction chip | "{Affliction} {short effect}. {Light} soothes it. Play {Light} on yourself to clear it." ({short effect} from the affliction's tooltip, e.g. "Trembling weakens your Guard."; not shown for Numb) |
 | C10 | first INWARD target shown | Inward outline | "Drop a card on yourself: clear your feeling and Tend what you buried." |
-| C11 | first Buried card drawn | that card | "Buried Fear hurts while held. Play Courage Inward to Tend it into Insight." |
+| C11 | first Buried card drawn | that card | "Buried {Shade} hurts while held. Play {Light} Inward to Tend it." |
 | C12 | first Wavering | Shade | "Companions never finish a Shade the wrong way. Finish it yourself." |
 | C13 | first map | legend | "Sigils show which Shades wait on each path. Pick fights your deck answers." |
 | C14 | first two-faced Shade | nameplate | "Two feelings. OPPOSITE hits turn it. A Blend answers both at once." |
@@ -1136,23 +1161,24 @@ First run of a profile; never block input; one visible at a time, others queue; 
 | Moment | Effect | Timing | Reduced motion |
 |---|---|---|---|
 | Card hover | lift 28px, scale 1.12, neighbours spread 24px, tilt toward cursor up to 5 deg | 120 ms ease-out | no tilt |
-| Card play | card shrinks and flies along the target arrow | 180 ms ease-in | fade in place |
+| Card play | card shrinks and flies to its target | 180 ms ease-in | fade in place |
 | Inward play | card flies into the avatar's heart; a ring of the card's colour pulses outward; affliction chips dissolve | 250 ms | fade |
-| Impact | Shade squash (1.08 wide, 0.92 tall), recoil 10px, white flash via SVG colour matrix | 90 ms | flash at 30% only |
+| Impact | Shade squash (1.08 wide, 0.92 tall), recoil 10px, white flash as an opacity overlay. Impacts within 333 ms merge into one flash; the extra impacts use squash only | 90 ms | flash at 30% only |
 | Hit-stop | stage animations paused (`animation-play-state`) | 60 ms OPPOSITE hit, 110 ms Resolve | off |
 | Floating numbers | rise 40px, fade in last 250 ms. OPPOSITE: 40px bold in Light colour, "x2" tag, pop 1.3 -> 1.0. Neutral: 28px pearl. DISSONANT: 22px grey, drifts down 12px, bad-advice line in italics for 1.2 s. FELT: two-colour 40px. MUFFLED: 22px grey. | 700 ms | fade only |
 | Intensity / Heart lag | bar drops instantly, pale lag chunk drains | 400 ms delay, 300 ms drain | same |
 | Flare gained | intent number flips like an odometer, Shade grows 4% per stack | 200 ms | number change only |
-| Face turn | silhouette cross-morphs; nameplate sigil flips like a card | 300 ms | crossfade |
+| Face turn | nameplate sigil flips like a card; a compound's inner-face badge lights or dims; The Mask's face crossfades | 300 ms | crossfade |
 | Harmony | Compass draws a bright arc from the old Note to the new segment; card trail blends both colours; "HARMONY" pops beside the Compass | 250 ms | arc without draw animation |
 | Resolve | 110 ms hit-stop, soft radial bloom (peak opacity 0.3), ink dissolves outward from the cracks (animated SVG mask), the light form rises and flies to the Glimmer counter, background lightens one step, stage breathes (scale 1.00 -> 1.015 -> 1.00) | about 1.1 s, input free after 250 ms | crossfade to the mote |
 | Deep Resolve | as Resolve with two-colour bloom and both forms | about 1.3 s | crossfade |
 | Suppress | Shade crushed down (to 10% height, down 40px), ink seal closes over the spot, 8px vertical shake, 20% desaturation for 400 ms, a mini Buried card flies to the deck counter ("+1 Buried" or "W2") | about 900 ms | no shake, desaturation only |
 | Tend | Buried card shakes, a crack mends with a line of the cure colour (kintsugi) | 400 ms | crossfade |
 | Buried -> Insight | cracks flare, card flips into the Insight with a sheen sweep; *"Oh. So that's what it was."* | 700 ms | crossfade |
+| Buried released (Insight already created) | cracks mend fully, the card fades to pearl and drifts away; *"You've already made peace with this one."* | 700 ms | fade |
 | Player hit | dark vignette pulse, Heart lag chunk, avatar flicker, horizontal shake 4px (8px if the hit is 20%+ of max Heart) | 180 to 300 ms | vignette only |
 | Guard | silver hexagon bubble cracks when hit, shatters into 6 shards when broken, "Blocked 5" floats | 250 ms | fade |
-| Enemy strike | lean back 100 ms, lunge 60px in 80 ms, return | 350 ms | step forward only |
+| Enemy strike | lean back 80 ms, lunge 60px in 80 ms, return | 300 ms | step forward only |
 | Buried in hand | ink wisps rise, cure-colour cracks pulse | 2 s loop | static cracks |
 | Low Heart (< 30%) | edge vignette pulses with a heartbeat sound | 1.1 s loop | static vignette |
 | Surfacing | grey water ripples; each Surfaced Shade rises from the floor; the boss's veil thickens | 1.2 s | fade in |
@@ -1176,7 +1202,7 @@ Ambient: the background takes a faint tint from the Shades' crack glows; it ligh
 - Every sound has a visual equivalent; muting loses no information.
 
 ### 18.3 Performance budget
-60 fps on a mid-range laptop. Animate only `transform` and `opacity`. At most one animated SVG filter on screen (drop Anger's shimmer when 2+ Anger Shades). At most 60 particle nodes; pooled floating-number elements. Animation queue auto-speeds to 2x when 3+ events are waiting.
+60 fps on a mid-range laptop. HTML elements animate only `transform` and `opacity`. At most 2 SVG attributes animate at once (for example a Resolve's dissolving mask and a crack path). The impact flash is an opacity overlay, not a filter, so Anger's heat shimmer is the only animated SVG filter on screen (drop it when 2+ Anger Shades). Hit-stop pauses animations (`animation-play-state`) and animates nothing. At most 60 particle nodes; pooled floating-number elements. Animation queue auto-speeds to 2x when 3+ events are waiting.
 
 ---
 
@@ -1197,7 +1223,7 @@ Ambient: the background takes a faint tint from the Shades' crack glows; it ligh
 | Weight | cure-colour rim | 1 to 3 pips | "Weight 2" |
 | Intents, map nodes | not used | unique icon each | legend + tooltip sentence |
 
-- Colour-blind palette (Okabe-Ito, 16.0); pattern overlays on by default (low), "strong" option; `?gray=1` URL switch applies `filter: grayscale(1)` to the root and every screen must stay playable.
+- Colour-blind palette (Okabe-Ito, 16.0); pattern overlays always on (one strength, no setting); `?gray=1` URL switch applies `filter: grayscale(1)` to the root and every screen must stay playable.
 - **Keyboard (complete play without a mouse):**
 
 | Key | Combat | Map | Reward / shop / event |
@@ -1211,7 +1237,6 @@ Ambient: the background takes a faint tint from the Shades' crack glows; it ligh
 | Z | undo (if allowed) | | |
 | Tab / Shift+Tab | move focus between regions | regions | regions |
 | Shift (hold) | math breakdown | | |
-| Alt (hold) or ? | label overlay on every HUD region | | |
 | D / F | draw pile / discard pile | deck | deck |
 | C / L / M | Codex / log / mute | Codex | Codex |
 | S | | | skip |
@@ -1228,10 +1253,10 @@ OPPOSITE Joy > Sadness   x2   (Harmonized: Love+Joy)
 Guard absorbs            -4
 Intensity          42 -> 36
 ```
-- **Motion:** follows `prefers-reduced-motion` by default plus an in-game switch (removes shake, hit-stop, bloom, tilt, particle bursts; fallbacks in 18.1). Flashes <= 30% opacity and <= 3 per second; no full-screen strobe.
-- **Text:** body 14px at reference size, chips >= 12px, key numbers >= 16px; UI scale 90-130%; WCAG AA contrast (4.5:1); caps only for 1-2 word labels; tooltip lines <= 60 characters.
+- **Motion:** follows `prefers-reduced-motion` by default plus an in-game switch (removes shake, hit-stop, bloom, tilt, particle bursts; fallbacks in 18.1). Flashes <= 30% opacity and <= 3 per second (impacts within 333 ms merge into one flash, 18.1); no full-screen strobe.
+- **Text:** body 14px at reference size, chips >= 12px, key numbers >= 16px; WCAG AA contrast (4.5:1); caps only for 1-2 word labels; tooltip lines <= 60 characters.
 - **Screen readers:** cards, Shades, map nodes and options are `<button>` elements with labels built from engine data ("Kind Word, Love, cost 1. Ease 6. Against Grumble: 12, opposite, lethal, Resolve."). Play Line and log are `aria-live="polite"`. The enemy phase is announced once as a summary ("Grumble struck for 8. Guard blocked 5. You lost 3 Heart.").
-- **Input and pacing:** dragging is never required; targets >= 44px; no timers; pause anywhere.
+- **Input and pacing:** click/tap/keyboard only (there is no drag targeting); every tappable element >= 56 reference px (16.0); no timers; pause anywhere.
 
 ---
 
@@ -1252,13 +1277,16 @@ Stack (fixed, already in the repo): TypeScript 6.0.3, Vite 8.3, Vitest 5.0.1, vi
 ### 20.2 File layout
 ```
 index.html                         Vite entry
-tsconfig.json                      existing (DOM lib, all folders)
-tsconfig.engine.json               NEW: lib ["ES2022"], types [], include src/engine, src/content, sim -> any DOM use fails typecheck
-vite.config.ts                     existing (unit tests)
+tsconfig.json                      existing (DOM lib, all folders, plus vitest.*.config.ts in include)
+tsconfig.engine.json               NEW: lib ["ES2022"], types [], include src/engine and src/content only -> any DOM or Node use fails typecheck
+tsconfig.sim.json                  NEW: lib ["ES2022"], types ["node"], include sim (node:util, child processes, fs)
+vite.config.ts                     existing (npm test, excluding tests/slow/** and tests/balance/**)
+vitest.slow.config.ts              NEW: tests/slow/** (preview-vs-step 300 seeds, map 2000 seeds, determinism 50 seeds, perf)
 vitest.balance.config.ts           NEW: tests/balance/**, testTimeout 120000
 
 src/engine/
-  index.ts          createEngine(pack): Engine (the only module UI/sim may import from engine)
+  index.ts          createEngine(pack): Engine (the only module UI/sim may import from engine, and it re-exports every type
+                    from types.ts and emotions.ts). Run-side owner: wires combat/index.ts and run/**
   types.ts          THE CONTRACT: all state/def/action/event/preview types (lead-owned)
   emotions.ts       wheel, cureOf, dissonantShadeOf, adjacent, across, blendOf, relationOf, harmonize, lethalOutcome
   rules.ts          RulesConfig + DEFAULT_RULES
@@ -1269,22 +1297,27 @@ src/engine/
   interpreter.ts    runEffects + FIFO trigger queue + pending-choice continuations
   conditions.ts     evalCond, evalAmount
   clone.ts          cloneCombat / cloneState (hand-rolled recursive clone for plain JSON)
-  combat/setup.ts   startCombat(run, node) incl. Surfacing
+  combat/index.ts   the combat module's public API: startCombat, combatLegalActions, stepCombat,
+                    previewCombat, buildCombatResult, intents, handHints, cardText
+                    (consumed by step.ts and index.ts)
+  combat/setup.ts   startCombat(run, node) incl. Surfacing and the Numbness's hidden-Weight growth
   combat/turn.ts    5.2, 5.6 phases
   combat/play.ts    5.3 (Harmony, cost, Note, cleanse, Inward, effects)
-  combat/enemy.ts   5.7 intents, patterns, overrides, byFace, phases, IntentView derivation
-  combat/lethal.ts  R-8 outcomes, Afterglows, Buried bookkeeping, Fade, Wavering
+  combat/enemy.ts   5.7 snapshot order, intents, patterns, overrides, byFace, phases
+  combat/lethal.ts  R-8 outcomes, R-8b win check, Afterglows, Buried bookkeeping, Insight once per run, Fade, Wavering
   combat/finish.ts  buildCombatResult
   combat/legal.ts   combat legal actions (incl. Inward legality, Shy, Veiled)
   combat/preview.ts preview(): cloneCombat + sealed interpreter + summarize
+  combat/view.ts    intents() (IntentView incl. the projected after-end-of-turn intent, 5.7.1), handHints(), cardText()
   run/newRun.ts     starter deck, Charm, tutorial flag, Act 1 map
   run/map.ts        section 11 generation + reachability
   run/rewards.ts    section 12
   run/shop.ts  run/haven.ts  run/events.ts  run/progression.ts (acts, The Deep, victory/defeat)
-  run/finishCombat.ts  (run, CombatResult) -> run (Buried Weight, overflow, Insight transforms)
+  run/finishCombat.ts  (run, CombatResult) -> run (Buried Weight, overflow, Insight transforms, Buried removals,
+                    insightsMade, Paper Crane)
   run/legal.ts
+  run/view.ts       nodeDetail(), deck and Light-mix summaries (most common Light, 12.2)
   step.ts           dispatch: handlers[phase.kind][action.t]
-  view.ts           intents(), handHints(), cardText(), nodeDetail(), pileCounts()
   serialize.ts      toJSON/fromJSON, version check, FNV-1a hash of canonical JSON
   invariants.ts     assertInvariants(state) (tests and sim --strict)
 
@@ -1313,22 +1346,36 @@ sim/
   parallel.ts       spawn N vite-node child processes, merge JSON
   runner.ts         playRun(engine, seed, bot) -> RunRecord (metrics reduced from events on the fly)
   lab.ts            fixed deck x encounter x seed combat benchmark
-  bots/ types.ts random.ts belief.ts greedy.ts planner.ts runPolicy.ts policies.ts
+  bots/ types.ts random.ts belief.ts greedy.ts runPolicy.ts policies.ts
   metrics.ts  stats.ts (Wilson CI, McNemar, paired bootstrap)  report.ts (markdown + JSON to sim/out)
 
 tests/
   architecture.test.ts   import graph + banned APIs + mutation grep
   helpers/scenario.ts    fluent combat scenario builder
   fixtures/miniPack.ts   6 cards, 3 Shades, 2 statuses, 1 Keepsake
-  engine/*.test.ts  content/registry.test.ts  property/*.test.ts  contract/engine.contract.test.ts
+  engine/*.test.ts  content/registry.test.ts  property/*.test.ts (30 seeds)  contract/engine.contract.test.ts
+  slow/*.test.ts         (vitest.slow.config.ts only: 300-seed preview-vs-step, 2000-seed map, 50-seed determinism, perf)
   balance/*.test.ts      (vitest.balance.config.ts only)
 ```
 
-**Layering rules** (enforced by `tests/architecture.test.ts` with `fs` + regex, no ESLint): `src/engine/**` must not import `src/content`, `src/ui`, `sim`, and must not contain `Math.random`, `Date.now`, `performance.now`, `document`, `window`. `src/content/**` imports only `engine/types`, `engine/dsl`, `engine/rules`. `src/ui/**` and `sim/**` import only `engine/index` and `content/index`. Outside `primitives.ts`, the regex `\.(hp|guard|energy)\s*[-+]?=(?!=)` (assignments, not comparisons) and pile-array writes (`piles.<name>.push/splice/=`) fail the test.
+**Layering rules** (enforced by `tests/architecture.test.ts` with `fs` + regex, no ESLint): `src/engine/**` must not import `src/content`, `src/ui`, `sim`, and must not contain `Math.random`, `Date.now`, `performance.now`, or match `\b(document|window)\.` (engine only, and the trailing `.` lets a comment that merely mentions the word pass). `src/content/**` imports only `engine/types`, `engine/dsl`, `engine/rules`. `src/ui/**` and `sim/**` import only `engine/index` and `content/index`, so `engine/index.ts` must re-export every type they use. Outside `primitives.ts`, the regex `\.(hp|guard|energy)\s*([-+*/]?=(?!=)|\+\+|--)` (assignments, compound assignments and increments, not comparisons) and pile-array writes (`piles.<name>.push/splice/=`) fail the test.
 
-**package.json scripts to add:** `"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.engine.json"`, `"test:balance": "vitest run -c vitest.balance.config.ts"`, `"sim": "vite-node sim/cli.ts"` (exists).
+**package.json scripts** (final set: dev, build, preview, test, test:watch and sim already exist, typecheck is extended, test:slow and test:balance are new):
+```json
+"dev": "vite",
+"build": "tsc --noEmit && vite build",
+"preview": "vite preview",
+"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.engine.json && tsc --noEmit -p tsconfig.sim.json",
+"test": "vitest run",
+"test:watch": "vitest",
+"test:slow": "vitest run -c vitest.slow.config.ts",
+"test:balance": "vitest run -c vitest.balance.config.ts",
+"sim": "vite-node sim/cli.ts"
+```
 
 ### 20.3 Core types (`src/engine/types.ts` + `emotions.ts`)
+
+> **Canonical source (v1.1 lead note):** the committed files `src/engine/types.ts`, `src/engine/emotions.ts`, `src/engine/damage.ts`, `src/engine/rules.ts`, `src/engine/dsl.ts`, `src/engine/rng.ts` and `src/engine/combat/index.ts` ARE the contract. The snippets in 20.3 to 20.7 describe the same model and are kept for reading; where a name or field differs, the code wins (for example `MoodDef.oncePerEnemyPhase`, `DeckMutation { k: 'remove' }`, event `peace`, `run.insightsMade`, `EffectCtx.source`, `Phase.deckSelect.options`, `RewardOffer.then`, `IntentView.projected`). Additive changes to types.ts go through the lead.
 
 ```ts
 // ---------- emotions.ts ----------
@@ -1376,7 +1423,7 @@ export function relationOf(lights: readonly Light[], t: TargetTyping, o: Relatio
   return { relation: 'dissonant', pct: o.lightningRod ? 100 : 50 };
 }
 
-/** R-4. */
+/** R-4. A Blend Harmonizes only with an adjacent Note Light outside its own pair (Sunbeam after Sunbeam: false). */
 export function harmonize(note: readonly Light[], printed: readonly Light[], o: { enabled: boolean; isolated: boolean; mirror: boolean }):
   { effective: Light[]; harmonized: boolean } {
   if (!o.enabled || o.isolated || printed.length === 0 || note.length === 0) return { effective: [...printed], harmonized: false };
@@ -1387,13 +1434,13 @@ export function harmonize(note: readonly Light[], printed: readonly Light[], o: 
       const pick = [...cands].sort((a, b) => ((li(a) - li(own) + 6) % 6) - ((li(b) - li(own) + 6) % 6))[0]!;
       return { effective: printed.length === 2 ? [...printed] : [own, pick], harmonized: true };
     }
-    if (printed.length === 2 && partners(own).length > 0) return { effective: [...printed], harmonized: true };
   }
   return { effective: [...printed], harmonized: false };
 }
 
 export type LethalOutcome = 'resolve' | 'deepResolve' | 'suppress' | 'wavering' | 'fade';
-/** R-8. faces = the Shade's face list; face = showing face (null for numb rules). */
+/** R-8. faces = the Shade's face list; face = showing face (null for numb rules).
+ *  Numb rules: any FELT finishing hit Resolves, from a card or automatic (4.16), so there is no fromCard check. */
 export function lethalOutcome(lights: readonly Light[], faces: readonly Shade[], face: Shade | null, rel: Relation,
   o: { fromCard: boolean; fleeting: boolean; understood: boolean }): LethalOutcome {
   if (o.fleeting) return 'fade';
@@ -1441,10 +1488,11 @@ export interface RunState {
   floor: number;
   tutorial: boolean;
   map: MapState;
-  combatsWon: number;                // Compass at 2
+  combatsWon: number;                // Compass at 2 (the Wishing Well's Echo fight counts)
   usedEvents: EventId[];
   shopRemovals: number;
-  paperCraneUsed: boolean;
+  paperCraneUsed: boolean;           // written only between combats (via CombatResult.keepsakeCounters)
+  insightsMade: CardId[];         // B3: each insight.* id at most once per run, even if it later leaves the deck
   stats: RunStats;
 }
 
@@ -1465,7 +1513,8 @@ export interface CombatState {
   energy: number;
   player: { hp: number; maxHp: number; guard: number; statuses: StatusBag };
   cards: Record<Uid, CombatCard>;               // combat copies keep the deck uid
-  piles: { draw: Uid[]; hand: Uid[]; discard: Uid[]; letGo: Uid[]; moods: Uid[]; removed: Uid[] };  // removed = Surfaced Buried
+  piles: { draw: Uid[]; hand: Uid[]; discard: Uid[]; letGo: Uid[]; moods: Uid[]; removed: Uid[] };
+                                                // removed = Surfaced Buried, and Buried cards released because their Insight exists
   enemies: EnemyState[];                        // array order = position = action order
   companions: CompanionState[];                 // summon order
   note: Light[];                                // R-4
@@ -1478,6 +1527,8 @@ export interface CombatState {
   pending: PendingChoice | null;                // only choose/confirm legal while set
   rng: { shuffle: number; ai: number };         // stream states
   umbrellaUsed: boolean;
+  paperCraneUsed: boolean;                      // copied from run at start, committed via CombatResult.keepsakeCounters
+  insightsMade: CardId[];                    // copied from run at start, extended when combat creates an Insight
   mutations: DeckMutation[];                    // chronological, applied by finishCombat
   glimmers: number;                             // earned this combat (base added at finish)
   allResolved: boolean;                         // Full Bloom tracking
@@ -1493,7 +1544,7 @@ export interface EnemyState {
   pattern: { index: number; phase: number };
   fleeting: boolean; summonerUid: Uid | null;
   surfacedFrom: Uid | null;                     // Buried card uid this Surfaced Shade came from
-  memory: Record<string, number>;               // passive flags (e.g. soothed: 1, provoked: 1, onceDone: 1)
+  memory: Record<string, number>;               // passive flags (e.g. soothed: 1, provoked: 1, onceDone: 1, turnsLeft: 2 for The Mask)
   thresholdsFired: number[];
 }
 
@@ -1514,8 +1565,9 @@ export interface CombatResult {                   // the ONLY way combat changes
 export type DeckMutation =
   | { k: 'suppress'; shade: Shade }                         // add Buried W1, or +1 Weight, or overflow -3 max Heart
   | { k: 'tend'; uid: Uid }                                  // Weight -1 (in-combat Tend)
-  | { k: 'transform'; uid: Uid; to: CardId; upgraded: boolean }   // Buried -> Insight
-  | { k: 'returnSurfaced'; uid: Uid };                       // Surfaced Suppressed: card unchanged
+  | { k: 'transform'; uid: Uid; to: CardId; upgraded: boolean }   // Buried -> Insight (Tend to 0 or Surfaced Resolve)
+  | { k: 'remove'; uid: Uid }                          // B3: Buried reached 0 / Surfaced Resolved, Insight already created
+  | { k: 'returnSurfaced'; uid: Uid };                       // Surfaced Suppressed: card unchanged, never a 'suppress'
 
 // ---------- cards ----------
 export type CardKind = 'ease' | 'skill' | 'mood' | 'buried';
@@ -1533,7 +1585,8 @@ export interface CardDef {
   upgrade?: { cost?: number; effects?: Effect[]; keywords?: Keyword[] };
   text: string;                                 // template: 'Ease {0}. Mend {1}.' slots index numeric leaves in effect order
   buried?: { shade: Shade; insight: CardId };
-  mood?: { on: 'turnStart' | 'turnEnd' | 'heartLostFromMove'; if?: Cond; effects: Effect[] }[];  // lasting Mood effects
+  mood?: { on: 'turnStart' | 'turnEnd' | 'heartLostFromMove'; if?: Cond; effects: Effect[];
+           oncePerEnemyPhase?: boolean }[];          // lasting Mood effects (Unconditional: heartLostFromMove, oncePerEnemyPhase)
   availableFromAct: 1 | 2;
 }
 
@@ -1583,7 +1636,7 @@ export interface StatusDef {
   polarity: 'buff' | 'debuff' | 'gauge' | 'flag';
   affliction?: Shade | 'numb';                 // afflictions: decay 1 at end of your turn (R-6)
   decay?: 'playerTurnEnd' | 'never' | 'consumedOnUse';
-  max?: number; min?: number;                  // Pressure/Tension max 6, Coil max 8 min 1, Tally max 6, Countdown max 3, Understood max 1
+  max?: number; min?: number;                  // Pressure/Tension/Tally/Worry max 6, Coil max 6 min 1, Warmth max 6, Countdown max 3, Understood max 1
 }
 // v1 status ids (21): player: nerve, warmth, seething, heavy, isolated, trembling, hollow, restless, numb, next_draw, next_spirit
 //                      enemy: flare, hush, understood, wavering, worry, pressure, tension, tally, countdown, coil
@@ -1594,7 +1647,9 @@ export interface MoveDef { name: string; intent: IntentKind[]; effects: Effect[]
 export type IntentPattern =
   | { kind: 'cycle'; moves: string[]; overrides?: { if: Cond; move: string }[] }
   | { kind: 'byFace'; moves: Partial<Record<Shade, string>> }
-  | { kind: 'phases'; phases: { atOrBelowHp: number; pattern: IntentPattern }[] };   // first phase: atOrBelowHp = maxHp
+  | { kind: 'phases'; phases: { atOrBelowHp: number; pattern: IntentPattern }[] };
+      // first phase is active from combat start whatever its atOrBelowHp (B2 growth can lift maxHp above the def's).
+      // each later phase switches in once, the first time hp drops to its threshold (EnemyState.thresholdsFired)
 export type PassiveTrigger =
   | 'combatStart' | 'afterOwnAction' | 'playerTurnEnd' | 'hitTaken' | 'cardHitResolved' | 'cardPlayed' | 'shadeLeft' | 'hpThreshold';
 export interface PassiveDef { name: string; on: PassiveTrigger; threshold?: number; if?: Cond; effects: Effect[]; once?: boolean }
@@ -1602,10 +1657,11 @@ export interface EnemyDef {
   id: EnemyId; name: string;
   faces: readonly Shade[];                      // [] = numb rules (Apathy, The Numbness)
   hp: [min: number, max: number];
-  tier: 'normal' | 'elite' | 'boss' | 'minion' | 'surfaced';
+  tier: 'normal' | 'elite' | 'boss' | 'final' | 'minion' | 'surfaced';   // 'final' = The Numbness (glimmers*.final)
   fleeting?: true; summoner?: true; shy?: true;
   turnsAfterAction?: true;                      // The Mask
-  numbRules?: { surface: 1 | 3; guardPerHiddenWeight: number };   // Apathy {1, 0}; The Numbness {3, 6}
+  hitTurnsPerPlayerTurn?: number;               // The Mask: 2 (your hits turn it at most twice per player turn)
+  numbRules?: { surface: 1 | 3; hpPerHiddenWeight: number };   // Apathy {1, 0}; The Numbness {3, 6}
   moves: Record<string, MoveDef>;
   pattern: IntentPattern;
   passives?: PassiveDef[];
@@ -1621,8 +1677,8 @@ export type KeepsakeTrigger = 'combatStart' | 'turnStart' | 'turn1Start' | 'turn
 export interface KeepsakeDef {
   id: KeepsakeId; name: string; rarity: 'fixed' | 'charm' | 'common' | 'uncommon' | 'rare' | 'boss'; text: string;
   on?: Partial<Record<KeepsakeTrigger, Effect[]>>;
-  flags?: ('harmony' | 'mirror' | 'lightningRod' | 'leadBox' | 'skeletonKey' | 'noRest' | 'insightUpgraded'
-           | 'companionsUseNote' | 'prism' | 'umbrella' | 'paperCrane' | 'wornDiary')[];
+  flags?: ('harmony' | 'mirror' | 'lightningRod' | 'leadBox' | 'skeletonKey' | 'noRest' | 'halfActMend' | 'insightUpgraded'
+           | 'companionsUseNote' | 'prism' | 'umbrella' | 'paperCrane' | 'wornDiary')[];   // Spiral Shell: noRest + halfActMend
   energyPerTurn?: number;
   addsCard?: CardId;
 }
@@ -1638,7 +1694,8 @@ export type RunEffect =
   | { op: 'if'; cond: RunCond; then: RunEffect[]; else?: RunEffect[] };
 export type RunCond = { c: 'glimmers' | 'buriedCount' | 'lightCount'; light?: Light; op: '>=' | '<='; n: number } | { c: 'hasKeepsake'; id: KeepsakeId };
 export interface EventDef { id: EventId; title: string; text: string; options: { label: string; result: string; requires?: RunCond; effects: RunEffect[] }[] }
-export interface CardFilter { kinds?: CardKind[]; lights?: Light[]; rarity?: Rarity[]; notBuried?: boolean; buriedOnly?: boolean; upgradable?: boolean }
+export interface CardFilter { kinds?: CardKind[]; lights?: Light[]; rarity?: Rarity[]; notBuried?: boolean; buriedOnly?: boolean;
+  notInsight?: boolean; upgradable?: boolean }   // Mirror Pond "Look closer": notBuried + notInsight
 
 // ---------- map ----------
 export interface MapState { act: 1 | 2 | 3; nodes: MapNode[]; current: number | null; visited: number[] }
@@ -1701,11 +1758,12 @@ export interface RulesConfig {
   heavyPct: number; tremblingPct: number;
   dissonanceFlare: number; oppositeFlareRemove: number; cleansePerOutwardPlay: number;
   buriedMaxWeight: number; buriedOverflowMaxHeart: number;
-  surfacedHpPerWeight: number; surfacedSuppressHealPerWeight: number;
+  surfacedHpPerWeight: number; surfacedSuppressGrowPerWeight: number;   // grow = +max Intensity and Intensity
   maxCompanions: number; maxShades: number; festerTurn: number; turnLimit: number; triggerCap: number;
   compassAfterWins: number; havenRestPct: number; bossMendToFull: boolean;
-  glimmersBase: { normal: number; elite: number; boss: number };
-  glimmersResolve: { normal: number; elite: number; boss: number };
+  shellActMendPct: number;                             // Spiral Shell: % of missing Heart Mended between acts
+  glimmersBase: { normal: number; elite: number; boss: number; final: number };
+  glimmersResolve: { normal: number; elite: number; boss: number; final: number };
   dissonance: 'clockwise' | Record<Shade, Light>;      // table form exists only for tests/sweeps
 }
 export const DEFAULT_RULES: RulesConfig = {
@@ -1714,21 +1772,23 @@ export const DEFAULT_RULES: RulesConfig = {
   heavyPct: 75, tremblingPct: 75,
   dissonanceFlare: 1, oppositeFlareRemove: 1, cleansePerOutwardPlay: 1,
   buriedMaxWeight: 3, buriedOverflowMaxHeart: 3,
-  surfacedHpPerWeight: 12, surfacedSuppressHealPerWeight: 10,
+  surfacedHpPerWeight: 12, surfacedSuppressGrowPerWeight: 10,
   maxCompanions: 3, maxShades: 4, festerTurn: 12, turnLimit: 40, triggerCap: 1000,
   compassAfterWins: 2, havenRestPct: 30, bossMendToFull: true,
-  glimmersBase: { normal: 10, elite: 25, boss: 60 },
-  glimmersResolve: { normal: 8, elite: 20, boss: 40 },
+  shellActMendPct: 50,
+  glimmersBase: { normal: 10, elite: 25, boss: 60, final: 0 },
+  glimmersResolve: { normal: 8, elite: 20, boss: 40, final: 0 },
   dissonance: 'clockwise',
 };
 ```
+The Numbness's hidden-Weight growth (+6 per Weight) is `EnemyDef.numbRules.hpPerHiddenWeight` (content), not a `RulesConfig` field.
 `relationOf` in 20.3 is written against the default percents for readability; the implementation reads them from `RulesConfig`.
 
 ### 20.5 RNG and determinism
 - `mulberry32(seed)` generator; `hash32(...parts: (number | string)[])` = FNV-1a over the UTF-8 of the joined parts, then a murmur3 finalizer.
 - Streams: `map = hash32(seed, 'map', act)`; encounter HP = `hash32(node.seed, 'enc')`; combat `shuffle = hash32(node.seed, 'shuffle')`, `ai = hash32(node.seed, 'ai')`; rewards `hash32(node.seed, 'reward')`; shop `hash32(node.seed, 'shop')`; events `hash32(node.seed, 'event')`; charm options `hash32(seed, 'charm')`; wheel-closes offer `hash32(seed, 'wheel')`.
 - Combat randomness is limited to shuffles and pattern start offsets. No card or Shade effect has a random target (design rule; the registry test rejects `randomEnemy`).
-- Same seed + same action list => same `hash(state)` (tested on 50 seeds). The UI's procedural visuals use their own hash of `uid`, never engine streams.
+- Same seed + same action list => same `hash(state)` (tested on 30 seeds in `npm test` and 50 in `npm run test:slow`). The UI's procedural visuals use their own hash of `uid`, never engine streams.
 
 ### 20.6 Engine API
 ```ts
@@ -1752,7 +1812,7 @@ export interface Engine {
   legalActions(s: GameState): Action[];              // canonical order; empty only in victory/defeat
   step(s: GameState, a: Action): StepResult;          // pure at the boundary; throws IllegalAction
   preview(s: GameState, a: Action): Preview | null;   // 'play' and 'endTurn'
-  intents(s: GameState): IntentView[];
+  intents(s: GameState): IntentView[];               // projected after 5.6 steps 1 to 6 (5.7.1)
   handHints(s: GameState): HandHint[];                // per card: relation per Shade, harmonizes-now, inward-legal, tends
   cardText(s: GameState, uid: Uid, target?: Uid): string;
   nodeDetail(s: GameState, nodeId: number): NodeDetail;
@@ -1763,9 +1823,11 @@ export interface Engine {
 
 export interface IntentView { enemy: Uid; moveId: string; name: string; kinds: IntentKind[];
   strikes: { perStrike: number; count: number } | null; guard: number | null; afflict: { id: string; stacks: number } | null;
-  overriddenBy: string | null }                       // e.g. 'pressure'
-export interface Preview {
-  targets: { uid: Uid; hpBefore: number; hpAfter: number; guardAfter: number; hits: HitBreakdown[];
+  overriddenBy: string | null;                        // e.g. 'pressure'
+  afterEndTurn: boolean;                              // true when this projected intent differs from the current one
+  cause: string | null }                              // tooltip when afterEndTurn, e.g. 'Lantern Moth will turn it to Fear.'
+export interface Preview {                            // targets = every Shade whose values change (incl. a boss grown by B2)
+  targets: { uid: Uid; hpBefore: number; hpAfter: number; maxHpAfter: number; guardAfter: number; hits: HitBreakdown[];
              outcome: LethalOutcome | null; flareDelta: number; faceAfter: Shade | null;
              gauges: Record<string, [number, number]>; intentAfter: IntentView | null;
              buried: { shade: Shade; weightAfter: 1 | 2 | 3 | null; overflow: boolean } | null; afterglows: Shade[] }[];
@@ -1782,7 +1844,7 @@ export interface HitBreakdown {
   trace: { label: string; value: string }[];          // for the Shift breakdown
 }
 ```
-Rules: `legalActions` is the single source of truth (the UI greys cards not in it). Choices are sequential single picks. `endTurn` is one action covering 5.6, 5.7 and the next 5.2 (all events returned at once). `preview({t:'endTurn'})` covers only the deterministic part (Companions, Buried, Seething, Warmth, Shade passives, and enemy strikes against current Guard) and returns `uncertain` for anything after the next draw. Combat-phase `step` clones only `combat` (run is read-only in combat); run-phase actions clone the whole state. Hand-rolled clone measured at about 13 microseconds for a 4.4 KB combat state (vs 61 for `structuredClone`); never use `structuredClone` on hot paths.
+Rules: `legalActions` is the single source of truth (the UI greys cards not in it). Choices are sequential single picks. `endTurn` is one action covering 5.6, 5.7 and the next 5.2 (all events returned at once). `preview({t:'endTurn'})` covers only the deterministic part (Companions, Buried, Seething, Warmth, Shade passives, and enemy strikes against current Guard) and returns `uncertain` for anything after the next draw. `intents()` takes its projected intents from the state after 5.6 steps 1 to 6 of that same preview. Combat-phase `step` clones only `combat` (run is read-only in combat: Paper Crane and Insight creation are tracked on `combat` and committed through `CombatResult`); run-phase actions clone the whole state. Hand-rolled clone measured at about 13 microseconds for a 4.4 KB combat state (vs 61 for `structuredClone`); never use `structuredClone` on hot paths.
 
 ### 20.7 Events (emitted only by `primitives.ts`, carrying absolute after-values)
 ```ts
@@ -1809,6 +1871,7 @@ export type GameEvent =
   | { e: 'faded'; enemy: Uid } | { e: 'wavering'; enemy: Uid }
   | { e: 'tended'; uid: Uid; weightAfter: number }
   | { e: 'insight'; uid: Uid; to: CardId; upgraded: boolean }
+  | { e: 'peace'; uid: Uid }      // B3: that Insight was already created this run
   | { e: 'promise'; created: boolean; targetUid: Uid | null }
   | { e: 'festering' }
   | { e: 'keepsake'; id: KeepsakeId }
@@ -1829,7 +1892,7 @@ async function dispatch(a: Action) {
   state = next; render(state); save(state); busy = false;
 }
 ```
-Autosave the full state JSON to `localStorage['heartward.save']` (with `v` and `contentHash`) after every action; profile flags (`tutorialDone`, seen coach marks, settings) in `localStorage['heartward.profile']`. All storage access is wrapped in try/catch and the game runs without it. A debug "Copy replay" button copies `{ seed, opts, actions[] }` for bug reports that paste into a Vitest regression test.
+Autosave the full state JSON to `localStorage['heartward.save']` (with `v` and `contentHash`) after every action; profile flags (`tutorialDone`, seen coach marks, settings) in `localStorage['heartward.profile']`. All storage access is wrapped in try/catch and the game runs without it. If `tutorialDone` can't be read, New Run offers "Skip tutorial" (3.2). A debug "Copy replay" button copies `{ seed, opts, actions[] }` for bug reports that paste into a Vitest regression test.
 
 ---
 
@@ -1841,7 +1904,7 @@ Every non-random bot shares one scoring core (`greedy.ts`) and differs only in i
 ```ts
 export interface Belief {
   name: string;
-  typePct(lights: readonly Light[], t: TargetTyping): number;   // aware: engine relation; blind: 100; confused: shifted chart
+  typePct(lights: readonly Light[], t: TargetTyping): number;   // aware: engine relation; blind: 100; confused: chart rotated -1
   knowsResolve: boolean;       // values RESOLVE/SUPPRESS/Afterglow, avoids Buried
   knowsHarmony: boolean;       // values Harmonized plays and Note setup
   knowsFlare: boolean;         // penalises feeding Flare
@@ -1855,13 +1918,14 @@ export interface Belief {
 | Bot | Belief / behaviour | Purpose |
 |---|---|---|
 | `random` | uniform over `legalActions` | floor; softlock and invariant fuzzer |
-| `confused` | chart rotated by +2 wheel steps (a derangement of the true opposites) | must lose to `blind`: the chart is real information |
+| `confused` | chart rotated by -1 wheel step: its believed cure for each Shade is that Shade's actual DISSONANT Light (the "bad advice" bot, still a derangement of the true opposites). All knows* flags true, and map hints and the coverage draft are on, read through its rotated chart | must lose to `blind`: the chart is real information |
 | `blind` | typePct 100, all knows* false, no map hints, no coverage draft | type-blind baseline |
 | `greedyType` | true chart for damage only (opposite/dissonant); knowsResolve/Harmony/Flare/Cleanse/Faces false | "match the colour" autopilot |
 | `aware` | everything true | reference skilled bot |
 | `aware-noResolve`, `aware-noHarmony`, `aware-noInward` | aware with one flag off (noInward also removes Inward actions) | ablations: each subsystem pulls weight |
-| `planner` | aware + beam search over the whole turn (width 8, depth until endTurn), offline only | depth ceiling |
-| Policy bots | aware combat, forced draft/route policy: `mono-<light>`, `pair-<blend>`, `arc3-<start light>`, `rainbow`, `buryAll` (never values Resolve, always Tends when possible), `resolveOnly` (never plays a Suppressing lethal unless it would otherwise die this turn) | archetype viability, degenerate-strategy checks |
+| Policy bots (7) | aware combat, forced draft/route policy: `mono-love`, `mono-courage`, `pair-delight`, `arc3-love`, `rainbow`, `buryAll` (never values Resolve, always Tends when possible), `resolveOnly` (never plays a Suppressing lethal unless it would otherwise die this turn) | archetype viability, degenerate-strategy checks |
+
+v1 ships exactly these 15 bots: `random`, `confused`, `blind`, `greedyType`, `aware`, the 3 ablations and the 7 policy bots. The planner bot and the other policy variants are cut (24.2). A full report (15 bots x 2000 runs at about 0.175 s per run on 4 cores) takes about 22 minutes.
 
 **Combat scoring (1-ply, re-plans after every action):** enumerate `distinct(legalActions)` (merge identical def+upgrade+target), preview each, score under the belief, play the best if score > 0, else `endTurn`.
 ```
@@ -1877,20 +1941,19 @@ score(a) = sum over targets [ hpLoss * (1 + threat_t / hp_t) + (killed ? 5 + 1.5
 ```
 `threat_t` = the target's intent strike total (`engine.intents`). `S = 4 + 1.5 * weightAfter` scaled by `(floorsLeft / 23)`, or `12` if the Suppress would overflow (max Heart loss). `afterglowValue`: Conviction 4, Release 4, Belonging 5, Caution 6, Perspective 2 + stacks removed, Clarity 5.
 
-**Run policy:** card rewards and shop use a static card value (walk the DSL: Ease 1/pt, Guard 0.8/pt, draw 2.5, Spirit 3, Promise x0.9, Mood x3) + (coverage flag) +6 for a Light that cures a Shade on the remaining map rows and +4 for the Light that Tends the heaviest Buried card + adjacency bonus +2 with the deck's two most common Lights; skip if the best value is below the deck average. Pathing: prefer Havens below 50% Heart, Sanctuaries with 120+ Glimmers, elites above 70% Heart, and (map hints) fights whose Shades the deck answers. Haven: Rest below 50% Heart, else Reflect if a Buried card has Weight 2+, else Kindle. Events: small scripted value table per option.
+**Run policy:** card rewards and shop use a static card value (walk the DSL: Ease 1/pt, Guard 0.8/pt, draw 2.5, Spirit 3, Promise x0.9, Mood x3) + (coverage flag) +6 for a Light that cures a Shade on the remaining map rows and +4 for the Light that Tends the heaviest Buried card + adjacency bonus +2 with the deck's two most common Lights (12.2 definition: `ease` cards only); skip if the best value is below the deck average. Pathing: prefer Havens below 50% Heart, Sanctuaries with 120+ Glimmers, elites above 70% Heart, and (map hints) fights whose Shades the deck answers. Haven: Rest below 50% Heart, else Reflect if a Buried card has Weight 2+, else Kindle. Events: small scripted value table per option.
 
 ### 21.2 Pairing and statistics
 Seeds are paired: a seed fixes the map, encounters, HP rolls, reward/shop offers per node and each fight's streams. Report per-bot Wilson 95% CIs, McNemar's test on discordant pairs, and a paired bootstrap for continuous metrics. 500 paired seeds give about +/-4 pp. `sim/lab.ts` isolates combat skill: fixed decks (mono-Love, Love+Joy, Love+Courage (non-adjacent), rainbow, neutral-only control) x every encounter x 20 seeds, measuring Heart lost and turns.
 
 ### 21.3 Metrics and thresholds (reference difficulty = DEFAULT_RULES, normal runs, random Charm)
 
-| Metric | Target (full report, 2000 paired seeds) | CI gate (`test:balance`, 100 seeds) |
+| Metric | Target (full report, 2000 paired seeds) | CI gate (`test:balance`, 300 fixed seeds; point estimate AND one-sided McNemar p < 0.05 for paired gaps) |
 |---|---|---|
 | `aware` win rate | 45-65% | >= 30% |
-| `aware` - `blind` paired win rate | >= +15 pp | >= +10 pp |
-| Ladder `random < confused < blind < greedyType < aware` | holds | `aware > blind` and `blind > confused` |
-| `aware` - `greedyType` (depth beyond matching colours) | >= +8 pp | >= +3 pp |
-| `planner` - `aware` | 0 to +15 pp | |
+| `aware` - `blind` paired win rate | >= +15 pp | point estimate >= +8 pp and McNemar p < 0.05 |
+| Ladder `random < confused < blind < greedyType < aware` | holds | `blind` - `confused` point estimate > 0 and McNemar p < 0.05 (`aware` > `blind` is the row above) |
+| `aware` - `greedyType` (depth beyond matching colours) | >= +8 pp | point estimate >= +2 pp and McNemar p < 0.05 |
 | Decision divergence: share of decisions (2+ distinct options) where `aware`'s pick differs from `greedyType`'s | >= 25% | |
 | Type-flip rate: same, `aware` vs `blind` | >= 35% | |
 | OPPOSITE share of card damage | aware >= 45%; blind <= 30% | |
@@ -1903,9 +1966,10 @@ Seeds are paired: a seed fixes the map, encounters, HP rolls, reward/shop offers
 | `buryAll` vs `resolveOnly` | within 10 pp of each other, both >= 10 pp below aware | |
 | Win rate by Charm (aware) | each within +/-8 pp of the mean | |
 | Win rate by dominant deck Light (aware) | each within +/-10 pp of the mean | |
-| Policy bots (mono, pair, arc3, rainbow) | each 25-55%, none above aware + 5 pp | |
+| Policy bots `pair-delight`, `arc3-love`, `rainbow` | each 25-55%, none above aware + 5 pp | |
+| `mono-<light>` overall (`mono-love`, `mono-courage`) | each 15-45% (mono is intentionally weakest at the finale, 1.2) | |
 | The Numbness win rate given reached | aware >= 60%; blind <= 35% | |
-| Mono vs The Numbness given reached | >= 50% of `arc3`'s rate | |
+| Mono vs The Numbness given reached | >= 30% of `arc3`'s rate | |
 | Median total Buried Weight on reaching The Deep (aware) | 1-4 | |
 | Heart lost per fight, blind / aware | elites and bosses >= 1.5x; normals 1.1-1.5x | |
 | `random` win rate | < 2% | < 5% |
@@ -1915,31 +1979,36 @@ Seeds are paired: a seed fixes the map, encounters, HP rolls, reward/shop offers
 | Invariant violations, softlocks, RunawayTriggers | 0 | 0 |
 | Preview/apply mismatches (property test) | 0 | 0 |
 
-When a target is missed, tune in this order: enemy HP/strike numbers, card numbers, Glimmer/price numbers, then `RulesConfig` percents (via `--set rules.x=a,b,c` sweeps on paired seeds). The chart structure, Harmony rules and Resolve/Suppress rules are not tuning knobs.
+**Gate rule.** Each CI gate runs on the same 300 fixed seeds (the 5 gate bots `random`, `confused`, `blind`, `greedyType`, `aware` x 300 runs x about 0.175 s / 4 cores, about 70 s). A paired-gap gate passes only when both hold: the point estimate meets its floor (+8 pp for aware-blind, +2 pp for aware-greedyType, above 0 for blind-confused), and a one-sided McNemar test on the discordant pairs gives p < 0.05.
+
+When a target is missed, tune in this order: enemy HP/strike numbers, card numbers, Glimmer/price numbers, then `RulesConfig` percents (via `--set rules.x=a,b,c` sweeps on paired seeds). The chart structure and Harmony rules are not tuning knobs. The Resolve/Suppress rules are not swept either, but they are not frozen: if `buryAll` beats `resolveOnly` or another degenerate loop appears, the lead may change them by a recorded design decision (as v1.1 did with one Insight per id per run, B3).
 
 ### 21.4 CLI and throughput
 - `npm run sim -- --runs 2000 --bots aware,blind,confused,greedyType,random --seed-start 1 --out sim/out` -> `sim/out/report.md` + `report.json`.
 - `--shard k/n` runs a slice; `sim/parallel.ts` spawns 4 vite-node children and merges.
-- Budget: about 6000 previews per run at 20-30 microseconds = 0.15-0.2 s per run; 2000 runs per bot in about 80 s on 4 cores. A perf test asserts 20 `aware` runs finish within 15 s.
+- Budget: about 6000 previews per run at 20-30 microseconds = 0.15-0.2 s per run; 2000 runs per bot in about 80 s on 4 cores (a full 15-bot report in about 22 minutes). A perf test in `npm run test:slow` asserts 20 `aware` runs finish within 15 s.
 
 ---
 
 ## 22. Test plan and acceptance
 
-**Unit/rules (`npm test`, < 30 s total):**
-- `emotions.test.ts`: the full 6x6 chart equals 4.2; the clockwise mapping is a permutation and a derangement of opposites; every two-Light hit is never dissonant (exhaustive); `harmonize` examples of 4.4.10; `blendOf` for all 15 Light pairs.
+**Unit/rules (`npm test`, < 30 s total, property tests at 30 seeds):**
+- `emotions.test.ts`: the full 6x6 chart equals 4.2; the clockwise mapping is a permutation and a derangement of opposites; every two-Light hit is never dissonant (exhaustive); `harmonize` examples of 4.4.10; a Blend is never Harmonized by its own pair (Sunbeam after Sunbeam) and is Harmonized by an adjacent outside Light; `blendOf` for all 15 Light pairs.
 - `damage.test.ts`: table tests for 5.4 incl. the worked example (= 10, Intensity -6), min-1 rule, Veiled 0, Lightning Rod, automatic hits, Heavy, Trembling.
-- Scenario tests (one per R-rule): Flare gain/removal; Note persistence across turns; Isolated; face turning incl. multi-hit; Inward legality and Tend ordering; each lethal outcome; Wavering; Fade on summoner leaving; Afterglows; Buried Weight add/+1/overflow; Buried-in-hand stacks applied after decay; Tend once per combat; Insight upgraded at peakWeight 2; Surfacing/Veil/Suppress-heal; Numb greys only the first card; Restless cost; Festering at turn 12; turn limit; max Shades 4; Companions' last target; Promise Light carry-over.
-- Every Shade: pattern order, overrides (Kettle, Knot, Dread), byFace (Mask), phases and thresholds (Numbness, Mask, Spiral).
-- Map property test (2000 seeds): reachability, no crossing edges, degrees 1-2, repair constraints, Compass after the 2nd win.
+- Scenario tests (one per R-rule): Flare gain/removal; R-2b effective Lights in passives (a Harmonized Joy card after Love lowers Kettle Pressure; a Numb-greyed card counts as no Light); Note persistence across turns; Isolated (no Harmony, Companions don't act); face turning incl. multi-hit; The Mask turns at most twice per player turn from your hits; Inward legality and Tend ordering; each lethal outcome; Wavering; Fade on summoner leaving; R-8b finishing blows from a Companion (no Seething tick after), a Promise (no enemy phase on an empty field) and High Five's "Companions act now", and win-before-Heart-0 in the same step; Afterglows; Perspective leaves Numb; Buried Weight add/+1/overflow; Buried-in-hand stacks applied after decay; Buried cards never Linger (Serenity); Tend once per combat; Insight upgraded at peakWeight 2; Insight once per run (Tend to 0 and Surfaced Resolve with the Insight already created remove the Buried card); Surfacing/Veil; Surfaced Suppress returns the card unchanged and grows the boss +10 x Weight max Intensity and Intensity; The Numbness +6 max Intensity per hidden Weight; an automatic FELT finishing hit (Friendship Bracelet with a Blend Note) Resolves The Numbness; Numb greys only the first card; Restless cost; Warmth max 6; Unconditional once per enemy phase; Festering at turn 12; turn limit; max Shades 4; Companions' last target; Promise Light carry-over; Yellow Umbrella blocks Chipped Teacup and Numb.
+- Enemy phase (5.7): the phase-start snapshot (Skitter's `hide` Doubt acts next phase; Surfaced Shades act in the first phase); overrides hold only while their condition holds, don't advance `pattern.index`, and lift back to the cycle move at the current index; projected intents after end-of-turn steps 1 to 6 (a Lantern Moth turning The Mask shows `startle` with the "after end of turn" tag).
+- Every Shade: pattern order, overrides (Kettle, Knot, Dread), byFace (Mask), phases and thresholds (Numbness, Mask, Spiral), Spiral Coil max 6 and unwind on face turn, Worry max 6.
+- Map property test (30 seeds in `npm test`, 2000 in `test:slow`): reachability, no crossing edges, degrees 1-2, edge (0,0) present, repair constraints (no Elite-Elite edge after rule 2), row-6/row-8 elite split, Compass after the 2nd win.
 - `content/registry.test.ts`: every referenced id exists; 6 Buried <-> 6 Insight pairs; each Light has 3 C / 2 U / 1 R; 6 Blends cover all adjacent pairs; each compound's outer face cure is dissonant vs its inner face; every text slot resolves; no `randomEnemy`; every encounter id is used by a pool; every enemy move is reachable; afterglows cover all 6 Shades.
 - `architecture.test.ts` (20.2).
 
-**Property tests:** preview == step for every deterministic legal play across 300 random-bot seeds (compare every target's hpAfter, guardAfter, outcome, faceAfter, flare, and the player's hp, guard, energy, statuses); purity (deep-frozen input never mutated); invariants after every step (hp <= maxHp, no negative stacks, piles partition `cards`, `combat` non-null iff combat phase, legal actions non-empty unless terminal); determinism (same seed + actions => same hash, 50 seeds); serialize round-trip.
+**Property tests (`npm test`, 30 seeds):** preview == step for every deterministic legal play across 30 random-bot seeds (compare every target's hpAfter, guardAfter, outcome, faceAfter, flare, and the player's hp, guard, energy, statuses); purity (deep-frozen input never mutated); invariants after every step (hp <= maxHp, no negative stacks, piles partition `cards`, `combat` non-null iff combat phase, legal actions non-empty unless terminal, at most one of each `insight.*` in the deck); determinism (same seed + actions => same hash, 30 seeds); serialize round-trip.
+
+**Slow tests (`npm run test:slow`, `vitest.slow.config.ts`, `tests/slow/**`):** preview == step across 300 random-bot seeds; map property test on 2000 seeds; determinism on 50 seeds; the perf test (20 `aware` runs within 15 s, 21.4).
 
 **Contract test:** `tests/contract/engine.contract.test.ts` runs against any `Engine` (miniPack and defaultPack).
 
-**Balance (`npm run test:balance`):** 21.3 CI gates.
+**Balance (`npm run test:balance`, `vitest.balance.config.ts`, `tests/balance/**`):** 21.3 CI gates on 300 fixed seeds (point estimate floor and one-sided McNemar p < 0.05).
 
 **UX acceptance checklist:**
 - [ ] First card played within 20 s of Begin (profile's first run).
@@ -1950,22 +2019,22 @@ When a target is missed, tune in this order: enemy HP/strike numbers, card numbe
 - [ ] At most one coach mark visible; none blocks input.
 - [ ] Enemy phase <= 1.5 s at 1x; input never blocked > 250 ms.
 - [ ] A card never shows more than 2 chips; a Shade never more than 3 uncollapsed status chips.
-- [ ] `npm test && npm run test:balance && npm run build` green after every merge.
+- [ ] `npm run typecheck && npm test && npm run test:slow && npm run test:balance && npm run build` green after every merge.
 
 ---
 
 ## 23. Build plan
 
-**M0 Contract (lead, first, serial):** `engine/types.ts`, `engine/emotions.ts` (complete + tests), `engine/damage.ts` (complete + tests), `engine/rules.ts`, `engine/dsl.ts` signatures, `engine/rng.ts`, `engine/index.ts` (stubs), `tests/fixtures/miniPack.ts`, `tests/architecture.test.ts`, `tsconfig.engine.json`, `vitest.balance.config.ts`, package scripts, `content/glossary.ts`. Types are additive-only after M0; changes go through the lead.
+**M0 Contract (lead, first, serial):** `engine/types.ts`, `engine/emotions.ts` (complete + tests), `engine/damage.ts` (complete + tests), `engine/rules.ts`, `engine/dsl.ts` signatures, `engine/rng.ts`, `engine/index.ts` (stubs), `engine/combat/index.ts` (signatures), `tests/fixtures/miniPack.ts`, `tests/architecture.test.ts`, `tsconfig.engine.json`, `tsconfig.sim.json`, `vitest.slow.config.ts`, `vitest.balance.config.ts`, the `vite.config.ts` test excludes, package scripts (20.2), `content/glossary.ts`. Types are additive-only after M0; changes go through the lead.
 
 **M1 (parallel, exclusive write ownership):**
 | Agent | Owns | Done when |
 |---|---|---|
-| A Engine-Combat (critical path) | `engine/{primitives,interpreter,conditions,clone}.ts`, `engine/combat/**`, `engine/view.ts` combat parts, `tests/engine/combat*`, `tests/helpers/scenario.ts`, `tests/property/*` | miniPack fight fully playable via `step`; preview==actual green; every R-rule scenario test green |
-| B Engine-Run | `engine/run/**`, `engine/step.ts`, `serialize.ts`, `invariants.ts`, `view.ts` run parts | map property tests; all phase transitions; rewards/shop/haven/events/deckSelect; save round-trip |
+| A Engine-Combat (critical path) | `engine/{primitives,interpreter,conditions,clone}.ts`, `engine/combat/**` (incl. `combat/index.ts` and `combat/view.ts`), `tests/engine/combat*`, `tests/helpers/scenario.ts`, `tests/property/*`, the preview-vs-step and determinism files in `tests/slow/` | miniPack fight fully playable via `step`; preview==actual green; every R-rule scenario test green |
+| B Engine-Run | `engine/run/**` (incl. `run/view.ts`), `engine/step.ts`, `engine/index.ts` (after M0), `serialize.ts`, `invariants.ts`, the map file in `tests/slow/` | map property tests; all phase transitions; rewards/shop/haven/events/deckSelect; save round-trip |
 | C Content | `src/content/**`, `tests/content/**` | every table in sections 6 to 10 as data; registry test green; lines and visuals |
 | D UI | `src/ui/**`, `index.html`, styles | all screens render from fixture states; animator plays canned event lists; Compass, Shade SVGs, previews wired to the `Preview` shape |
-| E Sim | `sim/**`, `tests/balance/**`, `tests/contract/**` | runner, random bot, beliefs, greedy core, planner, metrics, stats, CLI, sharding, report on miniPack |
+| E Sim | `sim/**`, `tests/balance/**`, `tests/contract/**`, the perf file in `tests/slow/` | runner, random bot, beliefs, greedy core, the 15 bots of 21.1, metrics, stats, CLI, sharding, report on miniPack |
 
 If A falls behind, split at `interpreter.ts`: statuses/afflictions/Companions/Promises move to a sixth agent once primitives and the interpreter exist.
 
@@ -1979,16 +2048,20 @@ If A falls behind, split at `interpreter.ts`: statuses/afflictions/Companions/Pr
 
 ### 24.1 First knobs to turn (in order)
 1. Enemy HP and strike values (sections 7.1 to 7.3) against "Median turns per normal fight 3-6" and "aware win 45-65%".
-2. The Numbness HP 240 and Surfacing `12 x Weight` against "Numbness win given reached".
+2. The Numbness Intensity 180 (Thaw at 90, `fog`/`fog2` Guard 14), Surfacing `12 x Weight`, hidden-Weight growth (+6 per Weight) and Surfaced Suppress growth (+10 x Weight) against "Numbness win given reached" and p99 combat length.
 3. Resolve Glimmer bonus (8/20/40) and Buried overflow (3 max Heart) against Resolve share and `buryAll` vs `resolveOnly`.
 4. `festerTurn` 12 against p99 combat length.
-5. Card numbers flagged hot: Unconditional (Warmth per move), Zoomies + Grand Finale loops (max cards per turn), Serenity + Count to Ten + Unhurried, Growing Light, Forgive with deliberate Flare.
+5. Card numbers flagged hot: Unconditional (once per enemy phase, Warmth max 6), Plant a Seed and Daybreak (now Let Go), Zoomies + Grand Finale loops (max cards per turn), Serenity + Count to Ten + Unhurried, Growing Light, Forgive with deliberate Flare.
 
 ### 24.2 Cut list (already cut from v1; do not build)
-Intent distortion (Looming/What-If/Blank) and the Night Light keepsake; Emotional Weather; Act 3 skip-one "bridge" compounds; Longing's card-holding; The Numbness borrowing six Shade moves and Flatten/Drain Colour; Songbird companion; Change of Heart; Kaleidoscope; Mood Ring; Wind Chime; Hope/Calm Charms; potions; ascension levels; phone portrait layout; the seed's hand-written dissonance table.
+Intent distortion (all variants) and the Night Light keepsake; Emotional Weather; Act 3 skip-one "bridge" compounds; Longing's card-holding; The Numbness borrowing six Shade moves and Flatten/Drain Colour; Songbird companion; Change of Heart; Kaleidoscope; Mood Ring; Wind Chime; Hope/Calm Charms; potions; ascension levels; phone portrait layout; the seed's hand-written dissonance table.
+
+Cut in v1.1 (M17): the planner bot; every policy bot except `mono-love`, `mono-courage`, `pair-delight`, `arc3-love`, `rainbow`, `buryAll` and `resolveOnly`; per-type silhouette generator sets (now 1 generator per family with uid-hash variation), the 30% compound show-through (now outer-face silhouette + inner-face sigil badge) and The Mask's face morph (now a crossfade); target-first hover; the Alt/? label overlay; drag targeting (click/tap/keyboard only); the UI scale setting; the pattern strength setting.
 
 ### 24.3 If scope bites (cut in this order)
-1. Wallflower (Loyalty stays useful). 2. The Kettle (Act 1 keeps one elite). 3. Planner bot (keep 1-ply ladder). 4. Deep Resolve (compounds then Resolve on the showing face only). 5. Mirror Pond and Wishing Well events.
+1. Wallflower (Loyalty stays useful). 2. Mirror Pond and Wishing Well events. 3. The Kettle (Act 1 keeps one elite).
+
+Never cut Deep Resolve: it is the reason Blends exist ("a Blend can land a DEEP RESOLVE").
 
 ### 24.4 Risks
 | Risk | Mitigation |
@@ -1996,7 +2069,83 @@ Intent distortion (Looming/What-If/Blank) and the Night Light keepsake; Emotiona
 | "Love is DISSONANT vs Sadness" feels wrong on first contact | T2 teaches it with the bad-advice line and immediately shows Joy as the answer; Harmony (Love then Joy) turns the blind spot into a strength. |
 | Inward is hard to discover | Heart outline only when legal, previewed result, coach marks C9 to C11 in T4; bots measure its value (ablation). |
 | Buried spiral | Weight merging + cap, once-per-combat Tend, Haven Reflect, Sanctuary Talk it through and Set Down, card slot 3 offers the cure; metric "median Buried Weight at The Deep 1-4". |
-| Surfacing spikes | Cap 3, 12 HP per Weight, Deep Haven Reflect before the fight; the 0-Buried Numbness fight is tested separately. |
+| Surfacing spikes | Cap 3, 12 HP per Weight, Deep Haven Reflect before the fight; the growth penalties (+6 max Intensity per hidden Weight, +10 x Weight per Suppressed Surfaced Shade) are shown in the Numbness meter tooltip and the SUPPRESS banner; the 0-Buried Numbness fight is tested separately. |
+| Suppress-and-Tend Insight farming | Each Insight id at most once per run (B3); a repeat Buried card is released at Weight 0; metric `buryAll` vs `resolveOnly`. |
 | Preview lies | Single pipeline + property test; `uncertain` flag instead of guessing. |
 | Determinism leaks | architecture grep, DOM-free tsconfig, UI-only visual hash. |
 | Preachiness | Suppress is always legal and sometimes optimal; Insight cards are strong and unique; no lesson text anywhere. |
+
+---
+
+## 25. Changelog v1.0 -> v1.1
+
+Each line names the red-team finding (B = blocker, M = major, minor-N = minor item N) or the lead's own decision (L1 to L4), then the sections it touched.
+
+**Blockers**
+- **B1** New rule R-8b (immediate win check after every hit and Shade removal from any source, win check before the Heart-0 check in the same step), referenced from 5.2, 5.3, 5.6, 5.7 and the section 5 preamble. 5.3 step 9 is now "Win check: R-8b", R-8a no longer ends the combat, and scenario tests cover Companion, Promise and High Five finishing blows (4.8, 5, 4.13, 4.14, 6.4, 22).
+- **B2** Both Surfacing penalties replaced by max-Intensity growth: The Numbness gains +6 max Intensity and Intensity per Weight of Buried cards not Surfaced, and Suppressing a Surfaced Shade gives Apathy or The Numbness +10 x Weight max Intensity and Intensity (banner "The Numbness +20 Intensity"). Renamed `numbRules.guardPerHiddenWeight` -> `hpPerHiddenWeight` and `surfacedSuppressHealPerWeight` -> `surfacedSuppressGrowPerWeight`. Preview targets gain `maxHpAfter` (the boss is listed when a Surfaced Suppress grows it), and the `phases` pattern's first phase no longer depends on its `atOrBelowHp` so growth above the def's max Intensity can't skip Phase 1 (D11, 4.16, 7.2, 7.3, 16.2, 20.3, 20.4, 20.6, 22, 24.1, 24.4).
+- **B3** Each Insight id can be created at most once per run (`run.insightsMade`). A Buried card whose Insight was already created is removed at Weight 0 ("You've already made peace with this one."), and so is one whose Surfaced Shade is Resolved. Mirror Pond "Look closer" excludes Buried and Insight cards. New invariant "at most one of each `insight.*` in the deck", new `remove` mutation, `peace` event and `CardFilter.notInsight`. 21.3 no longer forbids changing the Resolve/Suppress rules (D9, 2, 4.10, 4.16, 6.11, 7.3, 10, 14, 16.2, 18.1, 20.3, 20.7, 21.3, 22, 24.4).
+
+**Major**
+- **M1** The Mask: your hits (card or automatic) turn it at most twice per player turn, further OPPOSITE hits still deal x2 and remove Flare, chip "Turns left 2/1/0", `EnemyDef.hitTurnsPerPlayerTurn: 2` (4.5, 5.4, 5.6, 7.1, 16.2, 20.3, 22).
+- **M2** IntentView shows the projected intent after 5.6 steps 1 to 6 from `preview({t:'endTurn'})`, with an "after end of turn" tag and a cause tooltip, new `IntentView.afterEndTurn` and `cause` (5.6, 5.7.1, 16.2, 20.2, 20.6, 22).
+- **M3** Insight has two sources (Tending to Weight 0, Resolving its Surfaced Shade). A Surfaced Resolve is not a Tend: Journal doesn't trigger, Lead Box doesn't block it, Worn Diary's upgrade applies (D9, 2, 4.10, 4.16, 6.11, 9.3, 9.4).
+- **M4** Surfaced Shades never Bury. On Suppress their card returns to the discard pile unchanged (`returnSurfaced` only, no `suppress` mutation) (4.8, 4.10, 4.16, 7.3, 20.3).
+- **M5** Any FELT finishing hit, from a card or automatic, Resolves Apathy or The Numbness. A non-FELT automatic finishing hit leaves it Wavering. `lethalOutcome` is unchanged and a scenario test was added (4.8, 4.11, 4.16, 20.3, 22).
+- **M6** Plant a Seed and Daybreak gain Let Go. Daybreak keeps its per-combat discount (6.6, 24.1).
+- **M7** Warmth max 6. Unconditional: "The first time each enemy phase a Shade's move makes you lose Heart, gain 2 Warmth." New `MoodDef.oncePerEnemyPhase` field (5.6, 6.2, 20.3, 22, 24.1).
+- **M8** Serenity: "every non-Buried card in your hand Lingers." Buried cards never Linger, even with Serenity (4.10, 4.15, 5.6, 6.7, 22).
+- **M9** Spiral Coil starts 2, max 6 (was 8), and unwinds 1 whenever the Spiral's face turns. `what_if` peaks at 18 (30 with Deepening) (5.4, 7.2, 20.3, 22).
+- **M10** The Deep's Sanctuary always stocks both Blends that contain your most common Light, and one Blend slot is the sale item. Targets are now "mono given reached >= 30% of arc3" and "mono-<light> overall 15-45%". 1.2 states that mono is intentionally weakest at the finale (1.2, 3.1, 6.8, 13, 21.3).
+- **M11** The Numbness Intensity 240 -> 180, Thaw at 120 -> 90, `fog` and `fog2` Guard 20 -> 14 (7.3, 24.1).
+- **M12** New rule R-2b: "a card/hit with <Light>" always means its effective Lights at play time, and a Numb-greyed card has none (4.2, 7.0, 22).
+- **M13** 5.7 iterates over a snapshot of Shade uids taken at phase start, summoned Shades act from the next phase, overrides apply only while their condition holds (re-derived on each gauge change), override moves don't advance `pattern.index`, and a lifted override returns to the cycle move at the current index (5.7, 5.7.1, 7.0, 22).
+- **M14** Balance gates run on 300 fixed seeds. Floors: +8 pp aware-blind, +2 pp aware-greedyType, above 0 blind-confused, and each also needs a one-sided McNemar p < 0.05 (21.3, 22).
+- **M15** The `confused` bot rotates the chart -1, so its believed cure is the actual DISSONANT Light, with all knows* flags true (21.1).
+- **M16** `tsconfig.engine.json` covers only src/engine and src/content. New `tsconfig.sim.json` (lib ES2022, types ["node"], include sim). The typecheck script runs all three configs (20.2, 23).
+- **M17** Cuts applied now and listed in 24.2: planner bot, policy bots reduced to `mono-love`, `mono-courage`, `pair-delight`, `arc3-love`, `rainbow`, `buryAll`, `resolveOnly`, one silhouette generator per family with uid-hash variation, compounds as outer-face silhouette plus inner-face sigil badge, The Mask's face change as a crossfade, target-first hover, the Alt label overlay, drag targeting, the UI scale setting and the pattern strength setting. Deep Resolve, Wallflower, the Kettle and all 6 events stay. Typical playtime restated as about 60 minutes. 24.3 is now Wallflower, then Mirror Pond and Wishing Well, then the Kettle, and Deep Resolve is never cut (D14, 3.1, 16.1, 16.2, 16.6, 16.7, 18.1, 19, 20.2, 21.1, 21.3, 23, 24.2, 24.3).
+
+**Minor**
+- **minor-1** Perspective: "Remove all your afflictions except Numb. Draw 1." Yellow Umbrella blocks the first affliction from any source, including Chipped Teacup and Numb (4.6, 4.9, 9.3, 22).
+- **minor-2** Deleted the `printed.length === 2 && partners(own).length > 0` branch of `harmonize`. A Blend Harmonizes only with an adjacent Light outside its own pair (2, 4.4, 6.8, 20.3, 22).
+- **minor-3** Worry max 6 (7.2, 20.3, 22).
+- **minor-4** `passiveFlat` deleted. Old Grudge's Tally is part of `rehash`'s base amount (5.5).
+- **minor-5** `glimmersBase` gains `final: 0` so The Numbness pays no Glimmers (7.3 already says The Deep pays no Glimmers, so `glimmersResolve.final: 0` and an EnemyDef tier `final` were added too) (12.1, 20.3, 20.4).
+- **minor-6** Paper Crane is tracked in `combat.paperCraneUsed` and committed through `CombatResult.keepsakeCounters` (5.5, 9.3, 20.3, 20.6).
+- **minor-7** Map step 3: "Add edge (0,0), then walk the moves." (11.2, 22).
+- **minor-8** Repair rule 2 converts only Fight nodes with no Elite neighbour, and rule 1 re-runs afterwards (11.3, 22).
+- **minor-9** Row-6 Elite nodes all use one elite (map stream), row 8 uses the other, row 7 picks at random (8, 11.3, 22).
+- **minor-10** "After 5 rerolls, keep the last roll" for parent-differing encounters and for duplicate card ids in reward offers (8, 11.3, 12.2).
+- **minor-11** The Wishing Well's Echo fight pays base 10 + Resolve 8, counts as a win and gives no card reward (8, 10, 12.1, 20.3).
+- **minor-12** Event options whose Heart cost is >= current Heart are disabled ("Not enough Heart") (10).
+- **minor-13** New Run shows "Skip tutorial" when `tutorialDone` can't be read (3.2, 16.3, 20.8).
+- **minor-14** All members of `enc.t1` to `enc.t4` start at pattern offset 0 (5.1, 7.0, 8, 17.1).
+- **minor-15** Instinct: "Gain Guard equal to the total of all Shades' incoming strikes (max 30)." (6.11).
+- **minor-16** Coach marks fill names from the trigger event. C5 quotes the real bad-advice line, C7 and C9 are templated, C11 is "Buried {Shade} hurts while held. Play {Light} Inward to Tend it." (17.3).
+- **minor-17** Compass label "Harmonies this turn: 2" (16.1, 16.2).
+- **minor-18** One spelling, "Tag, You're It!", everywhere. The cut-list entry is renamed "intent distortion (all variants)" (D12, 6.12, 12.2, 17.1, 24.2).
+- **minor-19** Enemy phase presentation: 250 ms banner and about 300 ms per action, 1.45 s with 4 Shades (16.2, 18.1).
+- **minor-20** HTML animates transform and opacity only, at most 2 SVG attributes animate at once, and the impact flash is an opacity overlay (18.1, 18.3).
+- **minor-21** Impacts within 333 ms merge into one flash, and the extras use squash only (18.1, 19).
+- **minor-22** Every tappable element is at least 56 reference px. Map nodes and Companion slots grow from 48 to 56 px (16.0, 16.2, 16.4, 19).
+- **minor-23** Mutation regex `\.(hp|guard|energy)\s*([-+*/]?=(?!=)|\+\+|--)`, DOM ban `\b(document|window)\.` in the engine only, and `engine/index.ts` re-exports every type (20.2).
+- **minor-24** `npm test` stays under 30 s with 30 seeds. The 300-seed preview-vs-step, 2000-seed map, 50-seed determinism and perf tests move to `npm run test:slow` (`vitest.slow.config.ts`, tests/slow/**). Balance gates stay in `npm run test:balance` (`vitest.balance.config.ts`, tests/balance/**). `vite.config.ts` excludes both folders (20.2, 20.5, 21.4, 22, 23).
+- **minor-25** "Most common Light" counts only `ease` cards, with the same definition in the node detail, The Deep's Sanctuary and the bots (12.2, 13, 16.4, 21.1).
+- **minor-26** Warm Locket Mends 8 (was 5). Spiral Shell: "+1 Spirit each turn. You can't Rest at Havens, and between acts you Mend only 50% of your missing Heart instead of to full." All other runs still Mend to full. New Keepsake flag `halfActMend` and rule `shellActMendPct: 50` (3.2, 5.8, 9.2, 9.4, 12.4, 15.1, 20.3, 20.4).
+- **minor-27** Isolated: "your cards can't be Harmonized and your Companions don't act." (D10, 2, 4.4, 4.6, 4.13, 5.6, 6.4, 6.12, 16.2, 22).
+- **minor-28** Apathy and The Numbness use a grey oval sigil labelled "NUMB" on map nodes and nameplates (7.3, 11.4, 16.0).
+- **minor-29** A "Turn 32/40" counter shows from turn 30 (4.17, 16.2).
+- **minor-30** Longing's Wallow added to the 5.7 step 2c list. 6.8's Blend sources include the Blend offered after the 2nd combat win (5.7, 6.8).
+
+**Lead decisions**
+- **L1** The M13 snapshot rule also covers Surfaced Shades spawned at combat start: they exist before the first enemy phase starts, so they act in it (4.16, 5.7, 7.3, 22).
+- **L2** `view.ts` is split into `src/engine/combat/view.ts` (intents, handHints, cardText) and `src/engine/run/view.ts` (nodeDetail, deck and Light-mix summaries). `src/engine/combat/index.ts` is the combat module's public surface (startCombat, combatLegalActions, stepCombat, previewCombat, buildCombatResult, intents, handHints, cardText), consumed by `src/engine/step.ts` and `src/engine/index.ts` (run-side owner). The old `pileCounts()` helper is dropped because the Engine API never exposed it (20.2, 23).
+- **L3** Targeting: click/tap a card to select, then click/tap a Shade or the INWARD heart. Keys as in 19 (16.1, 16.2, 19).
+- **L4** The package.json script list shows the final set: dev, build, preview, typecheck (3 tsconfigs), test, test:watch, test:slow, test:balance, sim (20.2).
+
+**Editor's clarifications** (needed to apply the decisions above consistently)
+- **B3** "Already own" an Insight means created earlier this run, even if it has since left the deck. This reconciles "created at most once per run" with "whose Insight you already own" (4.10, 20.3).
+- **M15** The `confused` bot also uses map hints and the coverage draft, read through its rotated chart, like `aware` with a wrong chart (21.1).
+- **minor-26** Mend happens after the boss Keepsake pick, so a Spiral Shell taken at that boss already halves that act transition's Mend (12.4).
+- **M10** The Deep's sale Blend slot is chosen with the `shop` stream, and the third Blend is random (13).
+- **Header** Title and status line updated to v1.1.
