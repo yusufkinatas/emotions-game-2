@@ -83,4 +83,64 @@ describe('widgets', () => {
     expect(m).toContain('Guard 5');
     expect(nameplateMarkup({ face: null, name: 'The Numbness', hp: 1, maxHp: 2, guard: 0, matchups: [], chips: [] })).toContain('NUMB');
   });
+
+  it('nameplates reserve the Guard slot, stack long names and drop a type word the name already says', () => {
+    const noGuard = nameplateMarkup({ face: 'anger', name: 'Grumble', hp: 24, maxHp: 42, guard: 0, matchups: [], chips: [] });
+    expect(noGuard).toContain('guard-badge guard-badge--empty');
+    const surfaced = nameplateMarkup({ face: 'loneliness', name: 'Surfaced Loneliness', hp: 1, maxHp: 24, guard: 0, matchups: [], chips: [] });
+    expect(surfaced).not.toContain('nameplate__type');
+    expect(surfaced).toContain('Surfaced Loneliness');
+    const long = nameplateMarkup({ face: 'anger', name: 'Old Grudge', beneath: 'sadness', hp: 18, maxHp: 62, guard: 0, matchups: [], chips: [] });
+    expect(long).toContain('nameplate--stacked');
+    expect(long).toContain('Beneath: Sadness. OPPOSITE hits turn it.');
+    expect(long).not.toContain('…');
+    const apathy = nameplateMarkup({ face: null, name: 'Apathy', hp: 90, maxHp: 90, guard: 0, matchups: defaultMatchups(null), chips: [] });
+    expect(apathy).toContain('NUMB');
+    expect(apathy).toContain('FELT x2');
+    expect(apathy).toContain('MUFFLED x1/2');
+  });
+
+  it('speaks intents with the engine sentence, never a bare title', () => {
+    const m = intentPillMarkup({ items: [{ kind: 'strike', value: 8 }], order: 1, title: 'Strikes for 8 (7 + 1 Flare). You lose 3.' });
+    expect(m).toContain('aria-label="Acts 1. Strikes for 8 (7 + 1 Flare). You lose 3."');
+    expect(m).toContain('data-tip="Strikes for 8 (7 + 1 Flare). You lose 3."');
+    expect(m).not.toContain(' title=');
+    expect(intentPillMarkup({ items: [{ kind: 'strike', value: 3, count: 4 }] })).toContain('aria-label="Strike 3 x4"');
+    expect(intentPillMarkup({ items: [{ kind: 'guard', value: 6 }], projected: true })).toContain('aria-label="After end of turn: Guard 6"');
+  });
+
+  it('matchup chips say OPPOSITE or DISSONANT to screen readers', () => {
+    expect(matchupChipMarkup({ kind: 'opposite', light: 'love' })).toContain('<span class="sr-only">OPPOSITE x2: Love</span>');
+    expect(matchupChipMarkup({ kind: 'dissonant', light: 'calm' })).toContain('<span class="sr-only">DISSONANT x1/2: Calm</span>');
+  });
+
+  it('tips are reachable by keyboard and touch, and banners are not live regions', () => {
+    const chip = statusChipMarkup({ kind: 'flag', label: 'Short Fuse', title: 'Short Fuse: Flare +1.' });
+    expect(chip).toContain('tabindex="0"');
+    expect(chip).toContain('data-tip="Short Fuse: Flare +1."');
+    expect(chip).toContain('<span class="sr-only">. Short Fuse: Flare +1.</span>');
+    expect(chip).not.toContain(' title=');
+    for (const kind of ['resolve', 'deepResolve', 'suppress', 'fade', 'wavering'] as const) {
+      const b = lethalBannerMarkup({ kind, lights: ['love', 'joy'], sub: ['+8 Glimmers', 'Conviction: +1 Nerve'] });
+      expect(b, kind).not.toMatch(/role="status"|aria-live/);
+    }
+    // Each engine sub-line gets its own line.
+    expect(lethalBannerMarkup({ kind: 'resolve', lights: ['love'], sub: ['+8 Glimmers', 'Conviction: +1 Nerve'] })).toContain('<span>+8 Glimmers</span><span>Conviction: +1 Nerve</span>');
+  });
+
+  it('derives the DISSONANT Light from the wheel and takes only the bad-advice line', () => {
+    const m = defaultMatchups('sadness', 'At least you have people who love you.');
+    expect(m.map((c) => [c.kind, c.light])).toEqual([
+      ['opposite', 'joy'],
+      ['dissonant', 'love'],
+    ]);
+    expect(defaultMatchups('fear')).toHaveLength(1);
+  });
+
+  it('a FELT number is a hard two-tone split with both sigils', () => {
+    const m = floatingNumberMarkup({ kind: 'felt', value: 14, lights: ['love', 'joy'] });
+    expect(m).toContain('float-num__sigils');
+    expect(m).toContain('data-icon="love"');
+    expect(m).toContain('data-icon="joy"');
+  });
 });

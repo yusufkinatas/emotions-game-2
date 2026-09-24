@@ -432,8 +432,9 @@ export function nameplateMarkup(p: NameplateProps): string {
     ? `<span class="shade-disc nameplate__face" data-face="${p.face}">${sigil(p.face)}</span>`
     : `<span class="shade-disc nameplate__face nameplate__face--numb" data-face="none">${sigil('numb')}</span>`;
   const typeWord = p.face ? SHADE_NAME[p.face].toUpperCase() : 'NUMB';
-  // "Surfaced Loneliness" already says its type; the caps word would only repeat it.
-  const showType = !p.name.toUpperCase().includes(typeWord);
+  // "Surfaced Loneliness" already says its type as a word; the caps word would only repeat it. The grey
+  // oval is always labelled NUMB (16.0), even on The Numbness.
+  const showType = !p.face || !new RegExp(`\\b${typeWord}\\b`).test(p.name.toUpperCase());
   const beneath = p.beneath
     ? `<span${attrs({ class: 'nameplate__beneath has-tip', 'data-face': p.beneath, ...tipAttrs(`Beneath: ${SHADE_NAME[p.beneath]}. OPPOSITE hits turn it.`) })}><span class="sr-only">Beneath: ${SHADE_NAME[p.beneath]}. OPPOSITE hits turn it.</span><span class="nameplate__beneath-vis" aria-hidden="true">${sigil(p.beneath)}${markIcon('turn')}</span></span>`
     : '';

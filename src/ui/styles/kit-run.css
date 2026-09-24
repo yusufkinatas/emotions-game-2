@@ -168,7 +168,12 @@
 }
 
 .numb-meter__badge {
-  width: auto;
+  display: grid;
+  color: var(--numb);
+}
+
+.numb-meter__badge > .sigil {
+  width: calc(var(--u) * 24);
   height: calc(var(--u) * 18);
 }
 
@@ -222,9 +227,23 @@
   color: color-mix(in srgb, var(--c) 60%, var(--pearl));
 }
 
+.mix--button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 .mix__seg--blend {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, var(--ink)) 50%, color-mix(in srgb, var(--c2) 30%, var(--ink)) 50%);
-  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) color-mix(in srgb, var(--c) 50%, var(--c2));
+  min-width: calc(var(--u) * 58);
+  /* Two Lights: a hard diagonal split for the fill and the rim, never a mixed colour (16.0). */
+  border: calc(var(--u) * 1.5) solid transparent;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, var(--ink)) 50%, color-mix(in srgb, var(--c2) 30%, var(--ink)) 50%) padding-box,
+    linear-gradient(135deg, var(--c) 50%, var(--c2) 50%) border-box;
+  box-shadow: none;
 }
 
 .mix__pair {
@@ -280,24 +299,74 @@
 }
 
 /* ---------- map node extras ---------- */
+/* Fight and elite nodes show their Shades' sigils (11.4): big when alone, smaller as more share the circle. */
+.map-node__sigils {
+  --sig: calc(var(--u) * 30);
+  gap: calc(var(--u) * 1);
+}
+
+.map-node__sigils[data-n='2'] { --sig: calc(var(--u) * 22); }
+.map-node__sigils[data-n='3'] { --sig: calc(var(--u) * 16); }
+
 .map-node__sigil {
   display: grid;
-  color: #e6e3ec;
-  filter: drop-shadow(0 0 calc(var(--u) * 2) var(--cure));
+  color: #ece9f2;
+  filter: drop-shadow(0 0 calc(var(--u) * 2.5) var(--cure));
 }
 
 .map-node__sigil > .sigil {
-  width: calc(var(--u) * 16);
-  height: calc(var(--u) * 16);
+  width: var(--sig);
+  height: var(--sig);
 }
 
+.map-node__sigils > .joiner {
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 3);
+  margin: 0 calc(var(--u) * -1);
+  border-radius: calc(var(--u) * 2);
+  background: #ece9f2;
+}
+
+/* Apathy: the grey oval labelled NUMB (16.0). */
 .map-node__numb {
-  width: auto;
-  height: calc(var(--u) * 13);
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 1);
+  color: var(--numb);
+}
+
+.map-node__numb > .sigil {
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 20);
+}
+
+.map-node__numb > b {
+  font-size: var(--fs-chip);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: #c9c6d4;
+}
+
+.map-node__silhouette {
+  position: absolute;
+  inset: calc(var(--u) * 3);
+  display: grid;
+  place-items: end center;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* The body fills the circle; the frame's empty sky and ground are cropped by the circle. */
+.map-node__silhouette > .shade-art {
+  width: auto !important;
+  height: 118% !important;
+  margin-bottom: -6%;
 }
 
 .map-node__key {
   position: absolute;
+  z-index: 2;
   right: calc(var(--u) * -6);
   top: calc(var(--u) * -6);
   display: grid;
@@ -355,4 +424,62 @@
 
 .light-thread__end {
   fill: var(--c);
+}
+
+/* ---------- map edges and legend ---------- */
+.map-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.map-edge {
+  fill: none;
+  stroke: rgb(237 232 245 / 0.28);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1 7;
+}
+
+.map-edge[data-state='travelled'] {
+  stroke: rgb(244 239 230 / 0.7);
+  stroke-width: 3;
+  stroke-dasharray: none;
+}
+
+.map-edge[data-state='route'] {
+  stroke: var(--pearl);
+  stroke-width: 3;
+  stroke-dasharray: 1 7;
+  filter: drop-shadow(0 0 3px rgb(244 239 230 / 0.7));
+}
+
+.map-legend {
+  display: grid;
+  gap: calc(var(--u) * 6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.map-legend > li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+}
+
+.map-legend .map-node--legend {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  box-shadow: 0 0 0 calc(var(--u) * 1.5) color-mix(in srgb, var(--node-c) 55%, var(--ink-rim));
+  cursor: default;
+}
+
+.map-legend .map-node--legend::before {
+  display: none;
 }

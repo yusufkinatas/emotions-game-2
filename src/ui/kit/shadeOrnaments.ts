@@ -1,14 +1,17 @@
 // Ornaments that give elites and bosses presence (DESIGN 16.7 plus the art review): The Kettle's lid and
-// steam, The Knot's cinched knot, The Spiral's coils (they track its Coil gauge) and The Looming's tall
-// shadow. The contract has no ornament field, so the kit maps enemy ids itself (ORNAMENT_OF).
+// steam, The Knot's cinched knot, The Spiral's coils (they track its Coil gauge), The Looming's tall
+// shadow, The Mask's crown of faces, Apathy's puddle and The Numbness's veil. The contract has
+// no ornament field, so the kit maps enemy ids itself (ORNAMENT_OF).
 
+import type { Shade } from '../../engine/emotions';
 import type { EnemyId } from '../../engine/types';
 import type { Rand } from './hash';
 import type { Parts } from './shadeFamilies';
-import { GROUND } from './shadeGeometry';
-import { n } from './svg';
+import { CX, GROUND } from './shadeGeometry';
+import { sigilBody } from './sigils';
+import { n, polar } from './svg';
 
-export type ShadeOrnament = 'kettle' | 'knot' | 'spiral' | 'looming';
+export type ShadeOrnament = 'kettle' | 'knot' | 'spiral' | 'looming' | 'mask' | 'apathy' | 'numbness';
 
 /** Enemy ids that wear an ornament. Screens pass `ornament: ornamentFor(def.id)`. */
 export const ORNAMENT_OF: Readonly<Record<EnemyId, ShadeOrnament>> = {
@@ -16,6 +19,9 @@ export const ORNAMENT_OF: Readonly<Record<EnemyId, ShadeOrnament>> = {
   'shade.knot': 'knot',
   'shade.spiral': 'spiral',
   'shade.looming': 'looming',
+  'shade.mask': 'mask',
+  'shade.apathy': 'apathy',
+  'shade.numbness': 'numbness',
 };
 
 export function ornamentFor(enemyId: EnemyId): ShadeOrnament | null {
@@ -25,11 +31,25 @@ export function ornamentFor(enemyId: EnemyId): ShadeOrnament | null {
 /** The most Coil rings The Spiral shows (its gauge max, 7.2). */
 export const MAX_COILS = 6;
 
+/** The most veil layers The Numbness shows (one per Surfaced Shade standing, 4.16). */
+export const MAX_VEIL = 3;
+
+/** The Mask's faces in content order (EnemyDef.faces of shade.mask), used when none are passed. */
+export const MASK_FACES: readonly Shade[] = ['anger', 'sadness', 'loneliness', 'fear'];
+
 export interface OrnamentLayers {
-  /** Outside the idle group, behind everything (The Looming's shadow). */
+  /** Outside the idle group, behind everything (The Looming's shadow, ripples, the pit spiral). */
   staticBack?: string;
-  /** Inside the idle group, over the body (lid, knot, coils). */
+  /** Inside the idle group, over the body (lid, knot, coils, The Mask's crown). */
   front?: string;
+  /** Outside the idle group, over everything (The Numbness's veil). */
+  staticFront?: string;
+}
+
+export interface OrnamentCtx {
+  scale: number;
+  /** The Mask: its faces for the halo. */
+  faces?: readonly Shade[] | undefined;
 }
 
 function kettle(p: Parts, r: Rand): OrnamentLayers {
@@ -111,7 +131,85 @@ function looming(p: Parts, scale: number): OrnamentLayers {
   };
 }
 
-export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand, scale = 1): OrnamentLayers {
+// ------------------------------------------------------------------------------------------------
+// The Mask: a crown of the faces it can turn to, the showing one lit and the next one dashed
+// ------------------------------------------------------------------------------------------------
+
+function mask(faces: readonly Shade[]): OrnamentLayers {
+  const list = faces.length ? faces : MASK_FACES;
+  const count = list.length;
+  const discs = list
+    .map((f, i) => {
+      const a = count === 1 ? 0 : -50 + (100 * i) / (count - 1);
+      const [x, y] = polar(CX, 100, 84, a);
+      const s = 12;
+      return (
+        `<g class="sa-halo__face sa-halo__face--${f}" data-face="${f}">` +
+        `<circle class="sa-halo__disc" cx="${n(x)}" cy="${n(y)}" r="10"/>` +
+        `<g class="sa-halo__sigil" transform="translate(${n(x - s / 2)} ${n(y - s / 2)}) scale(${n(s / 24)})">${sigilBody(f)}</g>` +
+        `</g>`
+      );
+    })
+    .join('');
+  return { front: `<g class="sa-orn sa-halo">${discs}</g>` };
+}
+
+// ------------------------------------------------------------------------------------------------
+// Apathy: it has let itself melt into a flat grey puddle, and heaves a long flat sigh
+// ------------------------------------------------------------------------------------------------
+
+function apathy(p: Parts, r: Rand): OrnamentLayers {
+  const [x, , hw] = p.waist;
+  const [tx, ty] = p.top;
+  const puddle =
+    `<ellipse class="sa-puddle" cx="${n(x)}" cy="${GROUND - 1}" rx="${n(hw + 30)}" ry="8"/>` +
+    `<ellipse class="sa-puddle__melt" cx="${n(x + r.jitter(4))}" cy="${GROUND - 2}" rx="${n(hw + 12)}" ry="6"/>`;
+  // The sigh: three flat dashes drifting up and away, each fainter than the last.
+  const sigh = [0, 1, 2]
+    .map((k) => {
+      const sx = tx + 34 + k * 11;
+      const sy = ty - 4 - k * 11;
+      return `<path class="sa-sigh" style="opacity:${n(0.7 - k * 0.2)}" d="M${n(sx - 6 + k)} ${n(sy)}H${n(sx + 6 - k)}"/>`;
+    })
+    .join('');
+  return { staticBack: puddle, staticFront: `<g class="sa-orn sa-sighs">${sigh}</g>` };
+}
+
+// ------------------------------------------------------------------------------------------------
+// The Numbness: a grey veil that thickens with each Surfaced Shade (--veil), and still-water ripples
+// ------------------------------------------------------------------------------------------------
+
+function numbness(p: Parts): OrnamentLayers {
+  const [x, y, hw] = p.waist;
+  const top = p.top[1] - 8;
+  const w = hw + 8;
+  // A shroud laid over the oval: it follows the shoulders, then falls straight and pools in a soft hem.
+  const hem = [-1, -0.6, -0.2, 0.2, 0.6, 1].map((t) => x + t * (w + 14));
+  let d = `M${n(x)} ${n(top)}C${n(x + w * 0.66)} ${n(top)} ${n(x + w)} ${n(top + (y - top) * 0.5)} ${n(x + w)} ${n(y)}`;
+  d += `C${n(x + w)} ${n(y + 44)} ${n(x + w + 8)} ${n(GROUND - 20)} ${n(hem[5]!)} ${GROUND - 2}`;
+  for (let k = 4; k >= 0; k--) d += `Q${n((hem[k]! + hem[k + 1]!) / 2)} ${GROUND - 9} ${n(hem[k]!)} ${GROUND - 2}`;
+  d += `C${n(x - w - 8)} ${n(GROUND - 20)} ${n(x - w)} ${n(y + 44)} ${n(x - w)} ${n(y)}`;
+  d += `C${n(x - w)} ${n(top + (y - top) * 0.5)} ${n(x - w * 0.66)} ${n(top)} ${n(x)} ${n(top)}Z`;
+  const folds = [-0.55, -0.15, 0.3, 0.7]
+    .map((t) => `M${n(x + t * w)} ${n(y - 10 + Math.abs(t) * 20)}C${n(x + t * w * 1.05)} ${n(y + 40)} ${n(x + t * (w + 10))} ${n(GROUND - 30)} ${n(x + t * (w + 14))} ${GROUND - 6}`)
+    .join('');
+  const layers = [0, 1, 2]
+    .map(
+      (k) =>
+        `<g class="sa-veil__layer" style="opacity:clamp(0, calc(var(--veil) - ${k}), 1)" transform="translate(${n(k * 2.5 - 2.5)} ${-k * 3})">` +
+        `<path class="sa-veil__cloth" d="${d}"/><path class="sa-veil__fold" d="${folds}"/></g>`,
+    )
+    .join('');
+  const ripples = [0, 1, 2]
+    .map((k) => `<ellipse class="sa-ripple" cx="${n(x)}" cy="${GROUND - 1}" rx="${n(w + 30)}" ry="9" style="animation-delay:${n(-k * 1.4)}s;transform-origin:${n(x)}px ${GROUND - 1}px"/>`)
+    .join('');
+  return {
+    staticBack: `<g class="sa-orn sa-ripples">${ripples}</g>`,
+    staticFront: `<g class="sa-orn sa-veil">${layers}</g>`,
+  };
+}
+
+export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand, ctx: OrnamentCtx = { scale: 1 }): OrnamentLayers {
   switch (kind) {
     case 'kettle':
       return kettle(parts, r);
@@ -120,6 +218,12 @@ export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand, scale
     case 'spiral':
       return spiral(parts);
     case 'looming':
-      return looming(parts, scale);
+      return looming(parts, ctx.scale);
+    case 'mask':
+      return mask(ctx.faces ?? MASK_FACES);
+    case 'apathy':
+      return apathy(parts, r);
+    case 'numbness':
+      return numbness(parts);
   }
 }

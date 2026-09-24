@@ -43,20 +43,26 @@
   stroke-linejoin: round;
 }
 
-.wanderer__hood { fill: #17151c; }
-.wanderer__eye { fill: var(--pearl); }
-.wanderer__smile { fill: none; stroke: var(--pearl); stroke-width: 2; stroke-linecap: round; }
-.wanderer__blush { fill: rgb(244 239 230 / 0.16); }
+.wanderer__hood { fill: #1b1822; }
+.wanderer__skin { fill: #eee4d6; }
+.wanderer__hair { fill: #4b4553; }
+.wanderer__eye { fill: var(--ink); }
+.wanderer__smile { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
+.wanderer__blush { fill: rgb(196 150 140 / 0.45); }
 .wanderer__boot { fill: #25222b; stroke: #6e6975; stroke-width: 1.4; }
 
 .wanderer__arm {
   fill: none;
-  stroke: #57525f;
+  stroke: #5d5866;
   stroke-width: 9;
   stroke-linecap: round;
 }
 
-.wanderer__hand { fill: #d8d2c8; }
+.wanderer__hand { fill: #eee4d6; stroke: #b9b0a4; stroke-width: 1; }
+
+.wanderer__swing {
+  animation: var(--a-swing) 3.4s ease-in-out infinite;
+}
 
 .wanderer__handle,
 .wanderer__frame {
@@ -70,23 +76,12 @@
 .wanderer__cap { fill: var(--silver); }
 
 .wanderer__glass {
-  fill: rgb(244 239 230 / 0.08);
-  stroke: rgb(199 206 219 / 0.6);
+  fill: rgb(244 239 230 / 0.1);
+  stroke: rgb(199 206 219 / 0.7);
   stroke-width: 1.2;
 }
 
-.wanderer__glow {
-  fill: var(--flame);
-  opacity: 0.22;
-}
-
-.wanderer__glow--b {
-  fill: var(--flame2);
-}
-
-.wanderer__flame[data-lit='false'] .wanderer__glow {
-  opacity: 0.08;
-}
+.wanderer[data-lit='false'] .wanderer__pool { opacity: 0.35; }
 
 .wanderer__fire {
   transform-origin: 0 4px;
@@ -95,11 +90,16 @@
 
 .wanderer__core {
   fill: #ffffff;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
 .wanderer__flame[data-lit='false'] .wanderer__core {
   opacity: 0.3;
+}
+
+/* Player hit (18.1): the avatar flickers; the vignette and shake live on the screen. */
+.wanderer.is-hit {
+  animation: var(--a-hurt) 260ms linear;
 }
 
 /* ---------- INWARD heart target ---------- */
@@ -175,9 +175,14 @@
   height: calc(var(--u) * 13);
 }
 
+/* The preview hangs from the heart's point, so it never covers the avatar. */
 .inward-target__preview {
-  position: relative;
-  max-width: 78%;
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--u) * 12);
+  width: max-content;
+  max-width: calc(var(--u) * 250);
+  transform: translateX(-50%);
   padding: calc(var(--u) * 4) calc(var(--u) * 8);
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--ink) 92%, transparent);
@@ -287,4 +292,42 @@
 
 .promise-tray__line {
   color: var(--text);
+}
+
+/* ---------- Incoming line ---------- */
+.incoming {
+  margin: 0;
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.incoming__icon {
+  display: inline-block;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 13);
+  margin-right: calc(var(--u) * 4);
+  vertical-align: calc(var(--u) * -2);
+  color: var(--pearl);
+}
+
+.incoming__lethal {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  width: max-content;
+  margin: calc(var(--u) * 4) auto 0;
+  padding: calc(var(--u) * 1) calc(var(--u) * 8);
+  border-radius: var(--r-pill);
+  background: var(--pearl);
+  color: var(--ink);
+  font-weight: 900;
+  animation: var(--a-pulse) 1.1s ease-in-out infinite;
+}
+
+.incoming__lethal .sigil {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
 }

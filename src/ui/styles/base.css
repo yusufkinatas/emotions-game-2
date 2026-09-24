@@ -77,10 +77,11 @@ p {
   font-family: var(--font-title);
 }
 
+/* Caps labels (1 or 2 words, 19) at the 12px chip floor; only the card footer uses the 10px caps size. */
 .caps {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: var(--fs-caps);
+  font-size: var(--fs-chip);
   font-weight: 700;
 }
 
@@ -207,8 +208,9 @@ p {
 }
 
 /*
- * Compact buttons look 40px tall, but their hit area still reaches the 56px tap minimum (16.0) through an
- * invisible extension. Keep at least 16 reference px between small buttons so the extensions don't meet.
+ * Compact buttons look 40px tall, but their hit area still reaches the 56px tap minimum (16.0) in both
+ * directions through an invisible extension. Keep 16 reference px between small buttons so the
+ * extensions don't meet.
  */
 .btn--small {
   min-height: calc(var(--u) * 40);
@@ -220,7 +222,7 @@ p {
 .btn--small::before {
   content: '';
   position: absolute;
-  inset: calc(var(--u) * -8) calc(var(--u) * -4);
+  inset: calc(var(--u) * -8);
 }
 
 .btn__sub {
@@ -245,12 +247,12 @@ p {
 .kbd {
   display: inline-grid;
   place-items: center;
-  min-width: calc(var(--u) * 18);
-  height: calc(var(--u) * 18);
+  min-width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
   padding: 0 calc(var(--u) * 4);
   border-radius: calc(var(--u) * 4);
   border: 1px solid var(--line-strong);
-  font-size: var(--fs-caps);
+  font-size: var(--fs-chip);
   font-weight: 700;
   color: var(--text-2);
 }

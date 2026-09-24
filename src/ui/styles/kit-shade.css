@@ -15,6 +15,7 @@
   overflow: visible;
   --flare: 0;
   --coil: 2;
+  --veil: 1;
   --idle-rate: 1;
   --idle-delay: 0s;
   --body-hi: #2e2b38;
@@ -253,7 +254,7 @@
 
 /* Legs are filled ink with a rim, so they read as solid on the dark stage. */
 .sa-limb--leg .sa-limb__ink {
-  stroke: #35313f;
+  stroke: var(--limb);
 }
 
 /* ---------- Despair ---------- */
@@ -521,6 +522,103 @@
   fill: rgb(237 233 242 / 0.14);
 }
 
+/* The Mask's halo: every face it can turn to. The showing face is a filled disc in its cure colour, the
+   next one has a dashed rim, so the halo also reads in greyscale. */
+.sa-halo__disc {
+  fill: #121016;
+  stroke: var(--rim-light);
+  stroke-width: 1.6;
+  transition: stroke var(--t-face) ease, fill var(--t-face) ease;
+}
+
+.sa-halo__sigil {
+  color: #77738a;
+  transition: color var(--t-face) ease;
+}
+
+.shade-art[data-next='anger'] .sa-halo__face--anger .sa-halo__disc,
+.shade-art[data-next='sadness'] .sa-halo__face--sadness .sa-halo__disc,
+.shade-art[data-next='loneliness'] .sa-halo__face--loneliness .sa-halo__disc,
+.shade-art[data-next='fear'] .sa-halo__face--fear .sa-halo__disc,
+.shade-art[data-next='despair'] .sa-halo__face--despair .sa-halo__disc,
+.shade-art[data-next='anxiety'] .sa-halo__face--anxiety .sa-halo__disc {
+  stroke: #a19dab;
+  stroke-dasharray: 3 2.4;
+}
+
+.shade-art[data-face='anger'] .sa-halo__face--anger,
+.shade-art[data-face='sadness'] .sa-halo__face--sadness,
+.shade-art[data-face='loneliness'] .sa-halo__face--loneliness,
+.shade-art[data-face='fear'] .sa-halo__face--fear,
+.shade-art[data-face='despair'] .sa-halo__face--despair,
+.shade-art[data-face='anxiety'] .sa-halo__face--anxiety {
+  filter: drop-shadow(0 0 3px var(--cure));
+}
+
+.shade-art[data-face='anger'] .sa-halo__face--anger .sa-halo__disc,
+.shade-art[data-face='sadness'] .sa-halo__face--sadness .sa-halo__disc,
+.shade-art[data-face='loneliness'] .sa-halo__face--loneliness .sa-halo__disc,
+.shade-art[data-face='fear'] .sa-halo__face--fear .sa-halo__disc,
+.shade-art[data-face='despair'] .sa-halo__face--despair .sa-halo__disc,
+.shade-art[data-face='anxiety'] .sa-halo__face--anxiety .sa-halo__disc {
+  fill: var(--cure);
+  stroke: var(--pearl);
+  stroke-dasharray: none;
+}
+
+.shade-art[data-face='anger'] .sa-halo__face--anger .sa-halo__sigil,
+.shade-art[data-face='sadness'] .sa-halo__face--sadness .sa-halo__sigil,
+.shade-art[data-face='loneliness'] .sa-halo__face--loneliness .sa-halo__sigil,
+.shade-art[data-face='fear'] .sa-halo__face--fear .sa-halo__sigil,
+.shade-art[data-face='despair'] .sa-halo__face--despair .sa-halo__sigil,
+.shade-art[data-face='anxiety'] .sa-halo__face--anxiety .sa-halo__sigil {
+  color: var(--ink);
+}
+
+/* Apathy's puddle and sigh (still, like the rest of the numb family). */
+.sa-puddle {
+  fill: rgb(122 119 139 / 0.22);
+  stroke: rgb(154 151 168 / 0.3);
+  stroke-width: 1.2;
+}
+
+.sa-puddle__melt {
+  fill: var(--body-mid);
+}
+
+.sa-sigh {
+  fill: none;
+  stroke: #b3b0c0;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+}
+
+/* The Numbness's veil: a translucent grey shroud; --veil (0 to 3) adds layers. */
+.sa-veil__cloth {
+  fill: rgb(176 173 192 / 0.16);
+  stroke: rgb(206 203 220 / 0.32);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.sa-veil__fold {
+  fill: none;
+  stroke: rgb(210 207 222 / 0.16);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.sa-veil__layer {
+  transition: opacity 400ms ease;
+}
+
+.sa-ripple {
+  fill: none;
+  stroke: rgb(170 167 186 / 0.4);
+  stroke-width: 1.2;
+  animation: var(--a-ripple) 4.2s ease-out infinite;
+}
+
 /* ---------- flare (4% per stack) ---------- */
 .sa-flare {
   transform-origin: 100px 196px;
@@ -663,10 +761,16 @@
 }
 
 /* ---------- Shade slot (205px wide: intent y64-104, silhouette y108-316, nameplate y320-460) ---------- */
+/*
+ * Bosses and elites drawn above scale 1 (and Flare growth) rise past the 200px frame: the art overflows
+ * upward. .shade-slot--tall gives the art row the headroom of scale 1.35 for a lone boss; the intent pill
+ * always stays above the art.
+ */
 .shade-slot {
+  --slot-art: calc(var(--u) * 212);
   position: relative;
   display: grid;
-  grid-template-rows: calc(var(--u) * 44) calc(var(--u) * 212) auto;
+  grid-template-rows: calc(var(--u) * 44) var(--slot-art) auto;
   justify-items: center;
   align-items: end;
   align-content: start;
@@ -676,7 +780,13 @@
   transition: transform var(--t-hover) var(--ease-out);
 }
 
+.shade-slot--tall {
+  --slot-art: calc(var(--u) * 290);
+}
+
 .shade-slot__intent {
+  position: relative;
+  z-index: 3;
   align-self: center;
 }
 

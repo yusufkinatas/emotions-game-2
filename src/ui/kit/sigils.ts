@@ -435,9 +435,10 @@ export function keepsakeIcon(hint: string | undefined, o?: IconOpts): string {
 export function numbBadge(o?: Omit<IconOpts, 'tint'>): string {
   const body =
     `<g class="numb-badge__oval">${EXTRA_SIGIL.numb}</g>` +
-    `<text x="27" y="16.6" font-size="11" font-weight="800" letter-spacing="1" fill="currentColor" font-family="ui-rounded, system-ui, sans-serif">NUMB</text>`;
+    `<text x="27" y="16.8" font-size="12" font-weight="800" letter-spacing="0.8" fill="currentColor" font-family="ui-rounded, system-ui, sans-serif">NUMB</text>`;
   const opts: IconOpts = { ...o, className: `numb-badge ${o?.className ?? ''}`.trim() };
-  return wrap('badge', 'numb', body, opts, '0 0 62 24', 62 / 24);
+  // Render it at least 24px tall so the NUMB word reaches the 12px floor (19).
+  return wrap('badge', 'numb', body, opts, '0 0 66 24', 66 / 24);
 }
 
 /** Every icon name per family, for galleries and tests. */

@@ -4,7 +4,7 @@
 
 import type { Light } from '../../engine/emotions';
 import { LIGHT_NAME } from './names';
-import { markIcon } from './sigils';
+import { markIcon, resourceIcon } from './sigils';
 import { attrs, cssLen, esc, toElement, uniqueId } from './svg';
 import { tipAttrs, tipText } from './widgets';
 
@@ -25,26 +25,35 @@ export interface WandererProps {
 }
 
 /** The heart point on the avatar (viewBox units), where Inward plays land. */
-export const WANDERER_HEART: readonly [number, number] = [74, 108];
+export const WANDERER_HEART: readonly [number, number] = [72, 114];
 
 function flameMarkup(note: readonly Light[], compass: boolean, id: string): string {
   const lit = compass && note.length > 0;
   const [a, b] = note;
   const flame = 'M0 -17C5.5 -9.5 8 -4.6 8 0.4A8 8 0 0 1 -8 0.4C-8 -4.6 -3.4 -8.8 0 -17Z';
   const inner = 'M0 -9C2.6 -5 3.8 -2.4 3.8 0.4A3.8 3.8 0 0 1 -3.8 0.4C-3.8 -2.4 -1.6 -5 0 -9Z';
+  // Two Lights split the flame down the middle (a hard edge, never a blend: 16.2).
   const fill = !lit ? 'var(--numb)' : b ? `url(#${id}f)` : `var(--${a})`;
   const split = lit && b
     ? `<linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="0"><stop offset="0.5" stop-color="var(--${a})"/><stop offset="0.5" stop-color="var(--${b})"/></linearGradient>`
     : '';
-  const glow = lit ? `var(--${a})` : 'var(--numb)';
   return (
     (split ? `<defs>${split}</defs>` : '') +
-    `<g class="wanderer__flame" data-lit="${lit}" style="--flame:${glow}${b && lit ? `;--flame2:var(--${b})` : ''}">` +
-    `<circle class="wanderer__glow" r="22"/>` +
-    (lit && b ? `<circle class="wanderer__glow wanderer__glow--b" r="16" cx="4"/>` : '') +
+    `<g class="wanderer__flame" data-lit="${lit}">` +
     `<path class="wanderer__fire" d="${flame}" style="fill:${fill}"/>` +
     `<path class="wanderer__core" d="${inner}"/>` +
     `</g>`
+  );
+}
+
+/** The flame's light: a halo round the glass and a pool on the ground, in the Note's colour(s). */
+function glowMarkup(note: readonly Light[], lit: boolean, id: string): string {
+  const [a, b] = note;
+  const ca = lit && a ? `var(--${a})` : 'var(--numb)';
+  const cb = lit && b ? `var(--${b})` : ca;
+  return (
+    `<radialGradient id="${id}ga"><stop offset="0" stop-color="${ca}" stop-opacity="0.55"/><stop offset="1" stop-color="${ca}" stop-opacity="0"/></radialGradient>` +
+    `<radialGradient id="${id}gb"><stop offset="0" stop-color="${cb}" stop-opacity="0.55"/><stop offset="1" stop-color="${cb}" stop-opacity="0"/></radialGradient>`
   );
 }
 
@@ -53,13 +62,18 @@ export function wandererMarkup(p: WandererProps): string {
   const id = uniqueId('wd');
   const height = cssLen(p.size ?? 'calc(var(--u) * 160)');
   const lit = p.compass && p.note.length > 0;
+  const two = lit && p.note.length > 1;
   const noteText = lit ? p.note.map((l) => LIGHT_NAME[l]).join(' and ') : '';
   const label = p.label ?? (lit ? `You, your lantern lit by ${noteText}` : 'You, your lantern waiting for a Light');
+  // A rounded travelling cloak whose hood tip flops over to the lantern side.
   const cloak =
-    'M74 34C94 34 106 50 108 72C110 92 114 118 122 142C124 150 118 156 110 156H40C31 156 26 150 28 142C35 118 38 92 40 72C42 50 54 34 74 34Z';
-  const hoodOpening = 'M74 48C88 48 96 60 96 74C96 88 86 96 74 96C62 96 52 88 52 74C52 60 60 48 74 48Z';
-  const x = 124;
-  const y = 112;
+    'M70 28C82 24 96 20 110 26C103 28 99 33 100 40C106 52 108 66 108 80C110 100 114 124 120 146C122 154 116 160 108 160H38C30 160 24 154 26 146C32 124 36 100 38 80C40 50 52 30 70 28Z';
+  const opening = 'M72 50C86 50 94 60 94 73C94 87 85 95 72 95C59 95 50 87 50 73C50 60 58 50 72 50Z';
+  const lx = 121;
+  const ly = 104;
+  const halo = two
+    ? `<circle cx="-4" cy="33" r="30" fill="url(#${id}ga)"/><circle cx="4" cy="33" r="30" fill="url(#${id}gb)"/>`
+    : `<circle cx="0" cy="33" r="32" fill="url(#${id}ga)"/>`;
   return (
     `<svg${attrs({
       xmlns: 'http://www.w3.org/2000/svg',
@@ -70,27 +84,35 @@ export function wandererMarkup(p: WandererProps): string {
       role: 'img',
       'aria-label': label,
     })}><title>${esc(label)}</title>` +
-    `<defs><linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wanderer__stop-hi"/><stop offset="1" class="wanderer__stop-lo"/></linearGradient></defs>` +
-    `<ellipse class="wanderer__shadow" cx="76" cy="162" rx="48" ry="7"/>` +
+    `<defs><linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wanderer__stop-hi"/><stop offset="1" class="wanderer__stop-lo"/></linearGradient>${glowMarkup(p.note, lit, id)}</defs>` +
+    `<ellipse class="wanderer__shadow" cx="74" cy="165" rx="50" ry="7"/>` +
+    `<ellipse class="wanderer__pool" cx="${lx}" cy="166" rx="34" ry="7" fill="url(#${id}ga)"/>` +
     `<g class="wanderer__body">` +
-    `<path class="wanderer__boot" d="M50 150h18v10a4 4 0 0 1 -4 4h-14a4 4 0 0 1 -4 -4v-6z"/>` +
-    `<path class="wanderer__boot" d="M82 150h18v10a4 4 0 0 1 -4 4h-14a4 4 0 0 1 -4 -4v-6z"/>` +
+    `<path class="wanderer__boot" d="M46 152h18v9a4 4 0 0 1 -4 4h-14a4 4 0 0 1 -4 -4v-5z"/>` +
+    `<path class="wanderer__boot" d="M80 152h18v9a4 4 0 0 1 -4 4h-14a4 4 0 0 1 -4 -4v-5z"/>` +
     `<path class="wanderer__cloak" d="${cloak}" fill="url(#${id}c)"/>` +
-    `<path class="wanderer__fold" d="M58 104C60 122 58 138 54 152M92 100C92 120 96 136 100 152"/>` +
-    `<path class="wanderer__scarf" d="M50 96C62 104 86 104 98 96L100 106C86 114 62 114 48 106Z"/>` +
-    `<path class="wanderer__scarf" d="M88 106L96 132L86 134L82 108Z"/>` +
-    `<path class="wanderer__hood" d="${hoodOpening}"/>` +
-    `<g class="wanderer__face"><ellipse class="wanderer__eye" cx="66" cy="76" rx="3.4" ry="4.2"/><ellipse class="wanderer__eye" cx="82" cy="76" rx="3.4" ry="4.2"/>` +
-    `<path class="wanderer__smile" d="M69 85Q74 89 79 85"/><ellipse class="wanderer__blush" cx="61" cy="84" rx="3.6" ry="2"/><ellipse class="wanderer__blush" cx="87" cy="84" rx="3.6" ry="2"/></g>` +
-    `<path class="wanderer__arm" d="M98 104C108 108 114 112 118 104"/>` +
-    `<circle class="wanderer__hand" cx="119" cy="102" r="6"/>` +
+    `<path class="wanderer__fold" d="M54 108C56 124 54 140 50 154M90 104C90 122 94 138 98 154"/>` +
+    `<path class="wanderer__hood" d="${opening}"/>` +
+    `<g class="wanderer__face">` +
+    `<circle class="wanderer__skin" cx="72" cy="76" r="17"/>` +
+    `<path class="wanderer__hair" d="M55 72C55 60 63 55 72 55C81 55 89 60 89 72C85 66 80 64 76 66C73 62 67 62 64 66C61 64 58 67 55 72Z"/>` +
+    `<ellipse class="wanderer__eye" cx="65.5" cy="77" rx="2.5" ry="3.3"/><ellipse class="wanderer__eye" cx="78.5" cy="77" rx="2.5" ry="3.3"/>` +
+    `<path class="wanderer__smile" d="M68.5 84Q72 87 75.5 84"/><ellipse class="wanderer__blush" cx="61" cy="83" rx="3.4" ry="2"/><ellipse class="wanderer__blush" cx="83" cy="83" rx="3.4" ry="2"/>` +
     `</g>` +
-    `<g class="wanderer__lantern" transform="translate(${x} ${y})">` +
-    `<path class="wanderer__handle" d="M-5 -20C-5 -32 5 -32 5 -20"/>` +
-    `<path class="wanderer__cap" d="M-11 -20H11L8 -15H-8Z"/>` +
-    `<rect class="wanderer__glass" x="-10" y="-15" width="20" height="28" rx="5"/>` +
-    `<g transform="translate(0 6)">${flameMarkup(p.note, p.compass, id)}</g>` +
-    `<path class="wanderer__frame" d="M-10 -15V13M10 -15V13M-11 13H11L9 18H-9Z"/>` +
+    `<path class="wanderer__scarf" d="M50 94C62 102 84 102 96 94L98 104C84 112 62 112 48 104Z"/>` +
+    `<path class="wanderer__scarf" d="M60 106L54 132L64 134L68 108Z"/>` +
+    `<path class="wanderer__arm" d="M96 104C106 108 112 106 ${lx - 2} ${ly + 1}"/>` +
+    `</g>` +
+    `<g class="wanderer__lantern" transform="translate(${lx} ${ly})">` +
+    `<g class="wanderer__swing">` +
+    halo +
+    `<path class="wanderer__handle" d="M-7 11C-7 -1 7 -1 7 11"/>` +
+    `<path class="wanderer__cap" d="M-12 11H12L9 17H-9Z"/>` +
+    `<rect class="wanderer__glass" x="-11" y="17" width="22" height="30" rx="6"/>` +
+    `<g transform="translate(0 40) scale(1.12)">${flameMarkup(p.note, p.compass, id)}</g>` +
+    `<path class="wanderer__frame" d="M-11 20V44M11 20V44M-12 47H12L10 52H-10Z"/>` +
+    `</g>` +
+    `<circle class="wanderer__hand" cx="0" cy="1" r="6"/>` +
     `</g>` +
     `</svg>`
   );
@@ -194,3 +216,17 @@ export function wandererHeartPoint(svg: SVGSVGElement): { x: number; y: number }
   return { x: r.left + (hx / 160) * r.width, y: r.top + (hy / 180) * r.height };
 }
 
+// ------------------------------------------------------------------------------------------------
+// Incoming line under the Heart bar (16.2): the engine's end-of-turn preview in one sentence
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * "Incoming: strikes 8, Guard 5, Seething 2. You lose 5." When the loss would take the last Heart it reads
+ * "Lethal: you will fall" with a broken heart, and pulses with the Heart bar's lethal outline.
+ */
+export function incomingLineMarkup(p: { text: string; lethal?: boolean }): string {
+  const lethal = p.lethal
+    ? `<span class="incoming__lethal">${markIcon('brokenHeart')}Lethal: you will fall</span>`
+    : '';
+  return `<p${attrs({ class: 'incoming', 'data-lethal': p.lethal ? 'true' : null })}>${resourceIcon('heart', { className: 'incoming__icon' })}<span>${esc(p.text)}</span>${lethal}</p>`;
+}

@@ -20,7 +20,7 @@ export function prefersReducedMotion(root: Element | null = globalThis.document?
 export function hitStop(el: Element, ms: number): () => void {
   if (prefersReducedMotion() || ms <= 0) return () => undefined;
   const svgs = [...el.querySelectorAll<SVGSVGElement>('svg.shade-art')];
-  if (el instanceof SVGSVGElement && el.classList.contains('shade-art')) svgs.push(el);
+  if (typeof SVGSVGElement !== 'undefined' && el instanceof SVGSVGElement && el.classList.contains('shade-art')) svgs.push(el);
   el.classList.add('is-hitstop');
   for (const s of svgs) s.pauseAnimations?.();
   let done = false;

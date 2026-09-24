@@ -143,6 +143,9 @@
   --a-static: kf-static;
   --a-scribble: kf-scribble;
   --a-twinkle: kf-twinkle;
+  --a-swing: kf-swing;
+  --a-ripple: kf-ripple;
+  --a-hurt: kf-hurt;
 }
 
 /* ---------- colour-blind palette (Okabe-Ito, 16.0). Works on :root or on any container. ---------- */
@@ -255,6 +258,9 @@
   --a-static: none;
   --a-scribble: none;
   --a-twinkle: none;
+  --a-swing: none;
+  --a-ripple: none;
+  --a-hurt: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -314,6 +320,9 @@
     --a-static: none;
     --a-scribble: none;
     --a-twinkle: none;
+  --a-swing: none;
+  --a-ripple: none;
+  --a-hurt: none;
   }
 }
 

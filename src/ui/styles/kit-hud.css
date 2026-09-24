@@ -737,18 +737,22 @@
   flex-wrap: nowrap;
 }
 
-/* The Guard badge overlaps the bar's left end in a reserved slot, so Guard appearing never shifts the bar. */
+/* The Guard badge sits left of the bar in a slot that is always reserved, so Guard appearing never shifts
+   the bar and never covers its fill (16.2 row 2). */
 .nameplate__row--bar {
-  position: relative;
-  width: calc(var(--u) * 180);
+  display: grid;
+  grid-template-columns: calc(var(--u) * 24) calc(var(--u) * 176);
+  gap: calc(var(--u) * 3);
+  align-items: center;
+  width: calc(var(--u) * 203);
 }
 
 .nameplate__row--bar > .guard-badge {
-  position: absolute;
-  z-index: 5;
-  left: calc(var(--u) * -14);
-  top: 50%;
-  margin-top: calc(var(--u) * -14);
+  width: calc(var(--u) * 24);
+}
+
+.nameplate__row--bar > .bar {
+  width: 100%;
 }
 
 .nameplate__row--name2 {

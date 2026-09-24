@@ -67,18 +67,7 @@
   align-items: center;
 }
 
-.map-node__sigils > .sigil {
-  width: calc(var(--u) * 16);
-  height: calc(var(--u) * 16);
-}
-
-.map-node__sigils > .joiner {
-  width: calc(var(--u) * 5);
-  height: calc(var(--u) * 2);
-  margin: 0 calc(var(--u) * -3);
-  border-radius: 2px;
-  background: currentColor;
-}
+/* Sigil sizes and the compound joiner bar live with the other map node extras in kit-run.css. */
 
 .map-node[data-kind='fight'] { --node-c: #b9b0cf; }
 .map-node[data-kind='elite'] {

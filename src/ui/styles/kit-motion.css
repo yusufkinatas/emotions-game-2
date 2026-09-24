@@ -340,3 +340,23 @@
   0%, 100% { opacity: 0.35; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.15); }
 }
+
+/* The Wanderer's lantern swinging from its hand. */
+@keyframes kf-swing {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(5deg); }
+}
+
+@keyframes kf-ripple {
+  0% { transform: scale(0.35); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+/* The Wanderer flickers when hit (18.1 "avatar flicker"). */
+@keyframes kf-hurt {
+  0%, 100% { opacity: 1; }
+  20% { opacity: 0.35; }
+  40% { opacity: 1; }
+  60% { opacity: 0.5; }
+}

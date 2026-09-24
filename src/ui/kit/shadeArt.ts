@@ -12,7 +12,7 @@ import { hashSeed, rand } from './hash';
 import { SHADE_NAME } from './names';
 import { GENERATORS } from './shadeFamilies';
 import { CX, GROUND, cracks } from './shadeGeometry';
-import { MAX_COILS, ornamentLayers } from './shadeOrnaments';
+import { MAX_COILS, MAX_VEIL, ornamentLayers } from './shadeOrnaments';
 import type { ShadeOrnament } from './shadeOrnaments';
 import { sigilBody } from './sigils';
 import { attrs, cssLen, esc, n, svgElement, uniqueId } from './svg';
@@ -36,10 +36,15 @@ export interface ShadeArtOpts {
   size?: number | string;
   /** EnemyDef.visual.scale: shrinks or grows the body inside the fixed frame (clamped to 0.45..1.35). */
   scale?: number;
-  /** Elite and boss dressing: see ornamentFor(enemyId). */
+  /** Elite and boss dressing: pass ornamentFor(enemyId). */
   ornament?: ShadeOrnament | null;
-  /** The Spiral: its Coil gauge, shown as rings (1 to 6). setShadeGauge updates it. */
+  /**
+   * The gauge an ornament shows (setShadeGauge updates it): The Spiral's Coil as rings (0 to 6, default 2),
+   * The Numbness's veil layers (0 to 3, one per Surfaced Shade standing, default 1).
+   */
   gauge?: number;
+  /** The Mask: its faces (EnemyDef.faces) for the halo ornament. Default: Anger, Sadness, Loneliness, Fear. */
+  faces?: readonly Shade[];
   /** Numb family: lasting two-colour cracks left by FELT hits, oldest first. */
   feltCracks?: readonly (readonly [Light, Light])[];
   /** Numb family: Apathy's smaller, slouched oval. */
@@ -87,6 +92,7 @@ export function resolvedFormMarkup(light: Light, o: { size?: number | string; cl
 
 const clampFlare = (f: number | undefined): number => Math.max(0, Math.min(5, Math.floor(f ?? 0)));
 const clampCoil = (g: number | undefined): number => Math.max(0, Math.min(MAX_COILS, Math.floor(g ?? 2)));
+const clampVeil = (g: number | undefined): number => Math.max(0, Math.min(MAX_VEIL, Math.floor(g ?? 1)));
 
 /** Scale range of EnemyDef.visual.scale the frame can hold. */
 export const SHADE_SCALE = { min: 0.45, max: 1.35 } as const;
@@ -159,7 +165,7 @@ export function shadeMarkup(o: ShadeArtOpts): string {
   const fixIds = (s: string) =>
     s.replace(/url\(#HOODCLIP\)/g, `url(#${id}t)`).replace(/url\(#MASKCLIP\)/g, `url(#${id}m)`).replace(/url\(#BODYCLIP\)/g, `url(#${id}c)`).replace(/url\(#BODYGRAD\)/g, `url(#${id}g)`);
   const flash = parts.flash ?? `<path class="sa-flash" d="${bodyPath}"/>`;
-  const orn = o.ornament ? ornamentLayers(o.ornament, parts, rng('ornament'), scale) : {};
+  const orn = o.ornament ? ornamentLayers(o.ornament, parts, rng('ornament'), { scale, faces: o.faces }) : {};
   // Expressions: one per face for compounds, crossfaded by data-showing so a turn changes the mood.
   const outerMood: Shade | null = isShade(o.family) ? o.family : face;
   const expr = (mood: Shade | null, which: 'outer' | 'inner') =>
@@ -204,6 +210,7 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     style:
       `--flare:${flare};--idle-rate:${n(idleDur)};--idle-delay:${n(idleDelay)}s;--dmask:url(#${id}d);` +
       (o.ornament === 'spiral' ? `--coil:${clampCoil(o.gauge)};` : '') +
+      (o.ornament === 'numbness' ? `--veil:${clampVeil(o.gauge)};` : '') +
       `height:${height};width:calc(${height} * 200 / 210)`,
     role: 'img',
     'aria-label': label,
@@ -224,6 +231,7 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     flash +
     `</g>` +
     fixIds(parts.staticFront ?? '') +
+    (orn.staticFront ?? '') +
     `</g>` +
     `</g>` +
     `</g>` +
@@ -265,9 +273,10 @@ export function setShadeFlare(svg: SVGSVGElement, flare: number): void {
   svg.style.setProperty('--flare', String(f));
 }
 
-/** The Spiral: show its Coil gauge (rings) without re-rendering. */
+/** Show an ornament's gauge without re-rendering: The Spiral's Coil rings or The Numbness's veil layers. */
 export function setShadeGauge(svg: SVGSVGElement, gauge: number): void {
-  svg.style.setProperty('--coil', String(clampCoil(gauge)));
+  if (svg.dataset.ornament === 'numbness') svg.style.setProperty('--veil', String(clampVeil(gauge)));
+  else svg.style.setProperty('--coil', String(clampCoil(gauge)));
 }
 
 const REACTION_CLASS: Record<ShadeReaction, string> = {

@@ -315,18 +315,19 @@ function fear(c: GenCtx): Parts {
   const legs = limbs.int(4, 6);
   let legMarkup = '';
   for (let i = 0; i < legs; i++) {
-    // Legs fan out from the lower body; outer legs reach wide with high knees, inner ones stay close.
-    const t = i / (legs - 1);
+    // Spindly ink legs on tiptoe: they leave the lower body, bend out at a knee level with the belly and
+    // come down to small feet, the outer pair wider and a little higher (a scared crouch, not a cage).
+    const t = legs === 1 ? 0.5 : i / (legs - 1);
     const side = t < 0.5 ? -1 : 1;
     const spreadK = Math.abs(t - 0.5) * 2;
-    const a = side < 0 ? 250 - spreadK * 40 + limbs.jitter(5) : 110 + spreadK * 40 + limbs.jitter(5);
-    const [ax, ay] = polar(CX, cy, R * 0.62, a);
-    const kx = ax + side * (12 + spreadK * limbs.range(16, 22));
-    const ky = cy - R * (0.02 + spreadK * limbs.range(0.45, 0.65));
-    const fx = kx + side * (10 + spreadK * limbs.range(10, 14));
-    const d = `M${n(ax)} ${n(ay)}Q${n(ax + (kx - ax) * 0.2)} ${n(ky - 4)} ${n(kx)} ${n(ky)}Q${n(kx + (fx - kx) * 0.9)} ${n(ky + 8)} ${n(fx)} ${n(GROUND - 1)}`;
-    legMarkup += limb(d, 6.6, 'sa-limb sa-limb--leg');
-    legMarkup += `<ellipse class="sa-fist" cx="${n(fx + side * 2)}" cy="${GROUND - 1.5}" rx="5" ry="2.6"/>`;
+    const a = side < 0 ? 196 + spreadK * 34 + limbs.jitter(4) : 164 - spreadK * 34 + limbs.jitter(4);
+    const [ax, ay] = polar(CX, cy, R * 0.72, a);
+    const kx = ax + side * (8 + spreadK * limbs.range(14, 20));
+    const ky = cy + R * (0.7 - spreadK * limbs.range(0.35, 0.5));
+    const fx = kx + side * (3 + spreadK * limbs.range(5, 9));
+    const d = `M${n(ax)} ${n(ay)}Q${n(ax + (kx - ax) * 0.4)} ${n(ky - 7)} ${n(kx)} ${n(ky)}Q${n(kx + side * 2)} ${n(ky + (GROUND - ky) * 0.55)} ${n(fx)} ${n(GROUND - 1)}`;
+    legMarkup += limb(d, 4.6, 'sa-limb sa-limb--leg');
+    legMarkup += `<ellipse class="sa-fist" cx="${n(fx + side * 1.5)}" cy="${GROUND - 1.5}" rx="4.2" ry="2.3"/>`;
   }
   const eyeR = c.rng('eyes');
   const slots = eyeR.int(3, 7);

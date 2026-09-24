@@ -68,4 +68,34 @@ describe('styles', () => {
       expect(text, file).not.toContain('\u2014');
     }
   });
+
+  it('turns hit-stop off under reduced motion (18.1)', () => {
+    const shade = css('kit-shade.css');
+    expect(shade).toContain(":root:not([data-motion='reduced']) .is-hitstop");
+    const media = shade.slice(shade.indexOf('@media (prefers-reduced-motion: reduce)', shade.indexOf('Hit-stop')));
+    expect(media).toMatch(/:root:not\(\[data-motion='full'\]\) \.is-hitstop[\s\S]*?animation-play-state: running/);
+  });
+
+  it('keeps every tappable element at 56 reference px (16.0), small buttons through a hit-area extension', () => {
+    const base = css('base.css');
+    expect(css('tokens.css')).toMatch(/--tap: calc\(var\(--u\) \* 56\)/);
+    expect(base).toMatch(/\.btn \{[\s\S]*?min-width: var\(--tap\);[\s\S]*?min-height: var\(--tap\);/);
+    // 40 visible + 2 x 8 extension = 56 in both directions.
+    expect(base).toMatch(/\.btn--small \{[\s\S]*?min-height: calc\(var\(--u\) \* 40\);[\s\S]*?min-width: calc\(var\(--u\) \* 40\);/);
+    expect(base).toMatch(/\.btn--small::before \{[\s\S]*?inset: calc\(var\(--u\) \* -8\);/);
+  });
+
+  it('never clamps card text and sets no kit text below 12px except the 10px caps footer (19)', () => {
+    for (const [file, text] of all()) {
+      if (file === 'gallery.css') continue;
+      expect(text, file).not.toMatch(/line-clamp/);
+      for (const m of text.matchAll(/font-size: calc\(var\(--c?u\) \* ([\d.]+)\)/g)) {
+        const px = Number(m[1]);
+        const at = text.slice(Math.max(0, m.index! - 400), m.index!);
+        const selector = at.slice(at.lastIndexOf('}') + 1).trim();
+        if (px < 12) expect(selector, `${file}: ${px}px`).toMatch(/card-face__footer|caps/);
+      }
+    }
+  });
+
 });

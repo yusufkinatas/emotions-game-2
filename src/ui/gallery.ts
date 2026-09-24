@@ -14,10 +14,13 @@ import type { CardFaceProps } from './kit/cardFace';
 import { compassMarkup } from './kit/compass';
 import type { CompassProps } from './kit/compass';
 import { LIGHT_NAME, SHADE_NAME } from './kit/names';
-import { companionSlotsMarkup, inwardTargetMarkup, promiseTrayMarkup, wandererMarkup } from './kit/player';
-import { lightMixMarkup, mapNodeMarkup, numbnessMeterMarkup } from './kit/runHud';
+import { companionSlotsMarkup, incomingLineMarkup, inwardTargetMarkup, promiseTrayMarkup, wandererMarkup } from './kit/player';
+import { lightMixMarkup, mapEdgesMarkup, mapLegendMarkup, mapNodeMarkup, numbnessMeterMarkup } from './kit/runHud';
+import type { MapEdge, MapNodeProps } from './kit/runHud';
 import { renderShade, resolvedFormMarkup, setShadeReaction, shadeMarkup } from './kit/shadeArt';
 import type { ShadeArtOpts, ShadeFamily, ShadeReaction } from './kit/shadeArt';
+import { ornamentFor } from './kit/shadeOrnaments';
+import type { ShadeOrnament } from './kit/shadeOrnaments';
 import { ICON_NAMES, intentIcon, keepsakeIcon, markIcon, nodeIcon, numbBadge, resourceIcon, sigil } from './kit/sigils';
 import { threadMarkup } from './kit/thread';
 import {
@@ -66,19 +69,6 @@ function sigilSection(): string {
   const grid = (title: string, items: string) => group(title, `<div class="g-grid">${items}</div>`);
   const icons = (names: readonly string[], fn: (n: string) => string) =>
     names.map((nm) => tile(nm, `<div class="g-icon">${fn(nm)}</div><div class="g-icon g-icon--small">${fn(nm)}</div>`)).join('');
-  const nodes = [
-    mapNodeMarkup({ kind: 'fight', state: 'reachable', key: 1, shades: [['fear'], ['anger']], label: 'Fight: Fear and Anger' }),
-    mapNodeMarkup({ kind: 'fight', state: 'reachable', key: 2, shades: [['anger', 'sadness']], label: 'Fight: Old Grudge' }),
-    mapNodeMarkup({ kind: 'elite', state: 'reachable', key: 3, shades: [['numb']], label: 'Elite: Apathy' }),
-    mapNodeMarkup({ kind: 'fight', state: 'visited', shades: [['sadness'], ['loneliness'], ['fear']], label: 'Fight, visited' }),
-    mapNodeMarkup({ kind: 'fight', state: 'current', shades: [['anxiety']], label: 'Fight, you are here' }),
-    mapNodeMarkup({ kind: 'haven', state: 'reachable', key: 4, label: 'Haven' }),
-    mapNodeMarkup({ kind: 'sanctuary', state: 'unreachable', label: 'Sanctuary' }),
-    mapNodeMarkup({ kind: 'memory', state: 'unreachable', label: 'Memory' }),
-    mapNodeMarkup({ kind: 'chest', state: 'unreachable', label: 'Chest' }),
-    mapNodeMarkup({ kind: 'boss', state: 'unreachable', label: 'Boss: The Mask' }),
-  ];
-  const nodeLabels = ['Fear + Anger, key 1', 'compound, key 2', 'elite: Apathy', 'visited', 'current', 'haven', 'sanctuary', 'memory', 'chest', 'boss'];
   return section(
     'sigils',
     'Sigils and icons',
@@ -89,7 +79,6 @@ function sigilSection(): string {
       <div class="g-group"><h3>Numb, doubt, neutral</h3>${extras}</div>
     </div>` +
       grid('Intents', icons(ICON_NAMES.intents, (k) => intentIcon(k as never))) +
-      group('Map nodes: Shade sigils on fights, compounds joined by a bar, key numbers on reachable nodes', `<div class="g-grid g-grid--nodes">${nodes.map((m, i) => tile(nodeLabels[i]!, m, 'g-tile--node')).join('')}</div>`) +
       grid('Node icons (legend)', ICON_NAMES.nodes.map((k) => tile(k, `<span class="map-node" data-kind="${k}">${nodeIcon(k)}</span>`, 'g-tile--node')).join('')) +
       grid('Resources', icons(ICON_NAMES.resources, (k) => resourceIcon(k as never))) +
       grid('Marks and UI', icons(ICON_NAMES.marks, (k) => markIcon(k as never))) +
@@ -133,16 +122,22 @@ const buried = (shade: Shade, weight: number, aff: string, light: string): CardF
   buried: { weight, shade },
 });
 
-function handFan(): string {
-  const cards: CardFaceProps[] = [
+function handCards(): CardFaceProps[] {
+  return [
     { name: 'Kind Word', lights: ['love'], cost: 1, kindLabel: 'Ease', text: 'Ease 6.', rarity: 'starter', chips: ['Tends Buried Anger', 'Soothes Seething'], state: 'playable' },
     { name: 'Bright Spark', lights: ['joy'], cost: 1, kindLabel: 'Ease', text: 'Ease 4. Draw 1.', rarity: 'starter', chips: ['HARMONY -> Delight'], state: 'playable' },
     { name: 'Sunbeam', lights: ['love', 'joy'], cost: 1, kindLabel: 'Ease', text: 'Ease 7. Mend 2. Draw 1.', rarity: 'blend', chips: ['HARMONY -> Playfulness'], state: 'playable', className: 'is-hover' },
     { name: 'Reach Out', lights: ['friendship'], cost: 1, kindLabel: 'Ease', text: 'Ease 6.', rarity: 'starter', chips: ['HARMONY -> Playfulness', 'Soothes Isolated'], state: 'playable' },
     { name: 'Brave Strike', lights: ['courage'], cost: 1, kindLabel: 'Ease', text: 'Ease 6.', rarity: 'starter', chips: ['HARMONY -> Loyalty'], state: 'playable' },
+    { name: 'Stand Firm', lights: ['courage'], cost: 2, kindLabel: 'Skill', text: 'Gain 5 Guard.', rarity: 'starter', state: 'unaffordable', costState: 'unaffordable' },
     buried('anger', 2, 'Seething', 'Love'),
   ];
-  return `<div class="g-hand">${cards.map((c) => cardFaceMarkup(c)).join('')}</div>`;
+}
+
+/** A hand fan. Dense hands (cards overlapping) collapse chips to icons with .card-chips--icons. */
+function handFan(dense: boolean): string {
+  const cards = handCards().slice(0, dense ? 7 : 5);
+  return `<div class="g-hand${dense ? ' g-hand--dense card-chips--icons' : ''}">${cards.map((c) => cardFaceMarkup(c)).join('')}</div>`;
 }
 
 function cardSection(): string {
@@ -188,9 +183,10 @@ function cardSection(): string {
     group('Lights', `<div class="g-cards">${lightCards}</div>`) +
       group('Blends (footer: the Blend name, every Blend is an Ease card)', `<div class="g-cards">${blends}</div>`) +
       group('Neutral, Buried (cracks in a 10px border band, Weight pips and W label), Insight (turning six-hue border, prism mark)', `<div class="g-cards">${special}</div>`) +
-      group('States: selected glows in its own Light colour, never a pearl frame', `<div class="g-cards">${states}</div>`) +
+      group('States: selected lifts and glows in its own Light colour, never a pearl frame', `<div class="g-cards g-cards--lift">${states}</div>`) +
       group('Cost, rarity, trends', `<div class="g-cards">${costs}</div>`) +
-      group('A hand: compact chips never overrun a neighbour; the hovered card shows the full sentence', `<div class="g-hand-wrap">${handFan()}</div>`) +
+      group('A roomy hand: chips are one word and never wider than their card; the hovered card shows the full sentence', `<div class="g-hand-wrap">${handFan(false)}</div>`) +
+      group('A crowded hand (.card-chips--icons): chips collapse to icons so they never overlap a neighbour', `<div class="g-hand-wrap">${handFan(true)}</div>`) +
       group('Mini (piles, reward tiles): gem, badge and name only', minis) +
       group('Every card in the content pack at the text floor (loaded from content)', `<div class="g-cards g-cards--all" id="g-all-cards"><p class="muted">Loading the content pack...</p></div>`),
   );
@@ -282,18 +278,24 @@ function shadeSection(): string {
     ].join('')}</div>`,
   );
   const elites = group(
-    'Elites and bosses: ornaments by enemy id (ornamentFor), scale up to 1.35',
-    `<div class="g-row">${[
-      shadeTile({ family: 'anger', seed: 31, face: 'anger', scale: 1.3, ornament: 'kettle' }, 'The Kettle'),
-      shadeTile({ family: 'fear', seed: 32, face: 'fear', scale: 1.35, ornament: 'looming' }, 'The Looming'),
-      shadeTile({ family: 'anxiety', seed: 33, face: 'anxiety', innerFace: 'anger', scale: 1.3, ornament: 'knot' }, 'The Knot'),
-      shadeTile({ family: 'despair', seed: 34, face: 'despair', innerFace: 'anxiety', scale: 1.35, ornament: 'spiral', gauge: 2 }, 'The Spiral, Coil 2'),
-      shadeTile({ family: 'despair', seed: 34, face: 'anxiety', innerFace: 'anxiety', scale: 1.35, ornament: 'spiral', gauge: 6 }, 'The Spiral, Coil 6'),
-    ].join('')}</div>`,
+    'Elites and bosses: ornaments by enemy id (ornamentFor), scale up to 1.35 (they rise above the frame)',
+    `<div class="g-row g-row--tall">${[
+      shadeTile({ family: 'anger', seed: 31, face: 'anger', scale: 1.3, ornament: ornamentFor('shade.kettle') }, 'The Kettle: lid and steam'),
+      shadeTile({ family: 'fear', seed: 32, face: 'fear', scale: 1.35, ornament: ornamentFor('shade.looming') }, 'The Looming: tall shadow'),
+      shadeTile({ family: 'anxiety', seed: 33, face: 'anxiety', innerFace: 'anger', scale: 1.3, ornament: ornamentFor('shade.knot') }, 'The Knot: cinched knot'),
+      shadeTile({ family: 'despair', seed: 34, face: 'despair', innerFace: 'anxiety', scale: 1.35, ornament: ornamentFor('shade.spiral'), gauge: 2 }, 'The Spiral, Coil 2'),
+      shadeTile({ family: 'despair', seed: 34, face: 'anxiety', innerFace: 'anxiety', scale: 1.35, ornament: ornamentFor('shade.spiral'), gauge: 6 }, 'The Spiral, Coil 6, Anxiety showing'),
+    ].join('')}</div>` +
+      `<div class="g-row g-row--tall">${[
+        shadeTile({ family: 'mask', seed: 35, face: 'anger', nextFace: 'sadness', scale: 1.35, ornament: ornamentFor('shade.mask') }, 'The Mask: a crown of its faces (showing lit, next dashed)'),
+        shadeTile({ family: 'numb', seed: 36, face: null, slouched: true, scale: 1.15, ornament: ornamentFor('shade.apathy') }, 'Apathy: melting into a puddle, sighing'),
+        shadeTile({ family: 'numb', seed: 37, face: null, scale: 1.35, ornament: ornamentFor('shade.numbness'), gauge: 1 }, 'The Numbness, veil 1'),
+        shadeTile({ family: 'numb', seed: 37, face: null, scale: 1.35, ornament: ornamentFor('shade.numbness'), gauge: 3, feltCracks: [['love', 'joy']] }, 'veil 3 (three Surfaced), one FELT crack'),
+      ].join('')}</div>`,
   );
   const maskRow = group(
     'The Mask: its own expression per face, face sigil on the cheek, next face on the forehead, fissures spread with Flare',
-    `<div class="g-row">${(
+    `<div class="g-row g-row--tall">${(
       [
         ['anger', 'sadness', 0],
         ['sadness', 'loneliness', 1],
@@ -301,7 +303,7 @@ function shadeSection(): string {
         ['fear', 'anger', 5],
       ] as const
     )
-      .map(([f, nx, fl]) => shadeTile({ family: 'mask', seed: 1, face: f, nextFace: nx, flare: fl, scale: 1.2 }, `${SHADE_NAME[f]}, next ${SHADE_NAME[nx]}, Flare ${fl}`))
+      .map(([f, nx, fl]) => shadeTile({ family: 'mask', seed: 1, face: f, nextFace: nx, flare: fl, ornament: 'mask' }, `${SHADE_NAME[f]}, next ${SHADE_NAME[nx]}, Flare ${fl}`))
       .join('')}</div>`,
   );
   const numbRow = group(
@@ -313,16 +315,16 @@ function shadeSection(): string {
     ].join('')}</div>`,
   );
   const flareRow = group(
-    'Flare 0 to 5: cracks and timing stay the same Shade as it Flares',
-    `<div class="g-row">${[0, 1, 2, 3, 4, 5].map((fl) => shadeTile({ family: 'fear', seed: 40, face: 'fear', flare: fl, size: 140 }, `Fear Flare ${fl}`)).join('')}</div>` +
-      `<div class="g-row">${[0, 5].map((fl) => shadeTile({ family: 'anger', seed: 41, face: 'anger', flare: fl, size: 140 }, `Anger Flare ${fl}`)).join('')}${[0, 5]
-        .map((fl) => shadeTile({ family: 'loneliness', seed: 42, face: 'loneliness', flare: fl, size: 140 }, `Loneliness Flare ${fl}`))
-        .join('')}${[0, 5].map((fl) => shadeTile({ family: 'despair', seed: 43, face: 'despair', flare: fl, size: 140 }, `Despair Flare ${fl}`)).join('')}</div>`,
+    'Flare 0 to 5: cracks, body and timing stay the same Shade as it Flares; only its Flare look grows',
+    `<div class="g-row g-row--small">${[0, 1, 2, 3, 4, 5].map((fl) => shadeTile({ family: 'fear', seed: 40, face: 'fear', flare: fl, size: 130 }, `Fear Flare ${fl}`)).join('')}</div>` +
+      `<div class="g-row g-row--small" style="margin-top:12px">${[0, 5].map((fl) => shadeTile({ family: 'anger', seed: 41, face: 'anger', flare: fl, size: 130 }, `Anger Flare ${fl}`)).join('')}${[0, 5]
+        .map((fl) => shadeTile({ family: 'loneliness', seed: 42, face: 'loneliness', flare: fl, size: 130 }, `Loneliness Flare ${fl}`))
+        .join('')}${[0, 5].map((fl) => shadeTile({ family: 'despair', seed: 43, face: 'despair', flare: fl, size: 130 }, `Despair Flare ${fl}`)).join('')}</div>`,
   );
   const reactions: ShadeReaction[] = ['flinch', 'swell', 'hit', 'resolving', 'deepResolving', 'suppressed'];
   const reactRow = group(
     'Reactions (click to replay). Resolve: cracks flare, ink dissolves along them, a 50px light form rises and holds',
-    `<div class="g-row" id="g-reactions">${reactions
+    `<div class="g-row g-row--small" id="g-reactions">${reactions
       .map((re) => `<figure class="g-shade" data-reaction="${re}"><div class="g-shade__stage"></div><figcaption><button class="btn btn--small">${re}</button></figcaption></figure>`)
       .join('')}</div>`,
   );
@@ -353,7 +355,7 @@ function mountReactions(): void {
         seed: 21,
         face: deep ? 'anger' : 'sadness',
         innerFace: deep ? 'sadness' : null,
-        size: 180,
+        size: 160,
       });
       stage.replaceChildren(svg);
       requestAnimationFrame(() => {
@@ -395,11 +397,15 @@ function slot(o: {
   feet?: string;
   bark?: string;
   scale?: number;
+  ornament?: ShadeOrnament | null;
+  gauge?: number;
+  tall?: boolean;
+  focused?: boolean;
 }): string {
   const matchups = defaultMatchups(o.face, o.bad);
-  return `<div class="shade-slot g-slot" data-face="${o.face ?? 'none'}">
+  return `<div class="shade-slot g-slot${o.tall ? ' shade-slot--tall' : ''}" data-face="${o.face ?? 'none'}"${o.focused ? ' data-focused="true"' : ''}>
     <div class="shade-slot__intent">${o.banner ?? o.pill}</div>
-    <div class="shade-slot__art">${shadeMarkup({ family: o.family, seed: o.seed, face: o.face, innerFace: o.inner ?? null, nextFace: o.next ?? null, flare: o.flare ?? 0, scale: o.scale ?? 1, label: o.name })}${o.feet ? `<div class="shade-slot__feet">${o.feet}</div>` : ''}${o.bark ? `<div class="g-bark">${barkMarkup({ text: o.bark })}</div>` : ''}</div>
+    <div class="shade-slot__art">${shadeMarkup({ family: o.family, seed: o.seed, face: o.face, innerFace: o.inner ?? null, nextFace: o.next ?? null, flare: o.flare ?? 0, scale: o.scale ?? 1, label: o.name, ornament: o.ornament ?? null, ...(o.gauge !== undefined ? { gauge: o.gauge } : {}), shimmer: o.family !== 'anger' || o.seed === 101 })}${o.feet ? `<div class="shade-slot__feet">${o.feet}</div>` : ''}${o.bark ? `<div class="g-bark">${barkMarkup({ text: o.bark })}</div>` : ''}</div>
     ${nameplateMarkup({ face: o.face, name: o.name, beneath: o.beneath ?? null, nextFace: o.next ?? null, hp: o.hp, maxHp: o.maxHp, guard: o.guard ?? 0, matchups, chips: o.chips, ...(o.previewLoss ? { previewLoss: o.previewLoss } : {}) })}
   </div>`;
 }
@@ -412,9 +418,9 @@ function stageRow(): string {
     ${slot({ face: 'loneliness', family: 'loneliness', seed: 105, name: 'Surfaced Loneliness', hp: 1, maxHp: 24, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 4 }, { kind: 'afflict', affliction: 'isolated', stacks: 2 }], projected: true, title: 'Lantern Moth will leave it Wavering.' }), chips: [], bad: 'Just go out and have fun!', feet: waveringChipMarkup(), scale: 0.85 })}
   </div>
   <div class="g-stage-row">
-    ${slot({ face: 'fear', family: 'mask', seed: 106, name: 'The Mask', next: 'anger', hp: 96, maxHp: 150, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 8 }, { kind: 'afflict', affliction: 'trembling', stacks: 2 }] }), chips: [{ kind: 'gauge', label: 'Turns left', value: 1 }, { kind: 'buff', label: 'Flare', value: 3 }, { kind: 'flag', label: 'Many Faces' }, { kind: 'flag', label: 'Cracked' }], bad: 'Come on, everyone else is doing it.', flare: 3, scale: 1.2 })}
-    ${slot({ face: 'despair', family: 'despair', seed: 107, name: 'The Spiral', inner: 'anxiety', beneath: 'anxiety', hp: 150, maxHp: 200, guard: 15, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 3, count: 4 }, { kind: 'afflict', affliction: 'restless', stacks: 1 }] }), chips: [{ kind: 'gauge', label: 'Coil', value: 4 }, { kind: 'flag', label: 'Deepening' }], bad: 'Just pull yourself together.', scale: 1.2 })}
-    ${slot({ face: null, family: 'numb', seed: 104, name: 'The Numbness', hp: 180, maxHp: 180, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 12 }] }), chips: [{ kind: 'flag', label: 'Veiled' }, { kind: 'flag', label: 'Muffled' }], scale: 1.1 })}
+    ${slot({ face: 'fear', family: 'mask', seed: 106, name: 'The Mask', next: 'anger', hp: 96, maxHp: 150, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 8 }, { kind: 'afflict', affliction: 'trembling', stacks: 2 }], title: 'Strikes for 8 and gives you 2 Trembling.' }), chips: [{ kind: 'gauge', label: 'Turns left', value: 1 }, { kind: 'buff', label: 'Flare', value: 3 }, { kind: 'flag', label: 'Many Faces' }, { kind: 'flag', label: 'Cracked' }], bad: 'Come on, everyone else is doing it.', flare: 3, scale: 1.3, ornament: 'mask', tall: true, focused: true })}
+    ${slot({ face: 'despair', family: 'despair', seed: 107, name: 'The Spiral', inner: 'anxiety', beneath: 'anxiety', hp: 150, maxHp: 200, guard: 15, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 3, count: 4 }, { kind: 'afflict', affliction: 'restless', stacks: 1 }] }), chips: [{ kind: 'gauge', label: 'Coil', value: 4 }, { kind: 'flag', label: 'Deepening' }], bad: 'Just pull yourself together.', scale: 1.3, ornament: 'spiral', gauge: 4, tall: true, feet: promiseChipMarkup({ text: 'Promise: Ease 10', lights: ['courage', 'hope'] }) })}
+    ${slot({ face: null, family: 'numb', seed: 104, name: 'The Numbness', hp: 180, maxHp: 180, pill: intentPillMarkup({ items: [{ kind: 'strike', value: 12 }] }), chips: [{ kind: 'flag', label: 'Veiled' }, { kind: 'flag', label: 'Muffled' }], scale: 1.3, ornament: 'numbness', gauge: 2, tall: true })}
   </div>`;
 }
 
@@ -431,31 +437,58 @@ function stageSection(): string {
 // Player side
 // ------------------------------------------------------------------------------------------------
 
-function playerSection(): string {
-  const avatars = [
-    tile('No Compass yet: grey flame', wandererMarkup({ note: [], compass: false, size: 160 }), 'g-tile--avatar'),
-    tile('Note Love', wandererMarkup({ note: ['love'], compass: true, size: 160 }), 'g-tile--avatar'),
-    tile('Note Delight: split flame', wandererMarkup({ note: ['love', 'joy'], compass: true, size: 160 }), 'g-tile--avatar'),
-    tile('Note Calm', wandererMarkup({ note: ['calm'], compass: true, size: 160 }), 'g-tile--avatar'),
-  ].join('');
-  const inward = `<div class="g-inward">${inwardTargetMarkup({ preview: 'Clear 2 Seething. Tend Buried Anger (W2 -> W1).', focused: true, size: 220 })}<div class="g-inward__avatar">${wandererMarkup({ note: ['love'], compass: true, size: 150 })}</div></div>`;
-  const companions = `<div class="g-row g-row--center">${companionSlotsMarkup({
+function playerPanel(o: { inward: boolean; lethal: boolean }): string {
+  const companions = companionSlotsMarkup({
     slots: [
       { icon: 'moth', name: 'Lantern Moth', value: 3, action: 'ease', title: 'Lantern Moth: at the end of your turn, Ease 3 to your last target.' },
       { icon: 'hare', name: 'Burrow Hare', value: 3, action: 'guard', title: 'Burrow Hare: at the end of your turn, you gain 3 Guard.' },
       null,
     ],
     isolated: false,
-  })}<span class="g-gap"></span>${companionSlotsMarkup({ slots: [{ icon: 'dog', name: 'Old Dog', value: 6, action: 'ease' }, { icon: 'moth', name: 'Lantern Moth', value: 3, action: 'ease' }, null], isolated: true })}</div>`;
+  });
+  const heart = o.lethal
+    ? barMarkup({ kind: 'heart', value: 7, max: 70, previewLoss: 9, lethal: true })
+    : barMarkup({ kind: 'heart', value: 54, max: 70, previewLoss: 5 });
+  return `<div class="g-player">
+    <div class="g-player__avatar">
+      ${guardBubbleMarkup({ size: 176 })}
+      ${wandererMarkup({ note: ['love', 'joy'], compass: true, size: 160 })}
+      ${o.inward ? inwardTargetMarkup({ preview: 'Clear 2 Seething. Tend Buried Anger (W2 -> W1).', focused: true, size: 214 }) : ''}
+    </div>
+    <div class="g-player__companions">${companions}</div>
+    <div class="g-player__heart">${guardBadgeMarkup(5, { title: 'Guard 5: blocks the next 5 Shade damage this round.' })}${heart}</div>
+    ${incomingLineMarkup(o.lethal ? { text: 'Incoming: strikes 12, Seething 2.', lethal: true } : { text: 'Incoming: strikes 8, Guard 5, Seething 2. You lose 5.' })}
+    <div class="chip-row">${statusChipMarkup(AFFLICTION_CHIPS[0]!)}${statusChipMarkup(AFFLICTION_CHIPS[1]!)}</div>
+    ${promiseTrayMarkup(['+5 Guard, draw 1.'])}
+  </div>`;
+}
+
+function playerSection(): string {
+  const avatars = [
+    tile('No Compass yet: grey flame', wandererMarkup({ note: [], compass: false, size: 160 }), 'g-tile--avatar'),
+    tile('Note Love', wandererMarkup({ note: ['love'], compass: true, size: 160 }), 'g-tile--avatar'),
+    tile('Note Delight: split flame', wandererMarkup({ note: ['love', 'joy'], compass: true, size: 160 }), 'g-tile--avatar'),
+    tile('Note Courage', wandererMarkup({ note: ['courage'], compass: true, size: 160 }), 'g-tile--avatar'),
+    tile('Note Calm', wandererMarkup({ note: ['calm'], compass: true, size: 160 }), 'g-tile--avatar'),
+    tile('Hit: flicker (frozen)', wandererMarkup({ note: ['hope'], compass: true, size: 160, className: 'is-hit' }), 'g-tile--avatar g-freeze" data-t="60'),
+  ].join('');
+  const companions = `<div class="g-row g-row--center g-companions">${companionSlotsMarkup({
+    slots: [
+      { icon: 'moth', name: 'Lantern Moth', value: 3, action: 'ease', title: 'Lantern Moth: at the end of your turn, Ease 3 to your last target.' },
+      { icon: 'hare', name: 'Burrow Hare', value: 3, action: 'guard', title: 'Burrow Hare: at the end of your turn, you gain 3 Guard.' },
+      { icon: 'dog', name: 'Old Dog', value: 6, action: 'ease', title: 'Old Dog: at the end of your turn, Ease 6 to your last target.' },
+    ],
+    isolated: false,
+  })}<span class="g-gap"></span>${companionSlotsMarkup({ slots: [{ icon: 'dog', name: 'Old Dog', value: 6, action: 'ease' }, { icon: 'moth', name: 'Lantern Moth', value: 3, action: 'ease' }, null], isolated: true })}<span class="g-gap"></span>${companionSlotsMarkup({ slots: [], isolated: false })}</div>`;
   const thread = `<div class="g-thread" id="g-thread">${cardFaceMarkup({ name: 'Kind Word', lights: ['love'], cost: 1, kindLabel: 'Ease', text: 'Ease 6.', rarity: 'starter', state: 'selected' })}${cardFaceMarkup(buried('anger', 2, 'Seething', 'Love'))}</div>`;
   return section(
     'player',
     'Player side',
-    'The Wanderer (its lantern flame is the Note), the INWARD target, Companion slots, the Promise tray and the thread of light from a Light card to the Buried card it can Tend.',
-    group('The Wanderer', `<div class="g-row">${avatars}</div>`) +
-      group('INWARD target (shown only when Inward is legal)', inward) +
-      group('Companions (56px slots; Isolated greys them)', companions) +
-      group('Promise tray', promiseTrayMarkup(['+5 Guard, draw 1.', 'Gain 1 Spirit and draw 1.'])) +
+    'The Wanderer (its lantern flame is the Note), the INWARD target, Companion slots, the Heart row, the Promise tray and the thread of light from a Light card to the Buried card it can Tend.',
+    group('Player panel, composed at 340px: a Love card is selected, so the INWARD target shows', `<div class="g-row g-row--top">${playerPanel({ inward: true, lethal: false })}${playerPanel({ inward: false, lethal: true })}</div>`) +
+      group('The Wanderer', `<div class="g-row">${avatars}</div>`) +
+      group('Companions (56px slots, action number; Isolated greys them; empty slots)', companions) +
+      group('Promise tray and incoming line', `<div class="g-row g-row--center">${promiseTrayMarkup(['+5 Guard, draw 1.', 'Gain 1 Spirit and draw 1.'])}${incomingLineMarkup({ text: 'Incoming: strikes 8, Guard 5, Seething 2. You lose 5.' })}</div>`) +
       group('Thread of light (selected Love card to Buried Anger)', thread),
   );
 }
@@ -630,34 +663,105 @@ function hudSection(): string {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Run HUD, coach marks
+// Map and run HUD
 // ------------------------------------------------------------------------------------------------
 
-function runSection(): string {
-  const mix = lightMixMarkup({
-    width: 800,
-    ghost: 1,
-    segments: [
-      { kind: 'light', light: 'love', count: 4 },
-      { kind: 'light', light: 'joy', count: 3 },
-      { kind: 'light', light: 'friendship', count: 2 },
-      { kind: 'light', light: 'courage', count: 4 },
-      { kind: 'blend', lights: ['love', 'joy'], count: 1 },
-      { kind: 'neutral', count: 1 },
-      { kind: 'insight', light: 'calm', count: 1 },
-      { kind: 'buried', shade: 'anger', count: 1 },
-      { kind: 'buried', shade: 'fear', count: 1 },
-    ],
-  });
+const MIX_SEGMENTS: Parameters<typeof lightMixMarkup>[0]['segments'] = [
+  { kind: 'light', light: 'love', count: 4 },
+  { kind: 'light', light: 'joy', count: 3 },
+  { kind: 'light', light: 'friendship', count: 2 },
+  { kind: 'light', light: 'courage', count: 4 },
+  { kind: 'blend', lights: ['love', 'joy'], count: 1 },
+  { kind: 'blend', lights: ['friendship', 'courage'], count: 1 },
+  { kind: 'neutral', count: 1 },
+  { kind: 'insight', light: 'calm', count: 1 },
+  { kind: 'buried', shade: 'anger', count: 1 },
+  { kind: 'buried', shade: 'fear', count: 1 },
+];
+
+/** A four-row slice of a map: nodes on a grid, edges dotted ahead and solid behind. */
+function mapSlice(): string {
+  const W = 560;
+  const H = 400;
+  const col = (c: number) => 80 + c * 133;
+  const row = (r: number) => H - 50 - r * 100;
+  type N = { c: number; r: number; p: MapNodeProps };
+  const nodes: N[] = [
+    { c: 1, r: 0, p: { kind: 'fight', state: 'visited', shades: [['anger']], label: 'Fight, visited: Grumble' } },
+    { c: 2, r: 0, p: { kind: 'fight', state: 'unreachable', shades: [['sadness']], label: 'Fight: Mope' } },
+    { c: 1, r: 1, p: { kind: 'chest', state: 'current', label: 'Chest, you are here' } },
+    { c: 0, r: 2, p: { kind: 'fight', state: 'reachable', key: 1, shades: [['fear'], ['anger']], label: 'Fight: Fear and Anger' } },
+    { c: 1, r: 2, p: { kind: 'elite', state: 'reachable', key: 2, shades: [['anger']], label: 'Elite: The Kettle' } },
+    { c: 2, r: 2, p: { kind: 'memory', state: 'reachable', key: 3, label: 'Memory' } },
+    { c: 3, r: 2, p: { kind: 'sanctuary', state: 'unreachable', label: 'Sanctuary' } },
+    { c: 0, r: 3, p: { kind: 'haven', state: 'unreachable', label: 'Haven' } },
+    { c: 1, r: 3, p: { kind: 'fight', state: 'unreachable', shades: [['loneliness'], ['sadness'], ['fear']], label: 'Fight: Loneliness, Sadness and Fear' } },
+    { c: 2, r: 3, p: { kind: 'fight', state: 'unreachable', shades: [['anger', 'sadness']], label: 'Fight: Old Grudge' } },
+  ];
+  const at = (c: number, r: number): [number, number] => [col(c), row(r)];
+  const edges: MapEdge[] = [
+    { from: at(1, 0), to: at(1, 1), state: 'travelled' },
+    { from: at(2, 0), to: at(1, 1), state: 'future' },
+    { from: at(1, 1), to: at(0, 2), state: 'route' },
+    { from: at(1, 1), to: at(1, 2), state: 'future' },
+    { from: at(1, 1), to: at(2, 2), state: 'future' },
+    { from: at(2, 0), to: at(3, 2), state: 'future' },
+    { from: at(0, 2), to: at(0, 3), state: 'route' },
+    { from: at(1, 2), to: at(1, 3), state: 'future' },
+    { from: at(2, 2), to: at(2, 3), state: 'future' },
+    { from: at(3, 2), to: at(2, 3), state: 'future' },
+  ];
+  const placed = nodes
+    .map((nd) => `<div class="g-map__node" style="left:${col(nd.c)}px;top:${row(nd.r)}px">${mapNodeMarkup(nd.p)}</div>`)
+    .join('');
+  return `<div class="g-map" style="width:${W}px;height:${H}px">${mapEdgesMarkup({ width: W, height: H, edges })}${placed}</div>`;
+}
+
+function mapSection(): string {
+  const nodes: [string, MapNodeProps][] = [
+    ['Fear + Anger, reachable, key 1', { kind: 'fight', state: 'reachable', key: 1, shades: [['fear'], ['anger']], label: 'Fight: Fear and Anger' }],
+    ['one Shade: big sigil', { kind: 'fight', state: 'reachable', key: 2, shades: [['despair']], label: 'Fight: Slump' }],
+    ['compound: joined by a bar', { kind: 'fight', state: 'reachable', key: 3, shades: [['anger', 'sadness']], label: 'Fight: Old Grudge' }],
+    ['three Shades, visited', { kind: 'fight', state: 'visited', shades: [['sadness'], ['loneliness'], ['fear']], label: 'Fight, visited' }],
+    ['elite: The Knot', { kind: 'elite', state: 'reachable', key: 4, shades: [['anxiety', 'anger']], label: 'Elite: The Knot' }],
+    ['elite: Apathy (NUMB)', { kind: 'elite', state: 'unreachable', shades: [['numb']], label: 'Elite: Apathy' }],
+    ['current', { kind: 'fight', state: 'current', shades: [['anxiety']], label: 'Fight, you are here' }],
+    ['haven, reachable', { kind: 'haven', state: 'reachable', key: 1, label: 'Haven' }],
+    ['sanctuary, visited', { kind: 'sanctuary', state: 'visited', label: 'Sanctuary, visited' }],
+    ['memory, unreachable', { kind: 'memory', state: 'unreachable', label: 'Memory' }],
+    ['chest, reachable', { kind: 'chest', state: 'reachable', key: 2, label: 'Chest' }],
+    ['boss: The Mask', { kind: 'boss', state: 'unreachable', label: 'Boss: The Mask', silhouette: { family: 'mask', seed: 7, face: 'anger', nextFace: 'sadness', ornament: 'mask' } }],
+    ['boss: The Spiral', { kind: 'boss', state: 'reachable', key: 1, label: 'Boss: The Spiral', silhouette: { family: 'despair', seed: 8, face: 'despair', innerFace: 'anxiety', ornament: 'spiral' } }],
+    ['boss, no silhouette', { kind: 'boss', state: 'visited', label: 'Boss' }],
+  ];
   return section(
-    'run',
-    'Run HUD and guidance',
-    'The Numbness meter, the Light Mix bar (Blends split, Buried ink with a cure rim, Insight pearl, a +1 ghost for the hovered reward), coach marks and barks.',
-    group('The Numbness meter', `<div class="g-row">${numbnessMeterMarkup({ count: 2, title: 'Buried Anger (W2) and Buried Fear (W1) will surface. The rest add +6 Intensity per Weight.' })}${numbnessMeterMarkup({ count: 3 })}</div>`) +
-      group('Light Mix bar', mix) +
+    'map',
+    'Map and run HUD',
+    'Map nodes (Shade sigils on fights and elites, compounds joined by a bar, key numbers on reachable nodes, boss silhouettes), edges, the legend, the Light Mix bar (Blends split, Buried ink with a cure rim, Insight pearl, a +1 ghost for the hovered reward) and the Numbness meter.',
+    group('Nodes and states: reachable (pulsing ring and key), visited (filled), current, unreachable (40%)', `<div class="g-grid g-grid--nodes">${nodes.map(([label, p]) => tile(label, mapNodeMarkup(p), 'g-tile--node')).join('')}</div>`) +
+      group('A map slice: travelled edges solid, future dotted, the hovered route bright; the legend is always visible', `<div class="g-row g-row--top">${mapSlice()}<div class="panel g-legend">${mapLegendMarkup()}</div></div>`) +
+      group('Light Mix bar (x240-1040): a +1 ghost on Joy for the hovered reward card', `<div class="g-mix">${lightMixMarkup({ width: 800, ghost: 1, segments: MIX_SEGMENTS, button: true })}</div>`) +
+      group('The Numbness meter (top bar and map panel)', `<div class="g-row">${numbnessMeterMarkup({ count: 2, title: 'Buried Anger (W2) and Buried Fear (W1) will surface. The rest add +6 Intensity per Weight.' })}${numbnessMeterMarkup({ count: 3 })}${numbnessMeterMarkup({ count: 1 })}</div>`),
+  );
+}
+
+// ------------------------------------------------------------------------------------------------
+// Guidance: coach marks, barks, feet chips
+// ------------------------------------------------------------------------------------------------
+
+function guidanceSection(): string {
+  return section(
+    'guidance',
+    'Coach marks, barks and feet chips',
+    'Coach marks are pearl bubbles with an arrow toward their anchor and never block input. Barks are the Shades speaking; farewells are ink. Promise and Wavering chips sit at a Shade\'s feet.',
+    group(
+      'Coach marks (arrow down, left, up, right)',
+      `<div class="g-row g-row--center g-coach">${coachMarkMarkup({ text: 'Kind Word is Love. Love is Anger’s opposite, so it Eases double.', arrow: 'down' })}${coachMarkMarkup({ text: 'Drop a card on yourself: clear your feeling and Tend what you buried.', arrow: 'left' })}${coachMarkMarkup({ text: 'Out of Spirit. End your turn and you get 3 back.', arrow: 'up' })}${coachMarkMarkup({ text: 'Two feelings. OPPOSITE hits turn it.', arrow: 'right' })}</div>`,
+    ) +
+      group('Barks and farewells', `<div class="g-row g-row--center">${barkMarkup({ text: 'Nobody LISTENS.' })}${barkMarkup({ text: 'HMPH.', tail: 'left' })}${barkMarkup({ text: 'It goes quiet. Not calm. Just quiet.', farewell: true })}</div>`) +
       group(
-        'Coach marks and barks',
-        `<div class="g-row g-row--center">${coachMarkMarkup({ text: 'Kind Word is Love. Love is Anger’s opposite, so it Eases double.', arrow: 'down' })}${coachMarkMarkup({ text: 'Drop a card on yourself: clear your feeling and Tend what you buried.', arrow: 'left' })}${barkMarkup({ text: 'Nobody LISTENS.' })}${barkMarkup({ text: 'It goes quiet. Not calm. Just quiet.', farewell: true })}</div>`,
+        "Chips at a Shade's feet",
+        `<div class="g-row g-row--center">${promiseChipMarkup({ text: 'Promise: Ease 8', lights: ['hope'] })}${promiseChipMarkup({ text: 'Promise: Ease 12', lights: ['hope', 'courage'] })}${waveringChipMarkup()}</div>`,
       ),
   );
 }
@@ -682,7 +786,7 @@ function greyscaleSection(): string {
     'Everything must stay readable with ?gray=1: shapes, patterns and labels carry the meaning.',
     `<div class="g-greyscale">
       <div class="g-row g-grey-sigils">${sig.map((nm) => `<span class="g-grey-sigil">${sigil(nm, { size: 28, tint: true })}<small>${nm}</small></span>`).join('')}</div>
-      <div class="g-cards">${LIGHTS.map((l) => cardFaceMarkup({ name: SAMPLE[l].name, lights: [l], cost: SAMPLE[l].cost, kindLabel: SAMPLE[l].kind, text: SAMPLE[l].text, rarity: 'common' })).join('')}${BLEND_SAMPLES.slice(0, 2)
+      <div class="g-cards">${LIGHTS.map((l) => cardFaceMarkup({ name: SAMPLE[l].name, lights: [l], cost: SAMPLE[l].cost, kindLabel: SAMPLE[l].kind, text: SAMPLE[l].text, rarity: 'common' })).join('')}${BLEND_SAMPLES.slice(0, 1)
         .map((p) => cardFaceMarkup(p))
         .join('')}</div>
       <div class="g-row">${LIGHTS.map((l) => matchupChipMarkup({ kind: 'opposite', light: l })).join('')}${AFFLICTION_CHIPS.slice(0, 4).map(statusChipMarkup).join('')}</div>
@@ -825,7 +929,7 @@ function toolbar(): string {
     <button class="btn btn--small" data-toggle="motion">Reduced motion</button>
     <button class="btn btn--small" data-toggle="gray">Greyscale (?gray=1)</button>
     <button class="btn btn--small" data-toggle="mute">Mute</button>
-    <nav class="g-nav">${['sigils', 'cards', 'shades', 'stage', 'player', 'compass', 'hud', 'run', 'palettes', 'greyscale', 'audio']
+    <nav class="g-nav">${['sigils', 'cards', 'shades', 'stage', 'player', 'compass', 'hud', 'map', 'guidance', 'palettes', 'greyscale', 'audio']
       .map((id) => `<a href="#${id}">${id}</a>`)
       .join('')}</nav>
   </div>`;
@@ -878,7 +982,8 @@ root.innerHTML =
   playerSection() +
   compassSection() +
   hudSection() +
-  runSection() +
+  mapSection() +
+  guidanceSection() +
   paletteSection() +
   greyscaleSection() +
   audioSection();

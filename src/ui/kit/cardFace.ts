@@ -258,14 +258,23 @@ function rarityMarkup(r: Rarity): string {
   return `<span class="card-face__rarity rarity rarity--${r}" aria-hidden="true"></span>`;
 }
 
+/** A chip sentence as it should be spoken: "HARMONY -> Delight" reads "Harmony: Delight". */
+function spokenChip(chipText: string): string {
+  const s = chipText.replace(/^HARMONY\b/, 'Harmony').replace(/\s*->\s*/g, ': ').trim();
+  return /[.!?]$/.test(s) ? s : `${s}.`;
+}
+
 function defaultAria(p: CardFaceProps, displayName: string): string {
+  // Chips are drawn aria-hidden (they collapse to icons in a crowded hand), so the label carries them.
+  const chips = (p.chips ?? []).slice(0, 2).map(spokenChip);
+  const tail = chips.length ? ` ${chips.join(' ')}` : '';
   if (p.buried) {
-    return `${displayName}, Weight ${clampWeight(p.buried.weight)}, unplayable. ${p.text}`;
+    return `${displayName}, Weight ${clampWeight(p.buried.weight)}, unplayable. ${p.text}${tail}`;
   }
   const lights = p.lights.map((l) => LIGHT_NAME[l]).join(' and ') || 'no Light';
   const kind = p.insight ? ', Insight' : '';
   const cost = p.cost === null ? 'unplayable' : `cost ${p.cost}`;
-  return `${displayName}, ${lights}${kind}, ${cost}. ${p.text}`;
+  return `${displayName}, ${lights}${kind}, ${cost}. ${p.text}${tail}`;
 }
 
 const PRISM_MARK =

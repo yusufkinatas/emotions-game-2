@@ -462,3 +462,114 @@ body {
 .g-stage-row + .g-stage-row {
   margin-top: 18px;
 }
+
+/* ---------- final polish pass ---------- */
+.g-cards--lift {
+  padding-top: 56px;
+}
+
+.g-row--top {
+  align-items: flex-start;
+}
+
+/* A roomy fan (5 cards, 110px pitch) and a crowded one (7 cards, 82px pitch). */
+.g-hand > .card-face + .card-face {
+  margin-left: -20px;
+}
+
+.g-hand--dense > .card-face + .card-face {
+  margin-left: -48px;
+}
+
+.g-row--tall .g-shade__stage {
+  min-height: 300px;
+  padding-top: 70px;
+}
+
+.g-row--small {
+  gap: 12px;
+}
+
+.g-row--small .g-shade__stage {
+  min-width: 150px;
+}
+
+.g-compasses {
+  align-items: flex-start;
+}
+
+.g-companions {
+  padding-bottom: 28px;
+}
+
+.g-player {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 340px;
+  padding: 16px 12px;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 34%, rgb(90 70 140 / 0.22), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.015), rgb(0 0 0 / 0.2));
+  border: 1px solid var(--line);
+}
+
+.g-player__avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 230px;
+  height: 230px;
+}
+
+.g-player__avatar > * {
+  grid-area: 1 / 1;
+}
+
+.g-player__avatar > .guard-bubble {
+  opacity: 0.8;
+}
+
+.g-player__heart {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.g-map {
+  position: relative;
+  flex: none;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 60%, rgb(90 70 140 / 0.18), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.015), rgb(0 0 0 / 0.2));
+  border: 1px solid var(--line);
+}
+
+.g-map__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.g-legend {
+  min-width: 208px;
+}
+
+.g-mix {
+  padding: 26px 0 6px;
+}
+
+.g-coach {
+  gap: 28px;
+}
+
+.g-player__avatar:has(.inward-target) {
+  margin-bottom: 44px;
+}
+
+.g-row--tall {
+  align-items: flex-start;
+}
