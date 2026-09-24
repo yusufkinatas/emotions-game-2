@@ -157,9 +157,9 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     heatDef +
     `</defs>`;
   const fixIds = (s: string) =>
-    s.replace(/url\(#HOODCLIP\)/g, `url(#${id}t)`).replace(/url\(#MASKCLIP\)/g, `url(#${id}m)`).replace(/url\(#BODYCLIP\)/g, `url(#${id}c)`);
+    s.replace(/url\(#HOODCLIP\)/g, `url(#${id}t)`).replace(/url\(#MASKCLIP\)/g, `url(#${id}m)`).replace(/url\(#BODYCLIP\)/g, `url(#${id}c)`).replace(/url\(#BODYGRAD\)/g, `url(#${id}g)`);
   const flash = parts.flash ?? `<path class="sa-flash" d="${bodyPath}"/>`;
-  const orn = o.ornament ? ornamentLayers(o.ornament, parts, rng('ornament')) : {};
+  const orn = o.ornament ? ornamentLayers(o.ornament, parts, rng('ornament'), scale) : {};
   // Expressions: one per face for compounds, crossfaded by data-showing so a turn changes the mood.
   const outerMood: Shade | null = isShade(o.family) ? o.family : face;
   const expr = (mood: Shade | null, which: 'outer' | 'inner') =>

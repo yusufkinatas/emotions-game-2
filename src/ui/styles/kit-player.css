@@ -1,0 +1,290 @@
+/*
+ * The player's side (DESIGN 16.2): the Wanderer and its lantern, the INWARD heart target, Companion slots
+ * and the Promise tray. The Wanderer is neutral warm grey; only the lantern flame carries a Light's hue.
+ */
+
+/* ---------- the Wanderer ---------- */
+.wanderer {
+  display: block;
+  overflow: visible;
+}
+
+.wanderer :where(g, path, circle, ellipse, rect) {
+  transform-box: view-box;
+}
+
+.wanderer__stop-hi { stop-color: #6e6975; }
+.wanderer__stop-lo { stop-color: #3f3b47; }
+
+.wanderer__shadow { fill: rgb(0 0 0 / 0.45); }
+
+.wanderer__body {
+  transform-origin: 76px 160px;
+  animation: var(--a-idle-sadness) 5s ease-in-out infinite;
+}
+
+.wanderer__cloak {
+  stroke: #b7b2c0;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wanderer__fold {
+  fill: none;
+  stroke: rgb(20 18 26 / 0.4);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.wanderer__scarf {
+  fill: #d8d2c8;
+  stroke: #efe9df;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.wanderer__hood { fill: #17151c; }
+.wanderer__eye { fill: var(--pearl); }
+.wanderer__smile { fill: none; stroke: var(--pearl); stroke-width: 2; stroke-linecap: round; }
+.wanderer__blush { fill: rgb(244 239 230 / 0.16); }
+.wanderer__boot { fill: #25222b; stroke: #6e6975; stroke-width: 1.4; }
+
+.wanderer__arm {
+  fill: none;
+  stroke: #57525f;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.wanderer__hand { fill: #d8d2c8; }
+
+.wanderer__handle,
+.wanderer__frame {
+  fill: none;
+  stroke: var(--silver);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wanderer__cap { fill: var(--silver); }
+
+.wanderer__glass {
+  fill: rgb(244 239 230 / 0.08);
+  stroke: rgb(199 206 219 / 0.6);
+  stroke-width: 1.2;
+}
+
+.wanderer__glow {
+  fill: var(--flame);
+  opacity: 0.22;
+}
+
+.wanderer__glow--b {
+  fill: var(--flame2);
+}
+
+.wanderer__flame[data-lit='false'] .wanderer__glow {
+  opacity: 0.08;
+}
+
+.wanderer__fire {
+  transform-origin: 0 4px;
+  animation: var(--a-flame) 1.3s ease-in-out infinite;
+}
+
+.wanderer__core {
+  fill: #ffffff;
+  opacity: 0.75;
+}
+
+.wanderer__flame[data-lit='false'] .wanderer__core {
+  opacity: 0.3;
+}
+
+/* ---------- INWARD heart target ---------- */
+.inward-target {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  padding: 0 0 calc(var(--u) * 6);
+  border: 0;
+  background: none;
+  color: var(--pearl);
+  font: inherit;
+  cursor: pointer;
+}
+
+.inward-target__heart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.inward-target__line {
+  fill: none;
+  stroke: var(--pearl);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 6;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+.inward-target__glow {
+  fill: rgb(244 239 230 / 0.05);
+  stroke: rgb(244 239 230 / 0.35);
+  stroke-width: 9;
+  opacity: 0;
+  animation: var(--a-pulse) 1.6s ease-in-out infinite;
+}
+
+.inward-target[data-focused='true'] .inward-target__line,
+.inward-target:hover .inward-target__line {
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.inward-target[data-focused='true'] .inward-target__glow,
+.inward-target:hover .inward-target__glow {
+  opacity: 1;
+  animation: none;
+}
+
+.inward-target__label {
+  position: absolute;
+  top: calc(var(--u) * 2);
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 8);
+  border-radius: var(--r-pill);
+  background: var(--pearl);
+  color: var(--ink);
+  font-size: calc(var(--u) * 12);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  transform: translateX(-50%);
+}
+
+.inward-target__label .sigil {
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 13);
+}
+
+.inward-target__preview {
+  position: relative;
+  max-width: 78%;
+  padding: calc(var(--u) * 4) calc(var(--u) * 8);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ink) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: calc(var(--u) * 12);
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* ---------- Companions (three 56px slots) ---------- */
+.companions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+}
+
+.companion-slot {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--surface-2), var(--ink));
+  box-shadow: 0 0 0 calc(var(--u) * 2) color-mix(in srgb, var(--friendship) 60%, var(--ink-rim)), var(--shadow-1);
+  color: var(--pearl);
+}
+
+.companion-slot__icon {
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+}
+
+.companion-slot__n {
+  position: absolute;
+  right: calc(var(--u) * -6);
+  bottom: calc(var(--u) * -4);
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+  padding: 0 calc(var(--u) * 4);
+  border-radius: var(--r-pill);
+  background: var(--pearl);
+  color: var(--ink);
+  font-size: calc(var(--u) * 13);
+  font-weight: 900;
+}
+
+.companion-slot[data-action='guard'] .companion-slot__n {
+  background: var(--silver);
+}
+
+.companion-slot--empty {
+  background: transparent;
+  box-shadow: none;
+  border: calc(var(--u) * 1.5) dashed var(--line-strong);
+}
+
+.companions[data-isolated='true'] .companion-slot:not(.companion-slot--empty) {
+  filter: grayscale(1) brightness(0.7);
+  box-shadow: 0 0 0 calc(var(--u) * 2) var(--numb-dark);
+}
+
+.companions__iso {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + var(--u) * 6);
+  padding: calc(var(--u) * 2) calc(var(--u) * 8);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--numb-dark) 60%, var(--ink));
+  color: var(--text);
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* ---------- Promise tray ---------- */
+.promise-tray {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 4) calc(var(--u) * 8);
+  padding: calc(var(--u) * 5) calc(var(--u) * 10);
+  border-radius: var(--r-md);
+  border: 1px dashed color-mix(in srgb, var(--hope) 55%, transparent);
+  background: color-mix(in srgb, var(--ink) 90%, transparent);
+  font-size: var(--fs-chip);
+  font-weight: 700;
+}
+
+.promise-tray__icon {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  color: var(--hope);
+}
+
+.promise-tray__head {
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.promise-tray__line {
+  color: var(--text);
+}

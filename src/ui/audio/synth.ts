@@ -189,6 +189,42 @@ export function createSynth(env: SynthEnv = {}): Synth {
   };
 
   // ---------------------------------------------------------------------------------------------
+  // Shared strike effects (built once per graph, not per strike)
+  // ---------------------------------------------------------------------------------------------
+
+  let curve: Float32Array<ArrayBuffer> | null = null;
+  const echoes = new Map<string, AudioNode>();
+
+  /** The Anger distortion curve, computed once. */
+  function distortionCurve(): Float32Array<ArrayBuffer> {
+    if (curve) return curve;
+    curve = new Float32Array(256);
+    for (let i = 0; i < 256; i++) curve[i] = Math.tanh(((i / 255) * 2 - 1) * 3.2);
+    return curve;
+  }
+
+  /** A persistent echo send (delay with feedback) per echo setting, created on first use and reused. */
+  function echoSend(g: Graph, echo: { time: number; feedback: number }): AudioNode {
+    const key = `${echo.time}:${echo.feedback}`;
+    const hit = echoes.get(key);
+    if (hit) return hit;
+    const { ctx } = g;
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = echo.time;
+    const fb = ctx.createGain();
+    fb.gain.value = echo.feedback;
+    const mix = ctx.createGain();
+    mix.gain.value = 1;
+    mix.connect(g.buses.sfx);
+    mix.connect(delay);
+    delay.connect(fb);
+    fb.connect(delay);
+    delay.connect(g.buses.sfx);
+    echoes.set(key, mix);
+    return mix;
+  }
+
+  // ---------------------------------------------------------------------------------------------
   // Ambience
   // ---------------------------------------------------------------------------------------------
 
@@ -398,28 +434,11 @@ export function createSynth(env: SynthEnv = {}): Synth {
       play((g, t) => {
         const { ctx } = g;
         let dest: AudioNode = g.buses.sfx;
-        if (spec.echo) {
-          const delay = ctx.createDelay(1);
-          delay.delayTime.value = spec.echo.time;
-          const fb = ctx.createGain();
-          fb.gain.value = spec.echo.feedback;
-          const mix = ctx.createGain();
-          mix.gain.value = 1;
-          mix.connect(g.buses.sfx);
-          mix.connect(delay);
-          delay.connect(fb);
-          fb.connect(delay);
-          delay.connect(g.buses.sfx);
-          dest = mix;
-        }
+        if (spec.echo) dest = echoSend(g, spec.echo);
         if (spec.distort) {
+          // One shaper per strike, fed the shared curve; it is released with the strike's sources.
           const shaper = ctx.createWaveShaper();
-          const curve = new Float32Array(256);
-          for (let i = 0; i < 256; i++) {
-            const x = (i / 255) * 2 - 1;
-            curve[i] = Math.tanh(x * 3.2);
-          }
-          shaper.curve = curve;
+          shaper.curve = distortionCurve();
           shaper.connect(dest);
           dest = shaper;
         }
@@ -541,6 +560,7 @@ export function createSynth(env: SynthEnv = {}): Synth {
         listening = false;
         drone = null;
         droneAct = null;
+        echoes.clear();
         if (graph) settle(graph.ctx.close());
       } catch {
         // ignore

@@ -110,10 +110,7 @@ const SHADE_GLYPH: Record<Shade, string> = {
   loneliness: F(ring(12, 12, 9.8) + ring(12, 12, 7.4), true) + circleF(12, 15.6, 2.3),
   fear: F('M1.2 12C5.8 4.6 18.2 4.6 22.8 12C18.2 19.4 5.8 19.4 1.2 12Z' + ring(12, 12, 4.4) + ring(12, 12, 2), true),
   despair: F('M2.4 3.8H21.6L13.9 12.5V21L10.1 18.4V12.5Z'),
-  anxiety: SM(
-    'M5 16.5C2.5 11 7.5 5.5 11.5 8C15.5 10.5 10.5 16.5 8.5 12.5C6.5 8.5 12.5 4.5 16 6.5C20 8.8 17.5 15.5 14 13.5C10.5 11.5 16.5 7.5 19.5 11C22 14 19.5 19 15.5 18.5C12 18 10 20 6.5 19',
-    2.1,
-  ),
+  anxiety: SM('M3.6 16.4L8.2 5.4L12.2 17.6L6.2 11.8L18.8 8.4L13.8 19.2L20.8 12.6', 2.2),
 };
 
 const EXTRA_SIGIL = {
@@ -179,7 +176,9 @@ export type ResourceIconName = 'heart' | 'spirit' | 'guard' | 'glimmer';
 
 const RESOURCE_GLYPH: Record<ResourceIconName, string> = {
   heart: F(HEART),
-  spirit: F(ring(12, 12.6, 8.4) + sparkle(9.4, 10, 3), true) + S('M12 1.8C12.8 2.8 13 3.4 12.6 4.2', 1.6, ' opacity="0.7"'),
+  spirit:
+    F(ring(12, 12, 8.2) + 'M7.4 10.6A5 5 0 0 1 12.2 6.6A6.4 6.4 0 0 0 8.6 11.6Z', true) +
+    `<circle cx="12" cy="12" r="10.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.2 2.4" opacity="0.7"/>`,
   guard: F(SHIELD),
   glimmer: F(sparkle(10, 10, 7.6)) + F(sparkle(18.4, 18, 3.4)),
 };
@@ -214,15 +213,18 @@ export type MarkIconName =
   | 'close'
   | 'inward';
 
+/** A wax seal: a soft, uneven blob with a drip and a stamped ring (not a toothed gear). */
 function sealPath(): string {
+  const radii = [9.6, 8.7, 10, 9, 9.8, 8.8, 9.4];
+  const pts = radii.map((r, i) => polar(12, 12, r, i * (360 / radii.length) + 8));
   let d = '';
-  const bumps = 14;
-  for (let i = 0; i <= bumps * 2; i++) {
-    const r = i % 2 === 0 ? 10 : 8.8;
-    const [x, y] = polar(12, 12, r, (i * 180) / bumps);
-    d += `${i === 0 ? 'M' : 'L'}${n(x)} ${n(y)}`;
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i]!;
+    const [x1, y1] = pts[(i + 1) % pts.length]!;
+    const [cx, cy] = polar(12, 12, 11.2, i * (360 / radii.length) + 8 + 360 / radii.length / 2);
+    d += `${i === 0 ? `M${n(x0)} ${n(y0)}` : ''}Q${n(cx)} ${n(cy)} ${n(x1)} ${n(y1)}`;
   }
-  return `${d}Z${ring(12, 12, 6.2)}${ring(12, 12, 4.9)}`;
+  return `${d}Z${ring(12, 12, 5.8)}${ring(12, 12, 4.3)}`;
 }
 
 const MARK_GLYPH: Record<MarkIconName, string> = {
@@ -233,14 +235,17 @@ const MARK_GLYPH: Record<MarkIconName, string> = {
   triUp: F('M12 4.6L20.4 18.6H3.6Z'),
   triDown: F('M12 19.4L20.4 5.4H3.6Z'),
   sunburst: F(starPath(12, 12, [11.4, 9.6], 6.6, 12, 0)),
-  seal: F(sealPath(), true),
+  seal: F(sealPath(), true) + F('M15 19.2C15.9 20.8 16.4 21.8 16.4 22.4A1.4 1.4 0 0 1 13.6 22.4C13.6 21.8 14.1 20.8 15 19.2Z'),
   brokenHeart: S(HEART, 2) + S('M12 6.6L10.4 10.2L13.4 12.6L11 16.4', 2),
   turn: S('M18.8 13.4A7 7 0 1 1 17.2 7.2M19.4 3.6L17.6 7.6L13.4 6.6', 2),
   lock: S('M6.2 11H17.8V20.2H6.2ZM8.6 11V8.2A3.4 3.4 0 0 1 15.4 8.2V11', 2) + circleF(12, 15.4, 1.4),
-  harmony:
-    circleS(8.8, 12, 5.6, 1.9) + circleS(15.2, 12, 5.6, 1.9) + F('M12 7.3A5.6 5.6 0 0 1 12 16.7A5.6 5.6 0 0 1 12 7.3Z'),
+  // Two halves in balance inside one ring (19: "ring badge"); unlike Friendship's two linked rings.
+  harmony: circleS(12, 12, 9, 2) + F('M12 3A9 9 0 0 0 12 21A4.5 4.5 0 0 0 12 12A4.5 4.5 0 0 1 12 3Z'),
   promise: S('M12 21V11.6M12 14.6C12 10.8 8.8 9.4 5.6 9.8C5.6 13.2 8.4 14.8 12 14.6ZM12 11.6C12 7.8 14.8 5.2 18.6 5.4C18.8 9.2 16 11.8 12 11.6Z', 1.9),
-  fade: circleS(12, 12, 7.6, 1.6) + circleF(8.6, 9.4, 1.2) + circleF(15.8, 15, 0.9) + S('M15 6.4L16.6 5M18.6 9.4L20.4 8.8M5.2 16.8L3.8 18', 1.6),
+  // A soap bubble popping: a broken ring and three droplets flying off.
+  fade:
+    S(arc(12, 12, 7.4, 20, 110) + arc(12, 12, 7.4, 140, 250) + arc(12, 12, 7.4, 280, 340), 1.8) +
+    circleF(19.8, 5.2, 1.3) + circleF(3.6, 17.8, 1.1) + circleF(20.4, 17.6, 0.9),
   moth:
     F('M12 7.4C13 7.4 13.5 8.6 13.5 11V16.4C13.5 17.6 12.9 18.4 12 18.4C11.1 18.4 10.5 17.6 10.5 16.4V11C10.5 8.6 11 7.4 12 7.4Z') +
     S('M10.6 10.6C7.6 6.6 3.4 6.2 3.2 9.4C3 12.6 7.2 13.8 10.6 13.4M13.4 10.6C16.4 6.6 20.6 6.2 20.8 9.4C21 12.6 16.8 13.8 13.4 13.4M10.8 14.6C8.2 15.4 6.8 18 8.4 19.2M13.2 14.6C15.8 15.4 17.2 18 15.6 19.2M11.2 7.6L9.6 4.6M12.8 7.6L14.4 4.6', 1.6),
@@ -314,7 +319,8 @@ const KEEPSAKE_GLYPH: Record<string, string> = {
   mat:
     S('M4 7.6H20V16.4H4ZM4 9.2H2M4 11.2H2M4 13.2H2M4 15.2H2M20 9.2H22M20 11.2H22M20 13.2H22M20 15.2H22', 1.6) +
     F('M12 14.4C12 14.4 9.6 12.9 9.6 11.2C9.6 10.4 10.2 9.8 11 9.8C11.4 9.8 11.8 10 12 10.4C12.2 10 12.6 9.8 13 9.8C13.8 9.8 14.4 10.4 14.4 11.2C14.4 12.9 12 14.4 12 14.4Z'),
-  crane: S('M1.8 12.8L9 11.2L12 3.6L14.6 11.2L22.2 8.4L16.2 15.2L12 20.4L9.4 15.2ZM9 11.2L12 15.8L14.6 11.2M12 15.8V20.4', 1.5),
+  // An origami crane in profile: neck and beak up-left, tail up-right, one folded wing.
+  crane: S('M8 14.2L12 11L16 14.2L12 17.6ZM9.2 13.2L3.8 6.2L2.2 7.8M14.8 13.2L21.2 6.4M11 11.8L13.8 3.4L13.8 12.4', 1.6),
   diary:
     S('M5.4 3.4H17.4C18 3.4 18.4 3.8 18.4 4.4V19.6C18.4 20.2 18 20.6 17.4 20.6H5.4ZM8.2 3.4V20.6M18.4 10H20.4V14H18.4', 1.7) +
     F('M11 20.6V23.4L12.2 22.4L13.4 23.4V20.6Z'),

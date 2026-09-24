@@ -52,18 +52,21 @@ function kettle(p: Parts, r: Rand): OrnamentLayers {
 }
 
 function knot(p: Parts, r: Rand): OrnamentLayers {
-  const [x, y, hw] = p.waist;
-  const side = r.pick([-1, 1]);
-  const kx = x + side * hw * 0.55;
-  const band = `M${n(x - hw)} ${n(y - 3)}Q${n(x)} ${n(y + 9)} ${n(x + hw)} ${n(y - 3)}`;
+  // A yarn knot tied on top of the head, two loops and two loose ends: the tangle cinched tight.
+  const [x, y] = p.top;
+  const lean = r.range(-6, 6);
+  const loop = (dir: -1 | 1) =>
+    `<path class="sa-orn__yarn" d="M${n(x)} ${n(y + 2)}c${n(dir * 6)} -16 ${n(dir * 24)} -14 ${n(dir * 20)} -2c${n(dir * -3)} 8 ${n(dir * -14)} 6 ${n(dir * -20)} 2"/>`;
+  const tails =
+    `<path class="sa-orn__yarn" d="M${n(x - 2)} ${n(y + 4)}q-10 8 -14 22M${n(x + 2)} ${n(y + 4)}q9 10 16 18"/>`;
   return {
     front:
-      `<g class="sa-orn sa-knot">` +
-      `<path class="sa-orn__band-rim" d="${band}"/><path class="sa-orn__band" d="${band}"/>` +
-      `<path class="sa-orn__ink" d="M${n(kx)} ${n(y + 2)}c${n(side * -16)} -14 ${n(side * -22)} 4 ${n(side * -4)} 6z"/>` +
-      `<path class="sa-orn__ink" d="M${n(kx)} ${n(y + 2)}c${n(side * 16)} -12 ${n(side * 22)} 6 ${n(side * 4)} 6z"/>` +
-      `<path class="sa-orn__tail" d="M${n(kx - 2)} ${n(y + 6)}q${n(-side * 4)} 10 ${n(-side * 2)} 20M${n(kx + 2)} ${n(y + 6)}q${n(side * 5)} 9 ${n(side * 6)} 17"/>` +
-      `<circle class="sa-orn__ink" cx="${n(kx)}" cy="${n(y + 3)}" r="5.2"/>` +
+      `<g class="sa-orn sa-knot" transform="rotate(${n(lean)} ${n(x)} ${n(y)})">` +
+      tails +
+      loop(-1) +
+      loop(1) +
+      `<circle class="sa-orn__ink" cx="${n(x)}" cy="${n(y + 2)}" r="6"/>` +
+      `<path class="sa-orn__yarn sa-orn__yarn--thin" d="M${n(x - 4)} ${n(y)}q4 3 8 0M${n(x - 4)} ${n(y + 4)}q4 3 8 0"/>` +
       `</g>`,
   };
 }
@@ -73,8 +76,8 @@ function spiral(p: Parts): OrnamentLayers {
   // Coil rings stacked up the body, bottom first; ring k shows while --coil >= k.
   let rings = '';
   for (let k = 1; k <= MAX_COILS; k++) {
-    const ry = y + 26 - k * 11;
-    const rx = hw + 10 - k * 1.2;
+    const ry = y + 28 - k * 7.5;
+    const rx = hw + 11 - k * 1.1;
     const d = `M${n(x - rx)} ${n(ry)}A${n(rx)} ${n(5.5)} 0 0 0 ${n(x + rx)} ${n(ry)}`;
     rings += `<g class="sa-coil" style="opacity:clamp(0, calc(var(--coil) + 1 - ${k}), 1)"><path class="sa-orn__band-rim" d="${d}"/><path class="sa-orn__band" d="${d}"/></g>`;
   }
@@ -92,22 +95,23 @@ function spiral(p: Parts): OrnamentLayers {
   };
 }
 
-function looming(p: Parts): OrnamentLayers {
+function looming(p: Parts, scale: number): OrnamentLayers {
   const [x] = p.top;
   const w = 86;
-  const top = 2;
-  const d = `M${n(x - w)} ${GROUND}C${n(x - w - 6)} ${n(GROUND - 90)} ${n(x - w * 0.8)} ${top + 30} ${n(x)} ${top}C${n(x + w * 0.8)} ${top + 30} ${n(x + w + 6)} ${n(GROUND - 90)} ${n(x + w)} ${GROUND}Z`;
+  // The body is scaled from the ground up; keep the shadow's top inside the frame at any scale.
+  const top = GROUND - (GROUND - 6) / scale;
+  const d = `M${n(x - w)} ${GROUND}C${n(x - w - 6)} ${n(GROUND - 90)} ${n(x - w * 0.8)} ${n(top + 30)} ${n(x)} ${n(top)}C${n(x + w * 0.8)} ${n(top + 30)} ${n(x + w + 6)} ${n(GROUND - 90)} ${n(x + w)} ${GROUND}Z`;
   return {
     staticBack:
       `<g class="sa-orn sa-looming">` +
       `<path class="sa-looming__shadow" d="${d}"/>` +
-      `<ellipse class="sa-looming__eye" cx="${n(x - 22)}" cy="${top + 42}" rx="8" ry="4.5"/>` +
-      `<ellipse class="sa-looming__eye" cx="${n(x + 22)}" cy="${top + 42}" rx="8" ry="4.5"/>` +
+      `<ellipse class="sa-looming__eye" cx="${n(x - 22)}" cy="${n(top + 40)}" rx="8" ry="4.5"/>` +
+      `<ellipse class="sa-looming__eye" cx="${n(x + 22)}" cy="${n(top + 40)}" rx="8" ry="4.5"/>` +
       `</g>`,
   };
 }
 
-export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand): OrnamentLayers {
+export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand, scale = 1): OrnamentLayers {
   switch (kind) {
     case 'kettle':
       return kettle(parts, r);
@@ -116,6 +120,6 @@ export function ornamentLayers(kind: ShadeOrnament, parts: Parts, r: Rand): Orna
     case 'spiral':
       return spiral(parts);
     case 'looming':
-      return looming(parts);
+      return looming(parts, scale);
   }
 }

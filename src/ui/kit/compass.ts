@@ -20,6 +20,8 @@ export interface CompassProps {
   hollow: boolean;
   /** Isolated lays grey fog over the ring. */
   isolated: boolean;
+  /** Isolated stacks, for the "Isolated 2" label under the ring. */
+  isolatedStacks?: number;
   /** False in Act 1: Hope and Calm are dark ("Awakens in Act 2"). */
   act2Unlocked: boolean;
   /** Lights the deck has cards of; others are dimmed. */
@@ -160,8 +162,9 @@ function harmonyArcMarkup(arc: readonly [Light, Light]): string {
 
 function orbMarkup(p: CompassProps): string {
   const empty = p.energy <= 0;
+  // Hollow cracks the orb's rim (two short fissures), never across the Spirit number.
   const crack = p.hollow
-    ? `<path class="cp-orb__crack" d="M${C - 30} ${C - 12}L${C - 14} ${C - 6}L${C - 8} ${C + 6}L${C + 6} ${C + 2}L${C + 14} ${C + 14}L${C + 30} ${C + 16}"/>`
+    ? `<path class="cp-orb__crack" d="M${C - 33} ${C - 12}L${C - 25} ${C - 9}L${C - 28} ${C - 3}M${C + 24} ${C + 22}L${C + 21} ${C + 15}L${C + 28} ${C + 12}L${C + 26} ${C + 7}"/>`
     : '';
   return (
     `<g class="cp-orb" data-empty="${empty}">` +
@@ -182,14 +185,14 @@ function fogMarkup(): string {
       return `<circle cx="${n(x)}" cy="${n(y)}" r="${24 + (i % 3) * 4}"/>`;
     })
     .join('');
-  return `<g class="cp-fog" filter="url(#CPFOG)">${puffs}</g><text class="cp-fog__label" x="${C}" y="${C + 58}" text-anchor="middle">Isolated</text>`;
+  return `<g class="cp-fog" filter="url(#CPFOG)">${puffs}</g>`;
 }
 
 function ariaLabel(p: CompassProps): string {
   const spirit = `Spirit ${p.energy} of ${p.maxEnergy}${p.hollow ? ', Hollow' : ''}.`;
   if (!p.enabled) return spirit;
   const note = p.note.length ? `Note: ${p.note.map((l) => LIGHT_NAME[l]).join(' and ')}.` : 'No Note yet.';
-  const iso = p.isolated ? ' Isolated: no Harmony.' : '';
+  const iso = p.isolated ? ` Isolated${p.isolatedStacks ? ` ${p.isolatedStacks}` : ''}: no Harmony.` : '';
   return `${spirit} ${note} Harmonies this turn: ${p.harmoniesThisTurn}.${iso}`;
 }
 
@@ -215,7 +218,10 @@ export function compassMarkup(p: CompassProps): string {
       .replace(/url\(#CPORB\)/g, `url(#${id}o)`)
       .replace(/url\(#CPFOG\)/g, `url(#${id}f)`);
   const label = p.enabled
-    ? `<div class="compass-hud__label">Harmonies this turn: <b class="num">${p.harmoniesThisTurn}</b></div>`
+    ? `<div class="compass-hud__label">Harmonies this turn: <b class="num">${p.harmoniesThisTurn}</b></div>` +
+      (p.isolated
+        ? `<div class="compass-hud__iso">Isolated${p.isolatedStacks ? ` <b class="num">${p.isolatedStacks}</b>` : ''}: no Harmony</div>`
+        : '')
     : '';
   const rootAttrs = attrs({
     class: 'compass-hud',

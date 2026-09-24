@@ -23,6 +23,16 @@
   letter-spacing: 0.02em;
 }
 
+.compass-hud__iso {
+  padding: calc(var(--u) * 2) calc(var(--u) * 8);
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--friendship) 45%, var(--numb-dark));
+  background: color-mix(in srgb, var(--numb-dark) 55%, var(--ink));
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  color: var(--text);
+}
+
 .compass-hud__label b {
   color: var(--pearl);
   font-size: calc(var(--u) * 14);
@@ -56,7 +66,7 @@
 }
 
 .cp-seg[data-state='dim'] .cp-seg__fill { fill: color-mix(in srgb, var(--c) 8%, #16121f); }
-.cp-seg[data-state='dim'] .cp-seg__edge { stroke: color-mix(in srgb, var(--c) 20%, transparent); }
+.cp-seg[data-state='dim'] .cp-seg__edge { stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-dasharray: 3 3; }
 .cp-seg[data-state='dim'] .cp-sigil { color: color-mix(in srgb, var(--c) 35%, #3a3350); }
 
 .cp-seg[data-state='note'] .cp-seg__fill {
@@ -233,21 +243,34 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Empty Spirit: a dark orb with a pearl outline and the number still in full pearl. */
 .cp-orb[data-empty='true'] .cp-orb__body {
-  opacity: 0.35;
+  fill: var(--ink);
+  stroke: var(--pearl);
+  stroke-width: 2;
   filter: none;
 }
 
-.cp-orb[data-empty='true'] .cp-orb__n {
-  fill: var(--text-2);
+.cp-orb[data-empty='true'] .cp-orb__shine {
+  opacity: 0.08;
+}
+
+.cp-orb[data-empty='true'] .cp-orb__n,
+.cp-orb[data-empty='true'] .cp-orb__max {
+  fill: var(--pearl);
 }
 
 .cp-orb__crack {
   fill: none;
-  stroke: #1c1729;
+  stroke: #1c1a22;
   stroke-width: 2.4;
   stroke-linejoin: miter;
   stroke-linecap: round;
+}
+
+.cp-orb[data-empty='true'] .cp-orb__crack {
+  stroke: var(--pearl);
+  stroke-width: 1.8;
 }
 
 /* ---------- Isolated fog ---------- */
@@ -258,17 +281,6 @@
 
 .cp-fog {
   pointer-events: none;
-}
-
-.cp-fog__label {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  fill: var(--text);
-  paint-order: stroke;
-  stroke: var(--ink);
-  stroke-width: 3px;
 }
 
 .compass-hud.is-fog-clearing .cp-fog {

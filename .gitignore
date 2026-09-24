@@ -7,3 +7,4 @@ coverage/
 sim/out/
 test-results/
 playwright-report/
+docs/screenshots/

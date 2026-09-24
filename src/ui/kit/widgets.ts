@@ -1,11 +1,16 @@
 // HUD pieces (DESIGN 16.2, 18.1, 19): status chips, matchup chips, Heart and Intensity bars, Guard badge and
 // bubble, intent pills, floating numbers, lethal banners, the Shade nameplate and tooltips.
 // Pure presentation: every number and sentence comes from the engine (preview, intents, statuses).
+//
+// Tooltips: anything with a tip sentence is focusable (tabindex 0) and shows the sentence on hover, focus
+// or tap through CSS (`.has-tip[data-tip]`), and carries it as screen-reader text, so touch and keyboard
+// users reach the same information as a mouse. There is no bare `title` tooltip anywhere.
 
 import type { AfflictionId, Light, Shade } from '../../engine/emotions';
-import { AFFLICTION_CURE, AFFLICTION_OF, cureOf } from '../../engine/emotions';
+import { AFFLICTION_CURE, AFFLICTION_OF, cureOf, dissonantLightOf } from '../../engine/emotions';
 import type { IntentKind } from '../../engine/types';
-import { LIGHT_NAME, SHADE_NAME } from './names';
+import { textWidth } from './cardFit';
+import { AFFLICTION_NAME, LIGHT_NAME, SHADE_NAME } from './names';
 import { intentIcon, markIcon, resourceIcon, sigil, sigilBody } from './sigils';
 import { attrs, cssLen, esc, n, toElement } from './svg';
 
@@ -13,6 +18,16 @@ const SHADE_OF_AFFLICTION = Object.fromEntries(Object.entries(AFFLICTION_OF).map
   AfflictionId,
   Shade
 >;
+
+/** Attributes that make an element a keyboard- and touch-reachable tooltip anchor. */
+export function tipAttrs(tip: string | undefined): Record<string, string | null> {
+  return tip ? { tabindex: '0', 'data-tip': tip } : {};
+}
+
+/** Screen-reader copy of a tip, placed inside its anchor. */
+export function tipText(tip: string | undefined): string {
+  return tip ? `<span class="sr-only">. ${esc(tip)}</span>` : '';
+}
 
 // ------------------------------------------------------------------------------------------------
 // Affliction drop (ink body, cure-colour rim, Shade sigil)
@@ -48,7 +63,7 @@ export interface StatusChipProps {
   affliction?: AfflictionId | 'numb';
   /** Optional icon markup (e.g. markIcon('promise')). Buff chips default to the notched triangle. */
   icon?: string;
-  /** Tooltip sentence from the engine. */
+  /** Tooltip sentence from the engine (shown on hover, focus and tap; read by screen readers). */
   title?: string;
 }
 
@@ -63,20 +78,21 @@ export function statusChipMarkup(p: StatusChipProps): string {
         : p.kind === 'debuff'
           ? markIcon('chevronDown')
           : '');
-  const value = p.value === undefined ? '' : `<b class="chip__n">${esc(p.value)}</b>`;
+  const value = p.value === undefined ? '' : ` <b class="chip__n">${esc(p.value)}</b>`;
   return `<span${attrs({
-    class: `chip chip--${p.kind}`,
+    class: `chip chip--${p.kind}${p.title ? ' has-tip' : ''}`,
     'data-face': face ?? (p.affliction === 'numb' ? 'none' : null),
-    title: p.title ?? null,
-  })}>${icon}<span class="chip__label">${esc(p.label)}</span>${value}</span>`;
+    ...tipAttrs(p.title),
+  })}>${icon}<span class="chip__text">${esc(p.label)}${value}</span>${tipText(p.title)}</span>`;
 }
 
-/** A row of status chips; more than `max` collapse into a "+N" chip that expands on hover (16.2). */
+/** A row of status chips; more than `max` collapse into a "+N" chip that expands on hover and focus (16.2). */
 export function chipRowMarkup(chips: readonly StatusChipProps[], max = 3): string {
   const shown = chips.length > max ? chips.slice(0, max - 1) : chips;
   const hidden = chips.length > max ? chips.slice(max - 1) : [];
+  const names = hidden.map((c) => c.label + (c.value !== undefined ? ` ${c.value}` : '')).join(', ');
   const more = hidden.length
-    ? `<span class="chip chip--more" tabindex="0" title="${esc(hidden.map((c) => c.label + (c.value !== undefined ? ` ${c.value}` : '')).join(', '))}">+${hidden.length}<span class="chip-row__overflow">${hidden.map(statusChipMarkup).join('')}</span></span>`
+    ? `<span class="chip chip--more" tabindex="0" aria-label="${esc(`${hidden.length} more: ${names}`)}">+${hidden.length}<span class="chip-row__overflow">${hidden.map(statusChipMarkup).join('')}</span></span>`
     : '';
   return `<div class="chip-row">${shown.map(statusChipMarkup).join('')}${more}</div>`;
 }
@@ -94,21 +110,28 @@ export interface MatchupChipProps {
 }
 
 export function matchupChipMarkup(p: MatchupChipProps): string {
-  const title = p.title ? ` title="${esc(p.title)}"` : '';
+  const tip = { ...tipAttrs(p.title) };
+  const has = p.title ? ' has-tip' : '';
   if (p.kind === 'felt') {
-    return `<span class="matchup matchup--felt"${title}>${markIcon('ringDouble')}<b>FELT x2</b><span>two Lights</span></span>`;
+    return `<span${attrs({ class: `matchup matchup--felt${has}`, ...tip })}>${markIcon('ringDouble')}<b>FELT x2</b><span>two Lights</span>${tipText(p.title)}</span>`;
   }
   if (p.kind === 'muffled') {
-    return `<span class="matchup matchup--muffled"${title}>${markIcon('ringSingle')}<b>MUFFLED x1/2</b><span>one Light</span></span>`;
+    return `<span${attrs({ class: `matchup matchup--muffled${has}`, ...tip })}>${markIcon('ringSingle')}<b>MUFFLED x1/2</b><span>one Light</span>${tipText(p.title)}</span>`;
   }
   const l = p.light!;
-  const mark = p.kind === 'opposite' ? markIcon('chevronUp2', { className: 'matchup__mark' }) : markIcon('chevronDown', { className: 'matchup__mark' });
-  const mult = p.kind === 'opposite' ? 'x2' : 'x1/2';
-  return `<span class="matchup matchup--${p.kind}" data-light="${l}" aria-label="${LIGHT_NAME[l]} ${mult}"${title}>${sigil(l)}<b>${mult}</b>${mark}</span>`;
+  const opposite = p.kind === 'opposite';
+  const mark = markIcon(opposite ? 'chevronUp2' : 'chevronDown', { className: 'matchup__mark' });
+  const mult = opposite ? 'x2' : 'x1/2';
+  const word = opposite ? 'OPPOSITE' : 'DISSONANT';
+  return (
+    `<span${attrs({ class: `matchup matchup--${p.kind}${has}`, 'data-light': l, ...tip })}>` +
+    `<span class="sr-only">${word} ${mult}: ${LIGHT_NAME[l]}</span>` +
+    `<span class="matchup__vis" aria-hidden="true">${sigil(l)}<b>${mult}</b>${mark}</span>${tipText(p.title)}</span>`
+  );
 }
 
 // ------------------------------------------------------------------------------------------------
-// Bars (Heart 240x18 pearl, Intensity 180x14) with lag chunk and hatched preview
+// Bars (Heart 240x18 pearl, Intensity 180x14 grey) with lag chunk and hatched preview
 // ------------------------------------------------------------------------------------------------
 
 export interface BarProps {
@@ -173,11 +196,14 @@ export function setBarValue(bar: HTMLElement, value: number, max: number, label 
 // Guard
 // ------------------------------------------------------------------------------------------------
 
-/** Silver shield badge with the Guard number (left of a bar). Returns '' at 0. */
-export function guardBadgeMarkup(guard: number, o: { after?: number } = {}): string {
-  if (guard <= 0 && !o.after) return '';
+/**
+ * Silver shield badge with the Guard number (left of a bar). At 0 it returns '' unless `reserve` is set,
+ * which keeps an empty slot of the same size so nothing shifts when Guard appears.
+ */
+export function guardBadgeMarkup(guard: number, o: { after?: number; reserve?: boolean; title?: string } = {}): string {
+  if (guard <= 0 && !o.after) return o.reserve ? `<span class="guard-badge guard-badge--empty" aria-hidden="true"></span>` : '';
   const after = o.after !== undefined && o.after !== guard ? `<span class="guard-badge__after">${o.after}</span>` : '';
-  return `<span class="guard-badge" aria-label="Guard ${guard}">${resourceIcon('guard')}<b class="num">${guard}</b>${after}</span>`;
+  return `<span${attrs({ class: `guard-badge${o.title ? ' has-tip' : ''}`, 'aria-label': `Guard ${guard}`, role: 'img', ...tipAttrs(o.title) })}>${resourceIcon('guard')}<b class="num">${guard}</b>${after}</span>`;
 }
 
 /**
@@ -222,8 +248,10 @@ export interface IntentPillProps {
   order?: number;
   /** The pill shows the projected intent (after end of turn). */
   projected?: boolean;
-  /** Tooltip sentence (IntentView.text, plus projectedReason). */
+  /** Tooltip sentence: IntentView.text, plus the projected cause ("Lantern Moth will turn it to Fear."). */
   title?: string;
+  /** Spoken label. Default: the tooltip sentence, else a summary built from the items ("Strike 3 x4"). */
+  label?: string;
 }
 
 function intentItemMarkup(it: IntentItem): string {
@@ -239,10 +267,37 @@ function intentItemMarkup(it: IntentItem): string {
   return `<span class="intent-item intent-item--${it.kind}">${intentIcon(it.kind)}${num ? `<b class="num">${num}</b>` : ''}</span>`;
 }
 
+const INTENT_WORD: Record<IntentKind, string> = {
+  strike: 'Strike',
+  guard: 'Guard',
+  afflict: 'Afflict',
+  buff: 'Grows stronger',
+  mend: 'Mend',
+  summon: 'Summon',
+  scatter: 'Scatter',
+};
+
+function intentSummary(items: readonly IntentItem[]): string {
+  return items
+    .map((it) => {
+      if (it.kind === 'afflict' && it.affliction) return `${AFFLICTION_NAME[it.affliction]} ${it.stacks ?? ''}`.trim();
+      if (it.kind === 'strike' && it.count && it.count > 1) return `Strike ${it.value ?? 0} x${it.count}`;
+      return `${INTENT_WORD[it.kind]}${it.value !== undefined ? ` ${it.value}` : ''}`;
+    })
+    .join(', ');
+}
+
 export function intentPillMarkup(p: IntentPillProps): string {
-  const order = p.order ? `<span class="intent-pill__order" aria-label="acts ${p.order}">${p.order}</span>` : '';
-  const tag = p.projected ? `<span class="intent-pill__tag">${markIcon('turn')}after end of turn</span>` : '';
-  return `<div${attrs({ class: 'intent-pill', 'data-projected': p.projected ? 'true' : null, title: p.title ?? null })}>${order}<div class="intent-pill__items">${p.items.map(intentItemMarkup).join('')}</div>${tag}</div>`;
+  const order = p.order ? `<span class="intent-pill__order" aria-hidden="true">${p.order}</span>` : '';
+  const tag = p.projected ? `<span class="intent-pill__tag" aria-hidden="true">${markIcon('turn')}after end of turn</span>` : '';
+  const spoken =
+    (p.order ? `Acts ${p.order}. ` : '') +
+    (p.projected ? 'After end of turn: ' : '') +
+    (p.label ?? p.title ?? intentSummary(p.items));
+  return (
+    `<div${attrs({ class: `intent-pill${p.title ? ' has-tip' : ''}`, 'data-projected': p.projected ? 'true' : null, role: 'img', 'aria-label': spoken, ...tipAttrs(p.title) })}>` +
+    `${order}<div class="intent-pill__items" aria-hidden="true">${p.items.map(intentItemMarkup).join('')}</div>${tag}</div>`
+  );
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -276,9 +331,14 @@ export function floatingNumberMarkup(p: FloatingNumberProps): string {
       : p.kind === 'dissonant' || p.kind === 'muffled'
         ? `<span class="float-num__tag">x1/2</span>`
         : '';
+  // FELT is two Lights at once: a hard two-tone split and both sigils, never a blended gradient.
+  const felt =
+    p.kind === 'felt' && a
+      ? `<span class="float-num__sigils"><span data-light="${a}">${sigil(a)}</span>${b ? `<span data-light="${b}">${sigil(b)}</span>` : ''}</span>`
+      : '';
   const icon = p.kind === 'blocked' ? resourceIcon('guard') : p.kind === 'mend' || p.kind === 'loss' ? resourceIcon('heart') : '';
   const line = p.kind === 'dissonant' && p.line ? `<span class="float-num__line">${esc(p.line)}</span>` : '';
-  return `<div${attrs({ class: `float-num float-num--${p.kind}`, 'data-light': a ?? null, 'data-light2': b ?? null, 'aria-hidden': 'true' })}><span class="float-num__v">${icon}${esc(text)}${tag}</span>${line}</div>`;
+  return `<div${attrs({ class: `float-num float-num--${p.kind}`, 'data-light': a ?? null, 'data-light2': b ?? null, 'aria-hidden': 'true' })}><span class="float-num__v">${felt}${icon}<span class="float-num__n">${esc(text)}</span>${tag}</span>${line}</div>`;
 }
 
 /**
@@ -320,6 +380,10 @@ const BANNER_WORD: Record<LethalBannerProps['kind'], string> = {
   wavering: 'stops at 1',
 };
 
+/**
+ * Lethal banner. It is not a live region: every target previews at once, so only the Play Line
+ * (aria-live) announces the focused one.
+ */
 export function lethalBannerMarkup(p: LethalBannerProps): string {
   const [a, b] = p.lights ?? [];
   const emblem =
@@ -330,10 +394,11 @@ export function lethalBannerMarkup(p: LethalBannerProps): string {
         : p.kind === 'fade'
           ? markIcon('fade', { className: 'lethal-banner__emblem' })
           : '';
-  const sub = (p.sub ?? []).length ? `<span class="lethal-banner__sub">${(p.sub ?? []).map(esc).join(' · ')}</span>` : '';
+  const subs = p.sub ?? [];
+  const sub = subs.length ? `<span class="lethal-banner__sub">${subs.map((s) => `<span>${esc(s)}</span>`).join('')}</span>` : '';
   const hint = p.resolveWith ? `<span class="lethal-banner__hint">Resolve with: <b>${esc(p.resolveWith)}</b></span>` : '';
   return (
-    `<div${attrs({ class: `lethal-banner lethal-banner--${p.kind}`, 'data-light': a ?? null, 'data-light2': b ?? a ?? null, role: 'status' })}>` +
+    `<div${attrs({ class: `lethal-banner lethal-banner--${p.kind}`, 'data-light': a ?? null, 'data-light2': b ?? a ?? null })}>` +
     `${emblem}<span class="lethal-banner__word">${BANNER_WORD[p.kind]}</span>${sub}${hint}</div>`
   );
 }
@@ -359,29 +424,48 @@ export interface NameplateProps {
   chips: readonly StatusChipProps[];
 }
 
+/** Room for the name row inside the 205px slot. */
+const NAME_ROW_W = 196;
+
 export function nameplateMarkup(p: NameplateProps): string {
   const faceIcon = p.face
     ? `<span class="shade-disc nameplate__face" data-face="${p.face}">${sigil(p.face)}</span>`
     : `<span class="shade-disc nameplate__face nameplate__face--numb" data-face="none">${sigil('numb')}</span>`;
-  const type = `<span class="nameplate__type">${p.face ? SHADE_NAME[p.face].toUpperCase() : 'NUMB'}</span><span class="nameplate__dot">·</span>`;
+  const typeWord = p.face ? SHADE_NAME[p.face].toUpperCase() : 'NUMB';
+  // "Surfaced Loneliness" already says its type; the caps word would only repeat it.
+  const showType = !p.name.toUpperCase().includes(typeWord);
   const beneath = p.beneath
-    ? `<span class="nameplate__beneath" data-face="${p.beneath}" title="Beneath: ${SHADE_NAME[p.beneath]}. OPPOSITE hits turn it.">${sigil(p.beneath)}${markIcon('turn')}</span>`
+    ? `<span${attrs({ class: 'nameplate__beneath has-tip', 'data-face': p.beneath, ...tipAttrs(`Beneath: ${SHADE_NAME[p.beneath]}. OPPOSITE hits turn it.`) })}><span class="sr-only">Beneath: ${SHADE_NAME[p.beneath]}. OPPOSITE hits turn it.</span><span class="nameplate__beneath-vis" aria-hidden="true">${sigil(p.beneath)}${markIcon('turn')}</span></span>`
     : '';
   const next = p.nextFace
-    ? `<span class="nameplate__beneath" data-face="${p.nextFace}" title="Next face: ${SHADE_NAME[p.nextFace]}">next ${sigil(p.nextFace)}</span>`
+    ? `<span${attrs({ class: 'nameplate__beneath has-tip', 'data-face': p.nextFace, ...tipAttrs(`Next face: ${SHADE_NAME[p.nextFace]}.`) })}><span class="sr-only">Next face: ${SHADE_NAME[p.nextFace]}.</span><span class="nameplate__beneath-vis" aria-hidden="true">next ${sigil(p.nextFace)}</span></span>`
     : '';
+  const typeW = showType ? textWidth(typeWord, 12, true, 0.03) + 16 : 0;
+  const badgesW = (p.beneath ? 38 : 0) + (p.nextFace ? 46 : 0);
+  const rowW = 24 + typeW + textWidth(p.name, 14, true) + badgesW;
+  // Too long for one row: the type line keeps the disc, caps word and badges; the name gets its own line.
+  const stacked = rowW > NAME_ROW_W;
+  const type = showType ? `<span class="nameplate__type">${typeWord}</span>${stacked ? '' : '<span class="nameplate__dot" aria-hidden="true">·</span>'}` : '';
+  const name = `<span class="nameplate__name">${esc(p.name)}</span>`;
+  const nameRows = stacked
+    ? `<div class="nameplate__row nameplate__row--name">${faceIcon}${type}${beneath}${next}</div><div class="nameplate__row nameplate__row--name2">${name}</div>`
+    : `<div class="nameplate__row nameplate__row--name">${faceIcon}${type}${name}${beneath}${next}</div>`;
   return (
-    `<div class="nameplate" data-face="${p.face ?? 'none'}">` +
-    `<div class="nameplate__row nameplate__row--name">${faceIcon}${type}<span class="nameplate__name">${esc(p.name)}</span>${beneath}${next}</div>` +
-    `<div class="nameplate__row nameplate__row--bar">${guardBadgeMarkup(p.guard)}${barMarkup({ kind: 'intensity', value: p.hp, max: p.maxHp, ...(p.previewLoss ? { previewLoss: p.previewLoss } : {}) })}</div>` +
+    `<div class="nameplate${stacked ? ' nameplate--stacked' : ''}" data-face="${p.face ?? 'none'}">` +
+    nameRows +
+    `<div class="nameplate__row nameplate__row--bar">${guardBadgeMarkup(p.guard, { reserve: true })}${barMarkup({ kind: 'intensity', value: p.hp, max: p.maxHp, ...(p.previewLoss ? { previewLoss: p.previewLoss } : {}) })}</div>` +
     `<div class="nameplate__row nameplate__row--matchups">${p.matchups.map(matchupChipMarkup).join('')}</div>` +
     `<div class="nameplate__row nameplate__row--chips">${chipRowMarkup(p.chips)}</div>` +
     `</div>`
   );
 }
 
-/** Default matchup chips for a face: its cure x2 and its bad-advice Light x1/2, with 16.2 tooltips. */
-export function defaultMatchups(face: Shade | null, badAdvice?: { light: Light; line: string }): MatchupChipProps[] {
+/**
+ * Default matchup chips for a face: its cure x2 and its DISSONANT Light x1/2 (derived from the wheel),
+ * with the 16.2 tooltips. Pass the Shade's bad-advice line (content lines) to include the DISSONANT chip.
+ * The older `{ light, line }` form is still accepted; its light is ignored in favour of the wheel's.
+ */
+export function defaultMatchups(face: Shade | null, badAdvice?: string | { light: Light; line: string }): MatchupChipProps[] {
   if (!face) {
     return [
       { kind: 'felt', title: 'FELT: a hit with two Lights deals double and can Resolve it.' },
@@ -392,11 +476,13 @@ export function defaultMatchups(face: Shade | null, badAdvice?: { light: Light; 
   const out: MatchupChipProps[] = [
     { kind: 'opposite', light: cure, title: `OPPOSITE: ${LIGHT_NAME[cure]} deals double and Resolves ${SHADE_NAME[face]}.` },
   ];
-  if (badAdvice) {
+  const line = typeof badAdvice === 'string' ? badAdvice : badAdvice?.line;
+  if (line !== undefined) {
+    const bad = dissonantLightOf(face);
     out.push({
       kind: 'dissonant',
-      light: badAdvice.light,
-      title: `DISSONANT: '${badAdvice.line}' ${LIGHT_NAME[badAdvice.light]} deals half and gives ${SHADE_NAME[face]} 1 Flare.`,
+      light: bad,
+      title: `DISSONANT: '${line}' ${LIGHT_NAME[bad]} deals half and gives ${SHADE_NAME[face]} 1 Flare.`,
     });
   }
   return out;
@@ -419,4 +505,3 @@ export const soothingLight = (a: AfflictionId): Light => AFFLICTION_CURE[a];
 
 /** Element helpers for screens that prefer nodes to markup. */
 export const widgetElement = <T extends Element = HTMLElement>(markup: string): T => toElement<T>(markup);
-

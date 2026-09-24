@@ -44,9 +44,9 @@
 .sa-aura {
   fill: none;
   stroke: var(--cure);
-  stroke-width: 11;
+  stroke-width: 8;
   stroke-linejoin: round;
-  opacity: calc(0.1 + var(--flare) * 0.02);
+  opacity: calc(0.08 + var(--flare) * 0.02);
   transition: opacity 160ms ease;
 }
 
@@ -197,7 +197,8 @@
 }
 
 .sa-hollow { fill: #060508; }
-.sa-brim { fill: var(--body-mid); stroke: none; }
+.sa-brim { fill: color-mix(in srgb, var(--body-hi) 70%, var(--body-mid)); stroke: none; }
+.sa-brim__edge { fill: none; stroke: var(--rim-light); stroke-width: 1.6; stroke-linecap: round; opacity: 0.8; }
 .sa-hood-shade { fill: #000000; }
 
 .sa-tear {
@@ -252,7 +253,7 @@
 
 /* Legs are filled ink with a rim, so they read as solid on the dark stage. */
 .sa-limb--leg .sa-limb__ink {
-  stroke: #24212c;
+  stroke: #35313f;
 }
 
 /* ---------- Despair ---------- */
@@ -465,6 +466,19 @@
   stroke: #25222c;
   stroke-width: 6;
   stroke-linecap: round;
+}
+
+.sa-orn__yarn {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-orn__yarn--thin {
+  stroke: #26232d;
+  stroke-width: 1.4;
 }
 
 .sa-orn__tail {

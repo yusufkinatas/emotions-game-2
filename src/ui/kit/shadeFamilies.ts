@@ -149,25 +149,27 @@ function sadness(c: GenCtx): Parts {
   const W = r.range(112, 124);
   const top = GROUND - H;
   const bw = W * r.range(0.74, 0.82);
-  const capY = top + 26;
-  const lobeY = top + r.range(86, 92);
-  const neckY = top + 100;
-  const hx0 = CX - W * 0.56;
-  const hx1 = CX + W * 0.56;
+  const capY = top + 28;
+  const lobeY = top + r.range(88, 94);
+  const neckY = top + 102;
+  const hx0 = CX - W * 0.55;
+  const hx1 = CX + W * 0.55;
   const bumps = r.int(5, 6);
   const step = (hx1 - hx0) / bumps;
+  // Cloud bumps of equal size along an arch, so the hood's top reads as one soft raincloud.
+  const archY = (i: number) => capY + 12 - 18 * Math.sin((Math.PI * i) / bumps);
   // Left side up to the hood, which drapes down past the face in a low, soft lobe.
   let d = `M${n(CX - bw / 2)} ${GROUND}`;
   d += `C${n(CX - bw / 2 - 3)} ${n(GROUND - 40)} ${n(CX - W * 0.38)} ${n(neckY + 30)} ${n(CX - W * 0.36)} ${n(neckY)}`;
-  d += `Q${n(CX - W * 0.42)} ${n(lobeY + 5)} ${n(CX - W * 0.5)} ${n(lobeY)}`;
-  d += `C${n(CX - W * 0.6)} ${n(lobeY - 12)} ${n(hx0 - 4)} ${n(capY + 24)} ${n(hx0)} ${n(capY)}`;
-  // Even cloud bumps across the top.
+  d += `Q${n(CX - W * 0.43)} ${n(lobeY + 7)} ${n(CX - W * 0.5)} ${n(lobeY)}`;
+  d += `C${n(CX - W * 0.6)} ${n(lobeY - 14)} ${n(hx0 - 7)} ${n(archY(0) + 26)} ${n(hx0)} ${n(archY(0))}`;
   for (let i = 1; i <= bumps; i++) {
-    const rad = step * (0.54 + r.jitter(0.02));
-    d += `A${n(rad)} ${n(rad)} 0 0 1 ${n(hx0 + step * i)} ${n(capY)}`;
+    const chord = Math.hypot(step, archY(i) - archY(i - 1));
+    const rad = chord * (0.56 + r.jitter(0.02));
+    d += `A${n(rad)} ${n(rad)} 0 0 1 ${n(hx0 + step * i)} ${n(archY(i))}`;
   }
-  d += `C${n(hx1 + 4)} ${n(capY + 24)} ${n(CX + W * 0.6)} ${n(lobeY - 12)} ${n(CX + W * 0.5)} ${n(lobeY)}`;
-  d += `Q${n(CX + W * 0.42)} ${n(lobeY + 5)} ${n(CX + W * 0.36)} ${n(neckY)}`;
+  d += `C${n(hx1 + 7)} ${n(archY(bumps) + 26)} ${n(CX + W * 0.6)} ${n(lobeY - 14)} ${n(CX + W * 0.5)} ${n(lobeY)}`;
+  d += `Q${n(CX + W * 0.43)} ${n(lobeY + 7)} ${n(CX + W * 0.36)} ${n(neckY)}`;
   d += `C${n(CX + W * 0.38)} ${n(neckY + 30)} ${n(CX + bw / 2 + 3)} ${n(GROUND - 40)} ${n(CX + bw / 2)} ${GROUND}`;
   const scallops = r.int(3, 4);
   const hem: number[] = [];
@@ -177,19 +179,20 @@ function sadness(c: GenCtx): Parts {
     hem.push(x + bw / scallops / 2);
   }
   d += 'Z';
-  const faceY = top + 54;
+  const faceY = top + 58;
   // The hood's cloud edge hangs over the top of the face hollow.
-  const hollow = `<ellipse class="sa-hollow" cx="${CX}" cy="${n(faceY)}" rx="${n(W * 0.27)}" ry="22"/>`;
-  const bx0 = CX - W * 0.32;
-  const bx1 = CX + W * 0.32;
-  const brimY = faceY - 11;
+  const hollow = `<ellipse class="sa-hollow" cx="${CX}" cy="${n(faceY)}" rx="${n(W * 0.28)}" ry="23"/>`;
+  const bx0 = CX - W * 0.34;
+  const bx1 = CX + W * 0.34;
+  const brimY = faceY - 10;
   const brimBumps = 4;
-  let brim = `M${n(bx0)} ${n(brimY - 16)}L${n(bx0)} ${n(brimY)}`;
+  let edge = `M${n(bx0)} ${n(brimY - 4)}`;
   for (let i = 1; i <= brimBumps; i++) {
     const x = bx0 + ((bx1 - bx0) * i) / brimBumps;
-    brim += `A${n((bx1 - bx0) / brimBumps / 2)} ${n(6.5)} 0 0 0 ${n(x)} ${n(brimY)}`;
+    const y = brimY - (i === brimBumps ? 4 : 0);
+    edge += `A${n((bx1 - bx0) / brimBumps / 2 + 0.6)} ${n(7)} 0 0 0 ${n(x)} ${n(y)}`;
   }
-  brim += `L${n(bx1)} ${n(brimY - 16)}Z`;
+  const brim = `${edge}L${n(bx1)} ${n(brimY - 22)}L${n(bx0)} ${n(brimY - 22)}Z`;
   const hoodShade = `<path class="sa-hood-shade" d="${d}" style="opacity:${n(Math.min(5, c.flare) * 0.09)}" clip-path="url(#HOODCLIP)"/>`;
   const limbs = c.rng('limbs');
   const arm = (s: -1 | 1) => {
@@ -208,11 +211,11 @@ function sadness(c: GenCtx): Parts {
   return {
     body: d,
     back: arm(-1) + arm(1),
-    front: hollow + `<path class="sa-brim" d="${brim}"/>` + hoodShade,
+    front: hollow + `<path class="sa-brim" d="${brim}"/><path class="sa-brim__edge" d="${edge}"/>` + hoodShade,
     face: faceOf(c, {
       eyes: [
-        { x: CX - 14, y: faceY + 3, rx: 7.6, ry: 8.2 },
-        { x: CX + 14, y: faceY + 3, rx: 7.6, ry: 8.2 },
+        { x: CX - 14, y: faceY + 4, rx: 7.6, ry: 8.2 },
+        { x: CX + 14, y: faceY + 4, rx: 7.6, ry: 8.2 },
       ],
       mouth: { x: CX, y: faceY + 16, w: 12 },
       tears: true,
@@ -222,7 +225,7 @@ function sadness(c: GenCtx): Parts {
     shadow: bw * 0.62,
     core: [CX, top + 106],
     badge: [CX + W * 0.2, top + 136],
-    top: [CX, capY - step * 0.4],
+    top: [CX, archY(bumps / 2) - step * 0.35],
     waist: [CX, top + 118, bw / 2 + 4],
   };
 }
@@ -322,7 +325,7 @@ function fear(c: GenCtx): Parts {
     const ky = cy - R * (0.02 + spreadK * limbs.range(0.45, 0.65));
     const fx = kx + side * (10 + spreadK * limbs.range(10, 14));
     const d = `M${n(ax)} ${n(ay)}Q${n(ax + (kx - ax) * 0.2)} ${n(ky - 4)} ${n(kx)} ${n(ky)}Q${n(kx + (fx - kx) * 0.9)} ${n(ky + 8)} ${n(fx)} ${n(GROUND - 1)}`;
-    legMarkup += limb(d, 6.4, 'sa-limb sa-limb--leg');
+    legMarkup += limb(d, 6.6, 'sa-limb sa-limb--leg');
     legMarkup += `<ellipse class="sa-fist" cx="${n(fx + side * 2)}" cy="${GROUND - 1.5}" rx="5" ry="2.6"/>`;
   }
   const eyeR = c.rng('eyes');
@@ -336,8 +339,8 @@ function fear(c: GenCtx): Parts {
   return {
     body: closedPath(pts),
     back: legMarkup,
-    face: faceOf(c, { eyes: spots, mouth: { x: CX, y: cy + 17, w: 13 }, brows: true, iris: true }),
-    crack: { x: CX, y: cy + 12, spread: R * 0.8, count: 3, lo: 105, hi: 255 },
+    face: faceOf(c, { eyes: spots, mouth: { x: CX, y: cy + 16, w: 13 }, brows: true, iris: true }),
+    crack: { x: CX - R * 0.3, y: cy + R * 0.62, spread: R * 0.7, count: 3, lo: 110, hi: 250 },
     shadow: 52,
     core: [CX, cy],
     badge: [CX + R * 0.78, cy + R * 0.62],
@@ -588,22 +591,24 @@ function maskExpression(s: Shade): string {
 function mask(c: GenCtx): Parts {
   const r = c.rng('shape');
   const sway = r.jitter(4);
-  // A cowl: a hood with a soft point at the top that falls into a wisp instead of a hem.
+  // An ink cowl: a hood with a soft point that falls to the shoulders in a draped, folded hem.
   const pts: P[] = [
     { x: CX + 8 + sway, y: 14, sharp: true },
-    { x: 140, y: 32 },
-    { x: 157, y: 72 },
-    { x: 160, y: 116 },
-    { x: 148, y: 150 },
-    { x: 128, y: 164 },
-    { x: 112, y: 166 },
-    { x: CX + 3 + sway, y: 186, sharp: true },
-    { x: 90, y: 166 },
-    { x: 72, y: 164 },
-    { x: 52, y: 150 },
-    { x: 40, y: 116 },
-    { x: 43, y: 72 },
-    { x: 60, y: 32 },
+    { x: 140, y: 30 },
+    { x: 158, y: 66 },
+    { x: 162, y: 104 },
+    { x: 172, y: 138 },
+    { x: 166, y: 158 },
+    { x: 142, y: 164 },
+    { x: 120, y: 157 },
+    { x: CX + sway * 0.5, y: 166 },
+    { x: 80, y: 157 },
+    { x: 58, y: 164 },
+    { x: 34, y: 158 },
+    { x: 28, y: 138 },
+    { x: 38, y: 104 },
+    { x: 42, y: 66 },
+    { x: 60, y: 30 },
   ];
   const { x: mcx, y: mcy, rx, ry } = MASK_C;
   const expressions = SHADES.map((s) => `<g class="sa-mexpr sa-mexpr--${s}">${maskExpression(s)}</g>`).join('');

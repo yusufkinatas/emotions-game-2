@@ -1,0 +1,358 @@
+/*
+ * Speech, guidance and run-level pieces (DESIGN 7.4, 11.4, 16.2, 16.4, 17.3): bark bubbles, coach marks,
+ * chips at a Shade's feet, the Numbness meter, the Light Mix bar, map node extras and the thread of light.
+ */
+
+/* ---------- bark and farewell bubbles ---------- */
+.bark {
+  position: relative;
+  display: inline-block;
+  max-width: calc(var(--u) * 190);
+  padding: calc(var(--u) * 6) calc(var(--u) * 12);
+  border-radius: calc(var(--u) * 14);
+  background: #e9e6ee;
+  color: var(--ink);
+  font-size: calc(var(--u) * 13);
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: var(--shadow-1);
+  animation: var(--a-coach) 200ms var(--ease-pop) both;
+}
+
+.bark::after {
+  content: '';
+  position: absolute;
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.bark[data-tail='down']::after { left: 50%; bottom: calc(var(--u) * -5); margin-left: calc(var(--u) * -6); }
+.bark[data-tail='up']::after { left: 50%; top: calc(var(--u) * -5); margin-left: calc(var(--u) * -6); }
+.bark[data-tail='left']::after { top: 50%; left: calc(var(--u) * -5); margin-top: calc(var(--u) * -6); }
+.bark[data-tail='right']::after { top: 50%; right: calc(var(--u) * -5); margin-top: calc(var(--u) * -6); }
+
+.bark--farewell {
+  background: color-mix(in srgb, var(--ink) 92%, transparent);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  font-weight: 600;
+}
+
+.bark--farewell::after {
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* ---------- coach marks (never block input) ---------- */
+.coach-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 6);
+  max-width: calc(var(--u) * 260);
+  padding: calc(var(--u) * 8) calc(var(--u) * 6) calc(var(--u) * 8) calc(var(--u) * 12);
+  border-radius: var(--r-md);
+  background: var(--pearl);
+  color: var(--ink);
+  font-size: calc(var(--u) * 14);
+  font-weight: 700;
+  line-height: 1.35;
+  box-shadow: 0 0 0 calc(var(--u) * 2) var(--ink), 0 0 calc(var(--u) * 18) rgb(244 239 230 / 0.35);
+  pointer-events: none;
+  animation: var(--a-coach) 220ms var(--ease-pop) both;
+}
+
+.coach-mark::after {
+  content: '';
+  position: absolute;
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  background: var(--pearl);
+  transform: rotate(45deg);
+}
+
+.coach-mark[data-arrow='down']::after { left: calc(var(--u) * 24); bottom: calc(var(--u) * -6); }
+.coach-mark[data-arrow='up']::after { left: calc(var(--u) * 24); top: calc(var(--u) * -6); }
+.coach-mark[data-arrow='left']::after { top: calc(var(--u) * 14); left: calc(var(--u) * -6); }
+.coach-mark[data-arrow='right']::after { top: calc(var(--u) * 14); right: calc(var(--u) * -6); }
+
+.coach-mark__text {
+  position: relative;
+  z-index: 1;
+}
+
+.coach-mark__close {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: calc(var(--u) * 28);
+  height: calc(var(--u) * 28);
+  margin: calc(var(--u) * -4) 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #4a4453;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* The close button keeps a 56px hit area while looking small. */
+.coach-mark__close::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -14);
+}
+
+.coach-mark__close .sigil {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+}
+
+/* ---------- chips at a Shade's feet ---------- */
+.feet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  height: calc(var(--u) * 22);
+  padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 6);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink) 94%, transparent);
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.feet-chip .sigil {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+}
+
+.feet-chip--promise {
+  border: 1px dashed transparent;
+  background:
+    linear-gradient(color-mix(in srgb, var(--ink) 94%, transparent), color-mix(in srgb, var(--ink) 94%, transparent)) padding-box,
+    linear-gradient(90deg, var(--c, var(--hope)) 50%, var(--c2, var(--hope)) 50%) border-box;
+}
+
+.feet-chip--promise .sigil {
+  color: var(--c, var(--hope));
+}
+
+.feet-chip--wavering {
+  border: 1px dashed var(--pearl);
+  color: var(--pearl);
+}
+
+/* ---------- the Numbness meter ---------- */
+.numb-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  height: calc(var(--u) * 30);
+  padding: 0 calc(var(--u) * 10);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  border: 1px solid var(--numb-dark);
+  color: var(--text);
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.numb-meter__badge {
+  width: auto;
+  height: calc(var(--u) * 18);
+}
+
+.numb-meter__text b {
+  font-size: calc(var(--u) * 14);
+}
+
+.numb-meter__pips {
+  display: inline-flex;
+  gap: calc(var(--u) * 3);
+}
+
+.numb-meter__pip {
+  display: block;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) var(--numb);
+}
+
+.numb-meter__pip.is-on {
+  background: var(--numb);
+}
+
+/* ---------- Light Mix bar ---------- */
+.mix {
+  display: flex;
+  gap: calc(var(--u) * 2);
+  width: calc(var(--u) * 800);
+  height: calc(var(--u) * 26);
+}
+
+.mix__seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 4);
+  min-width: calc(var(--u) * 44);
+  border-radius: calc(var(--u) * 6);
+  background: color-mix(in srgb, var(--c) 30%, var(--ink));
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) var(--c);
+  color: var(--pearl);
+  font-size: var(--fs-chip);
+  font-weight: 800;
+}
+
+.mix__seg .sigil {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  color: color-mix(in srgb, var(--c) 60%, var(--pearl));
+}
+
+.mix__seg--blend {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, var(--ink)) 50%, color-mix(in srgb, var(--c2) 30%, var(--ink)) 50%);
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) color-mix(in srgb, var(--c) 50%, var(--c2));
+}
+
+.mix__pair {
+  display: inline-flex;
+}
+
+.mix__pair > span {
+  display: grid;
+}
+
+.mix__pair .sigil {
+  color: var(--c);
+}
+
+.mix__seg--neutral {
+  background: color-mix(in srgb, #9b93ad 25%, var(--ink));
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) #9b93ad;
+}
+
+.mix__seg--buried {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) var(--cure);
+}
+
+.mix__seg--buried .sigil {
+  color: var(--text-2);
+}
+
+.mix__seg--insight {
+  background: var(--pearl);
+  box-shadow: inset 0 0 0 calc(var(--u) * 1.5) var(--c);
+  color: var(--ink);
+}
+
+.mix__seg--insight .sigil {
+  color: var(--ink);
+}
+
+.mix__seg.is-ghost {
+  outline: calc(var(--u) * 2) dashed var(--pearl);
+  outline-offset: calc(var(--u) * 2);
+}
+
+.mix__ghost {
+  position: absolute;
+  top: calc(var(--u) * -18);
+  padding: 0 calc(var(--u) * 5);
+  border-radius: var(--r-pill);
+  background: var(--pearl);
+  color: var(--ink);
+  font-size: var(--fs-chip);
+  font-weight: 900;
+}
+
+/* ---------- map node extras ---------- */
+.map-node__sigil {
+  display: grid;
+  color: #e6e3ec;
+  filter: drop-shadow(0 0 calc(var(--u) * 2) var(--cure));
+}
+
+.map-node__sigil > .sigil {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+
+.map-node__numb {
+  width: auto;
+  height: calc(var(--u) * 13);
+}
+
+.map-node__key {
+  position: absolute;
+  right: calc(var(--u) * -6);
+  top: calc(var(--u) * -6);
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  border-radius: 50%;
+  background: var(--pearl);
+  color: var(--ink);
+  font-size: var(--fs-chip);
+  font-weight: 900;
+}
+
+.map-node[data-state='current'] {
+  box-shadow:
+    0 0 0 calc(var(--u) * 3) var(--pearl),
+    0 0 calc(var(--u) * 16) rgb(244 239 230 / 0.5);
+}
+
+.map-node:disabled {
+  cursor: default;
+}
+
+/* ---------- the thread of light (Buried card to Light card) ---------- */
+.light-thread {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.light-thread__glow {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 9;
+  stroke-linecap: round;
+  opacity: 0.22;
+}
+
+.light-thread__line {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.light-thread__flow {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 94;
+  opacity: 0.85;
+  animation: var(--a-thread) 1.6s linear infinite;
+}
+
+.light-thread__end {
+  fill: var(--c);
+}
