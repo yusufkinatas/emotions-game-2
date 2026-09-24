@@ -61,8 +61,10 @@ describe(`balance gates on ${SEEDS} fixed seeds`, () => {
     expect(g.mcnemar.pExact).toBeLessThan(0.05);
   });
 
-  it('blind - confused: above 0 and one-sided McNemar p < 0.05', () => {
-    const g = gap('blind', 'confused');
+  // Lead ruling (21.3): confused is greedyType with the chart rotated -1, so the chart itself must matter.
+  // (blind - confused was dropped: a bot that knows nothing is not reliably better than a wrong chart.)
+  it('greedyType - confused: above 0 and one-sided McNemar p < 0.05', () => {
+    const g = gap('greedyType', 'confused');
     expect(g.diff).toBeGreaterThan(0);
     expect(g.mcnemar.pExact).toBeLessThan(0.05);
   });

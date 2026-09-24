@@ -7,6 +7,7 @@ import type { CardInstance } from '../../../src/engine/index';
 import { buriedShades, wheelLines } from '../../../src/ui/components/cards';
 import { groupCards, lightMixSegments } from '../../../src/ui/components/cardGrid';
 import { lightsRingMarkup } from '../../../src/ui/screens/ending';
+import { insightChanges } from '../../../src/ui/screens/hooks';
 
 const engine = createEngine(defaultPack);
 const def = (id: string) => {
@@ -87,5 +88,34 @@ describe('Lights used ring (15.4)', () => {
 
   it('reads cleanly with no plays', () => {
     expect(lightsRingMarkup({})).toContain('No Light cards played');
+  });
+});
+
+describe('Insight reveal outside combat (the Buried loop payoff)', () => {
+  const base = () => engine.newRun(3, { tutorial: false, charm: 'ks.warm_locket' });
+  const withDeck = (s: ReturnType<typeof base>, deck: CardInstance[], tends: number) =>
+    ({ ...s, phase: { kind: 'map' }, run: { ...s.run, deck, stats: { ...s.run.stats, tends } } }) as ReturnType<typeof base>;
+
+  it('names the Buried card and the Insight it became', () => {
+    const s = base();
+    const prev = withDeck(s, [...s.run.deck, card(900, 'buried.anger', { weight: 1 })], 0);
+    const next = withDeck(s, [...s.run.deck, card(900, 'insight.passion')], 1);
+    expect(insightChanges({ engine }, prev, next)).toEqual([{ from: 'Buried Anger', to: { defId: 'insight.passion', upgraded: false } }]);
+  });
+
+  it('a Weight 1 card Tended with its Insight already made is set down in peace', () => {
+    const s = base();
+    const prev = withDeck(s, [...s.run.deck, card(900, 'buried.anger', { weight: 1 })], 0);
+    const next = withDeck(s, [...s.run.deck], 1);
+    expect(insightChanges({ engine }, prev, next)).toEqual([{ from: 'Buried Anger', to: null }]);
+  });
+
+  it('says nothing for a plain Tend, a removal, or inside combat', () => {
+    const s = base();
+    const prev = withDeck(s, [...s.run.deck, card(900, 'buried.anger', { weight: 2 })], 0);
+    expect(insightChanges({ engine }, prev, withDeck(s, [...s.run.deck, card(900, 'buried.anger', { weight: 1 })], 1))).toEqual([]);
+    expect(insightChanges({ engine }, withDeck(s, [...s.run.deck, card(900, 'buried.anger', { weight: 1 })], 0), withDeck(s, [...s.run.deck], 0))).toEqual([]);
+    const inCombat = { ...prev, phase: { kind: 'combat' } } as typeof prev;
+    expect(insightChanges({ engine }, inCombat, withDeck(s, [...s.run.deck, card(900, 'insight.passion')], 1))).toEqual([]);
   });
 });

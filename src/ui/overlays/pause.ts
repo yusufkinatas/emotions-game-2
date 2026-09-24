@@ -36,13 +36,13 @@ export function pauseOverlay(app: App): ScreenController {
       return;
     }
     const s = app.state;
-    const where = s ? `Act ${s.run.act}, floor ${s.run.floor}. Heart ${s.combat?.player.hp ?? s.run.heart}/${s.run.maxHeart}.` : '';
+    const where = s ? `Act ${s.run.act}, ${s.run.floor === 0 ? 'at the start' : `floor ${s.run.floor}`}. Heart ${s.combat?.player.hp ?? s.run.heart}/${s.run.maxHeart}.` : '';
     replaceChildren(
       list,
       where ? h('p', { class: 'pause-where muted' }, where) : null,
       item('Resume', null, () => app.closeOverlay(), 'btn--primary'),
       item('Settings', null, () => openSettingsFrom(app, 'pause')),
-      item('Codex', null, () => app.openOverlay('codex')),
+      item('Codex', null, () => app.openOverlay('codex', 'pause')),
       item('Quit to title', 'Your run is saved', () => app.toTitle()),
       item('Abandon run', 'Ends this run for good', () => {
         confirming = true;

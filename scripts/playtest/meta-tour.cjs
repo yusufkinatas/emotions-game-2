@@ -136,7 +136,7 @@ const QUERY = process.env.QUERY || '';
         break;
       }
       case 'event': {
-        const cont = await page.$('.event-continue:not([hidden])');
+        const cont = await page.$('.event-continue:not(:disabled)');
         if (cont) await cont.click();
         else {
           const opt = await page.$('.event-option:not([aria-disabled="true"])');

@@ -27,9 +27,13 @@ const AVOID: readonly [string, number][] = [
   ['.intent-pill', 2],
   ['.nameplate__row--name, .nameplate__row--name2, .nameplate__row--bar', 2],
   ['.cb-player__heart', 1.5],
+  ['.inward-target__preview', 2],
   ['.map-detail__head', 2],
-  ['.shade-slot__art', 0.7],
+  ['.shade-slot .shade-art', 0.7],
+  ['.reward-tile, .reward-cards-head', 0.8],
+  ['.reward-compass__text', 1.5],
   ['.card-face__name, .card-face__gem', 0.5],
+  ['.cb-hand .card-face', 0.6],
 ];
 
 interface Pending {
@@ -99,14 +103,17 @@ export function createTips(app: App): TipsApi {
     };
   }
 
-  function avoidRects(anchor: Rect): Avoid[] {
+  function avoidRects(anchorEl: Element, anchor: Rect): Avoid[] {
     const out: Avoid[] = [];
     for (const [sel, weight] of AVOID) {
       for (const el of app.root.querySelectorAll(sel)) {
         if (layer.contains(el)) continue;
+        // The anchor itself and what it sits in (the top bar round the meter) are pointed at anyway; so are
+        // its parts, unless they stick out of it (the Inward outline's preview label).
+        if (el.contains(anchorEl)) continue;
         const r = rectOf(el.getBoundingClientRect());
         if (r.right - r.left <= 0 || r.bottom - r.top <= 0) continue;
-        if (contains(r, anchor) || contains(anchor, r)) continue;
+        if (contains(anchor, r)) continue;
         out.push({ ...r, weight });
       }
     }
@@ -131,7 +138,7 @@ export function createTips(app: App): TipsApi {
       anchor: ar,
       bubble: { w: el.offsetWidth, h: el.offsetHeight },
       view: { w: vw, h: vh },
-      avoid: ar ? avoidRects(ar) : [],
+      avoid: found && ar ? avoidRects(found, ar) : [],
       u,
       gap: GAP,
     });

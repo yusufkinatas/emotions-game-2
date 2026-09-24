@@ -37,10 +37,43 @@ export class CompassView {
   private sig = '';
   private enabled: boolean | null = null;
 
+  /** The styled tip for ring parts (segments, Blend edges, Shade markers, DISSONANT arrows). */
+  private readonly tip: HTMLElement;
+  private tipFor: Element | null = null;
+  private tipTimer = 0;
+
   constructor(handlers: ControlHandlers) {
     this.host = h('div', { class: 'cb-compass__ring' });
     this.draw = pileButton('draw', 'D', handlers.onDraw);
-    this.el = h('div', { class: 'cb-compass' }, this.host, this.draw.btn);
+    this.tip = h('div', { class: 'tooltip tooltip--down cb-compass__tip', attrs: { 'aria-hidden': 'true' } });
+    this.tip.hidden = true;
+    this.el = h('div', { class: 'cb-compass' }, this.host, this.draw.btn, this.tip);
+    // Hover shows the sentence at once; a tap (touch, pen) shows it for a few seconds.
+    this.host.addEventListener('pointerover', (e) => this.showTip(e.target, false));
+    this.host.addEventListener('pointerleave', () => this.hideTip());
+    this.host.addEventListener('pointerdown', (e) => e.pointerType !== 'mouse' && this.showTip(e.target, true));
+  }
+
+  private showTip(target: EventTarget | null, tapped: boolean): void {
+    const part = target instanceof Element ? target.closest('[data-cp-tip]') : null;
+    if (!part) return this.hideTip();
+    clearTimeout(this.tipTimer);
+    if (tapped) this.tipTimer = window.setTimeout(() => this.hideTip(), 2600);
+    if (part === this.tipFor && !this.tip.hidden) return;
+    this.tipFor = part;
+    this.tip.textContent = part.getAttribute('data-cp-tip');
+    this.tip.hidden = false;
+    const box = this.el.getBoundingClientRect();
+    const r = part.getBoundingClientRect();
+    const scale = box.width / Math.max(1, this.el.offsetWidth);
+    this.tip.style.left = `${(r.left + r.width / 2 - box.left) / scale}px`;
+    this.tip.style.top = `${(r.top - box.top) / scale}px`;
+  }
+
+  private hideTip(): void {
+    clearTimeout(this.tipTimer);
+    this.tipFor = null;
+    this.tip.hidden = true;
   }
 
   hud(): HTMLElement | null {
@@ -53,8 +86,16 @@ export class CompassView {
     if (this.enabled === false && props.enabled) props.granting = true;
     const sig = JSON.stringify(props);
     if (sig !== this.sig) {
-      this.host.replaceChildren(renderCompass(props));
+      const hud = renderCompass(props);
+      // The kit writes each ring part's sentence as an SVG <title> (native, delayed, unstyled, never on
+      // touch). Move them to the styled Compass tip instead.
+      for (const t of hud.querySelectorAll('svg g > title')) {
+        t.parentElement?.setAttribute('data-cp-tip', t.textContent ?? '');
+        t.remove();
+      }
+      this.host.replaceChildren(hud);
       this.sig = sig;
+      if (this.tipFor) this.hideTip();
     }
     this.enabled = props.enabled;
     this.draw.count.textContent = String(drawCount);

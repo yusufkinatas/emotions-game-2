@@ -133,6 +133,41 @@
   animation: kf-fade-in 600ms var(--ease-out) both;
 }
 
+/* Insight reveal (a Buried card Tended to Weight 0 outside combat): a short, non-blocking beat. */
+.insight-reveal {
+  position: absolute;
+  z-index: 65;
+  top: calc(var(--u) * 64);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 16);
+  max-width: calc(100% - var(--u) * 32);
+  padding: calc(var(--u) * 12) calc(var(--u) * 22) calc(var(--u) * 12) calc(var(--u) * 14);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-2), 0 0 0 1px rgb(244 239 230 / 0.35), 0 0 calc(var(--u) * 40) rgb(244 239 230 / 0.16);
+  transform: translateX(-50%);
+  cursor: pointer;
+  animation: kf-fade-in 320ms var(--ease-out) both;
+}
+
+.insight-reveal.is-leaving {
+  animation: kf-fade-out 240ms var(--ease-in) both;
+}
+
+.insight-reveal__card .card-face {
+  --cu: calc(var(--u) * 0.72);
+}
+
+.insight-reveal__text {
+  display: grid;
+  gap: calc(var(--u) * 4);
+  max-width: calc(var(--u) * 260);
+  font-size: calc(var(--u) * 17);
+  color: var(--text);
+}
+
 .title-card.is-leaving {
   animation: kf-fade-out 420ms var(--ease-in) both;
 }
@@ -335,6 +370,17 @@
   max-width: calc(var(--u) * 320);
   color: var(--text);
   font-size: calc(var(--u) * 15);
+}
+
+.title-menu__notice {
+  max-width: calc(var(--u) * 320);
+  margin: 0;
+  padding: calc(var(--u) * 6) calc(var(--u) * 12);
+  border: 1px solid color-mix(in srgb, var(--pearl) 40%, transparent);
+  border-radius: calc(var(--u) * 10);
+  color: var(--text);
+  font-size: calc(var(--u) * 14);
+  text-align: center;
 }
 
 .title-toggle {
@@ -844,18 +890,29 @@
   height: calc(var(--u) * 34);
 }
 
+/* Suppressed: the seal beside a readable mini Buried card (the first place a newcomer sees what they buried). */
+.outcome-tile--suppress:has(.outcome-tile__mini) {
+  width: calc(var(--u) * 140);
+}
+
 .outcome-tile__seal {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 6);
   width: 100%;
   height: calc(var(--u) * 62);
   color: var(--text-3);
 }
 
+.outcome-tile__seal:has(.outcome-tile__mini) {
+  height: calc(var(--u) * 102);
+  padding-top: calc(var(--u) * 6);
+}
+
 .outcome-tile__sealmark {
-  position: absolute;
-  z-index: 1;
-  left: calc(var(--u) * 6);
-  bottom: 0;
+  flex: none;
   display: grid;
   color: #8f879f;
 }
@@ -865,8 +922,29 @@
   height: calc(var(--u) * 24);
 }
 
+.outcome-tile__mini {
+  display: grid;
+  flex: none;
+}
+
 .outcome-tile__mini .card-face--mini {
-  --cu: calc(var(--u) * 0.34);
+  --cu: calc(var(--u) * 0.52);
+}
+
+.outcome-tile__mini .card-face--mini .card-face__name,
+.outcome-tile__mini .card-face--mini[data-name-lines='2'] .card-face__name {
+  min-height: 0;
+  margin: calc(var(--u) * -6) calc(var(--u) * 1) calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 1);
+  font-size: calc(var(--u) * 12);
+  line-height: 1;
+}
+
+.outcome-tile__mini .card-face--mini .card-face__weight {
+  height: calc(var(--u) * 18);
+  top: calc(var(--u) * -8);
+  left: calc(var(--u) * -8);
+  padding: 0 calc(var(--u) * 4);
 }
 
 .outcome-tile__word {
@@ -1062,6 +1140,17 @@
 .reward-cards-head {
   margin-top: calc(var(--u) * 2);
   margin-bottom: calc(var(--u) * 8);
+}
+
+.reward-cards-head__why {
+  display: block;
+  margin-top: calc(var(--u) * 2);
+  font-family: var(--font-ui);
+  font-size: calc(var(--u) * 13);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-2);
 }
 
 .reward-body.is-compact {
@@ -1868,6 +1957,16 @@
   align-self: flex-end;
 }
 
+/* Both rows keep their space before a choice, so the centred panel doesn't jump when they appear. */
+.event-after {
+  min-height: 1.4em;
+}
+
+.event-after.is-reserved,
+.event-continue.is-reserved {
+  visibility: hidden;
+}
+
 /* ================================================================================================
  * Card grid (deck view and deck select, 16.6)
  * ================================================================================================ */
@@ -2046,6 +2145,13 @@
   max-width: calc(var(--u) * 260);
   text-align: center;
   font-size: calc(var(--u) * 14);
+}
+
+.select-preview__hint {
+  margin: 0;
+  max-width: calc(var(--u) * 260);
+  text-align: center;
+  font-size: calc(var(--u) * 13);
 }
 
 .select-preview__empty {

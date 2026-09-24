@@ -74,10 +74,21 @@ export function placeTip(p: PlaceInput): TipPlacement {
       cands.push({ arrow, left, top, arrowAt, pref: pref + i * 0.02 });
     });
   };
+  // Beside the anchor: centred on it, or level with its top or bottom edge when it is tall (the arrow still
+  // points into the anchor's span).
   const vertical = (arrow: 'left' | 'right', left: number, pref: number): void => {
-    const top = Math.round(clampY(cy - 21 * u));
-    const arrowAt = Math.min(bh - 20 * u, Math.max(8 * u, cy - top - 7 * u));
-    cands.push({ arrow, left, top, arrowAt, pref });
+    const tops = [cy - 21 * u, a.top, a.bottom - bh];
+    const seen = new Set<number>();
+    tops.forEach((y, i) => {
+      const top = Math.round(clampY(y));
+      if (seen.has(top)) return;
+      seen.add(top);
+      const lo = Math.max(a.top, top) + 4 * u;
+      const hi = Math.min(a.bottom, top + bh) - 4 * u;
+      const target = Math.min(hi, Math.max(lo, cy));
+      const arrowAt = Math.min(bh - 20 * u, Math.max(8 * u, target - top - 7 * u));
+      cands.push({ arrow, left, top, arrowAt, pref: pref + i * 0.02 });
+    });
   };
 
   if (a.top - bh - gap >= m) horizontal('down', a.top - bh - gap, 0);

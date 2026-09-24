@@ -1,6 +1,7 @@
 // R-5 Faced Shades, M1 The Mask's hit-turn limit, R-12 Understood.
 import { describe, expect, it } from 'vitest';
-import { MEM_TURNS_LEFT } from '../../../src/engine/constants';
+// Imported from the public API: the combat UI reads The Mask's turns left through this export.
+import { MEM_TURNS_LEFT } from '../../../src/engine/index';
 import { scenario } from '../../helpers/scenario';
 
 describe('R-5 face turning', () => {

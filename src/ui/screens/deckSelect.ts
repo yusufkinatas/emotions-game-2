@@ -54,7 +54,7 @@ function upgradeMarks(app: App, card: CardInstance): Partial<CardFaceProps> {
   return out;
 }
 
-function previewPanel(app: App, s: GameState, ph: DeckSelectPhase, card: CardInstance | null): HTMLElement {
+function previewPanel(app: App, s: GameState, ph: DeckSelectPhase, card: CardInstance | null, hint: string | null = null): HTMLElement {
   if (!card) {
     return h('div', { class: 'select-preview__empty muted' }, ph.options.length ? 'Choose a highlighted card.' : 'No card can be chosen here.');
   }
@@ -67,6 +67,7 @@ function previewPanel(app: App, s: GameState, ph: DeckSelectPhase, card: CardIns
       h('div', { class: 'select-preview__card' }, h('span', { class: 'eyebrow' }, 'Now'), cardElement(app.engine, v)),
       h('span', { class: 'select-preview__arrow', attrs: { 'aria-hidden': 'true' } }, '->'),
       h('div', { class: 'select-preview__card' }, h('span', { class: 'eyebrow' }, 'Upgraded'), cardElement(app.engine, { ...v, upgraded: true }, upgradeMarks(app, card))),
+      hint ? h('p', { class: 'select-preview__hint muted' }, hint) : null,
     );
   }
   let note = '';
@@ -84,8 +85,9 @@ function previewPanel(app: App, s: GameState, ph: DeckSelectPhase, card: CardIns
   return h(
     'div',
     { class: 'select-preview__single' },
-    h('div', { class: 'select-preview__card' }, cardElement(app.engine, v, { state: 'selected' })),
+    h('div', { class: 'select-preview__card' }, cardElement(app.engine, v, hint ? {} : { state: 'selected' })),
     h('p', { class: 'select-preview__note' }, note),
+    hint ? h('p', { class: 'select-preview__hint muted' }, hint) : null,
   );
 }
 
@@ -102,6 +104,31 @@ export function deckSelectScreen(app: App): ScreenController {
   const el = h('div', { class: 'screen select-screen' }, top.el, body);
   let selected: number | null = null;
   let signature = '';
+  /** The eligible card previewed while nothing is picked yet (keyboard focus or pointer hover). */
+  let peek: number | null = null;
+
+  /** With nothing picked, the side panel previews the focused or hovered eligible card. */
+  function showPeek(uid: number | null): void {
+    const s = app.state;
+    const ph = phase();
+    if (!s || !ph || selected !== null) return;
+    const id = uid !== null && ph.options.includes(uid) ? uid : null;
+    if (id === peek) return;
+    peek = id;
+    const card = id === null ? null : (s.run.deck.find((c) => c.uid === id) ?? null);
+    replaceChildren(preview, previewPanel(app, s, ph, card, card ? 'Click it or press Enter to choose it.' : null));
+    requestAnimationFrame(() => fitCards(preview));
+  }
+  const uidIn = (t: EventTarget | null): number | null => {
+    const c = t instanceof Element ? t.closest<HTMLElement>('[data-uid]') : null;
+    const n = Number(c?.dataset.uid);
+    return c && Number.isInteger(n) ? n : null;
+  };
+  gridHost.addEventListener('focusin', (e) => showPeek(uidIn(e.target)));
+  gridHost.addEventListener('pointerover', (e) => {
+    const uid = uidIn(e.target);
+    if (uid !== null) showPeek(uid);
+  });
 
   const phase = (): DeckSelectPhase | null => (app.state?.phase.kind === 'deckSelect' ? app.state.phase : null);
 
@@ -145,6 +172,7 @@ export function deckSelectScreen(app: App): ScreenController {
     gridHost.replaceChildren(grid);
     gridHost.scrollTop = scrollTop;
     const card = selected === null ? null : (s.run.deck.find((c) => c.uid === selected) ?? null);
+    peek = null;
     replaceChildren(preview, previewPanel(app, s, ph, card));
     const label = confirmBtn.querySelector('.select-confirm__label')!;
     label.textContent = card ? `${CONFIRM[ph.purpose]}${ph.origin?.kind === 'shop' ? ` (${ph.origin.price} Glimmers)` : ''}` : 'Choose a card';
@@ -154,12 +182,24 @@ export function deckSelectScreen(app: App): ScreenController {
     requestAnimationFrame(() => {
       fitCards(gridHost);
       fitCards(preview);
+      const opening = focusUid === undefined && !el.contains(document.activeElement);
+      const firstEligible = gridHost.querySelector<HTMLElement>('.card-grid__cell.is-eligible .card-face');
       const target =
         (focusUid !== undefined ? gridHost.querySelector<HTMLElement>(`[data-uid="${focusUid}"]`) : null) ??
-        (!el.contains(document.activeElement) ? gridHost.querySelector<HTMLElement>('button.card-face') : null);
+        (opening ? (firstEligible ?? gridHost.querySelector<HTMLElement>('button.card-face')) : null);
       target?.focus({ preventScroll: true });
-      // Bring the chosen or first eligible card into view (Buried cards sit at the end of the grid).
-      target?.scrollIntoView?.({ block: 'nearest' });
+      if (!target) return;
+      // Bring the chosen or first eligible card into view (Buried cards sit at the end of the grid). On
+      // opening, show its group from the header down, so the grid doesn't open cut mid-group.
+      const group = opening ? target.closest<HTMLElement>('.card-grid__group') : null;
+      if (group) {
+        const host = gridHost.getBoundingClientRect();
+        const delta = group.getBoundingClientRect().top - host.top - 4;
+        const fits = target.getBoundingClientRect().bottom - delta <= host.bottom;
+        if (fits) gridHost.scrollTop += delta;
+        else target.scrollIntoView?.({ block: 'nearest' });
+      } else target.scrollIntoView?.({ block: 'nearest' });
+      if (opening && selected === null) showPeek(Number(target.dataset.uid ?? target.closest<HTMLElement>('[data-uid]')?.dataset.uid));
     });
   }
 

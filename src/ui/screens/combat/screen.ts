@@ -87,6 +87,8 @@ export class CombatScreen implements ScreenController {
   private inFlight: 'endTurn' | 'play' | 'other' | null = null;
   /** End Turn ignores clicks and E presses until this time (performance.now ms). */
   private endTurnReadyAt = 0;
+  /** The last End Turn click or E press, accepted or not. */
+  private endTurnPressAt = -Infinity;
   /** Mounted by Continue in the middle of a turn: Undo has no history back past this point. */
   private resumedAt: { turn: number; played: number } | null = null;
   private readonly onKeyUp = (e: KeyboardEvent) => {
@@ -321,8 +323,7 @@ export class CombatScreen implements ScreenController {
     this.renderPending(m);
     this.renderThread(m);
     this.renderBreakdown(m);
-    this.playLine.textContent = arrows(this.message || m.playLine);
-    this.playLine.dataset.message = this.message ? 'true' : 'false';
+    this.setPlayLine(arrows(this.message || m.playLine), !!this.message);
     if (this.refocusIndex !== null) {
       const n = this.view.hand.uids().length;
       const card = n ? this.view.hand.cardAt(Math.min(this.refocusIndex, n - 1)) : undefined;
@@ -437,11 +438,32 @@ export class CombatScreen implements ScreenController {
     clearTimeout(this.messageTimer);
     this.messageTimer = window.setTimeout(() => {
       this.message = '';
-      this.playLine.textContent = arrows(this.lastModel?.playLine ?? '');
-      this.playLine.dataset.message = 'false';
+      this.setPlayLine(arrows(this.lastModel?.playLine ?? ''), false);
     }, 2600);
-    this.playLine.textContent = msg;
-    this.playLine.dataset.message = 'true';
+    this.setPlayLine(msg, true);
+  }
+
+  /** Set the Play Line and keep it to one line: step the font down to 12px (the text floor, 19) before a long sentence wraps (max 2 lines). */
+  private setPlayLine(text: string, message: boolean): void {
+    const el = this.playLine;
+    el.dataset.message = message ? 'true' : 'false';
+    if (el.textContent === text && el.dataset.fitFor === text) return;
+    el.textContent = text;
+    el.dataset.fitFor = text;
+    el.style.removeProperty('--pl-size');
+    el.dataset.lines = '1';
+    if (!text || !el.isConnected) return;
+    const lines = (): number => {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || 1;
+      const inner = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      return Math.round(inner / lh);
+    };
+    el.dataset.wide = 'false';
+    if (lines() > 1) el.style.setProperty('--pl-size', '12');
+    // The very longest sentences (two targets, each with a Finish) get a wider strip rather than a third line.
+    if (lines() > 2) el.dataset.wide = 'true';
+    el.dataset.lines = String(Math.min(2, lines()));
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -551,14 +573,19 @@ export class CombatScreen implements ScreenController {
    * during a card's animation it runs once that settles, but only if it is still that same turn. A short
    * debounce after each use swallows double-clicks and key repeat.
    */
-  private endTurn(): void {
+  private endTurn(queued = false): void {
     const now = performance.now();
-    if (now < this.endTurnReadyAt) return;
+    if (!queued) {
+      // A burst of presses is one intent: each press inside the window extends it.
+      const burst = now - this.endTurnPressAt < 500;
+      this.endTurnPressAt = now;
+      if (burst || now < this.endTurnReadyAt) return;
+    }
     if (this.app.busy) {
       if (this.inFlight === 'endTurn') return;
       const turn = this.app.state?.combat?.turn;
       this.queue(() => {
-        if (this.app.state?.combat?.turn === turn) this.endTurn();
+        if (this.app.state?.combat?.turn === turn) this.endTurn(true);
       });
       return;
     }
@@ -566,9 +593,9 @@ export class CombatScreen implements ScreenController {
     this.sel = null;
     this.endTurnHover = false;
     this.view.sfx.ui?.('confirm');
-    this.endTurnReadyAt = now + 400;
+    this.endTurnReadyAt = now + 500;
     void this.run('endTurn', { t: 'endTurn' }).then(() => {
-      this.endTurnReadyAt = Math.max(this.endTurnReadyAt, performance.now() + 300);
+      this.endTurnReadyAt = Math.max(this.endTurnReadyAt, performance.now() + 350);
     });
   }
 
@@ -732,7 +759,7 @@ export class CombatScreen implements ScreenController {
     this.breakdown.show(null, '', null);
     this.threadHost.replaceChildren();
     this.message = '';
-    this.playLine.textContent = '';
+    this.setPlayLine('', false);
     try {
       await animateCombat(this.view, events, prev, next, app);
     } finally {

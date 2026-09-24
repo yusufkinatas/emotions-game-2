@@ -18,9 +18,8 @@ import type {
 import type { IntentItem, StatusChipProps } from '../../kit/widgets';
 import { LIGHT_NAME, SHADE_NAME } from '../../kit/names';
 import { FLAG_CHIPS } from '../../../content/index';
+import { MEM_TURNS_LEFT } from '../../../engine/index';
 
-/** Key the engine uses in EnemyState.memory for The Mask's remaining hit-turns (engine constants.ts). */
-const MEM_TURNS_LEFT = 'turnsLeft';
 
 export const lightNames = (lights: readonly Light[]): string => lights.map((l) => LIGHT_NAME[l]).join(' and ');
 

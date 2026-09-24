@@ -83,8 +83,19 @@ export class PlayerPanel {
     const hpSig = `${p.hp}/${p.maxHp}`;
     if (heartSig !== this.sig.heart) {
       const guardTip = `Guard ${p.guard}: blocks Shade strikes until your next turn.`;
+      // Previewing a Guard change: the shield shows the new total and a "+5" tag hangs to its left, clear of
+      // the Heart bar (the kit's "after" number sat on the bar).
+      const after = p.guardAfter !== null && p.guardAfter !== p.guard ? p.guardAfter : null;
+      const delta = after !== null ? after - p.guard : 0;
+      const badge =
+        after === null
+          ? guardBadgeMarkup(p.guard, { reserve: true, title: guardTip })
+          : guardBadgeMarkup(after, { reserve: true, title: `Guard ${p.guard} → ${after}: blocks Shade strikes until your next turn.` }).replace(
+              '<span class="guard-badge',
+              `<span class="cb-guard-delta num" aria-hidden="true">${delta > 0 ? '+' : '−'}${Math.abs(delta)}</span><span data-preview="true" class="guard-badge`,
+            );
       this.heartRow.innerHTML =
-        guardBadgeMarkup(p.guard, { reserve: true, title: guardTip, ...(p.guardAfter !== null ? { after: p.guardAfter } : {}) }) +
+        badge +
         barMarkup({
           kind: 'heart',
           value: p.hp,

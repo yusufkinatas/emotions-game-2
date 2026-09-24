@@ -12,6 +12,7 @@ import type {
   GameState,
   KeepsakeId,
   Light,
+  Rarity,
   RewardOffer,
   RunState,
 } from '../types';
@@ -58,6 +59,13 @@ interface SlotRoller {
   ctx: EngineCtx;
   act: 1 | 2;
   weights: Record<OfferRarity, number>;
+  /** Neutral cards this offer must not include. */
+  skipNeutral?: (d: CardDef) => boolean;
+}
+
+/** A card that pays off Suppressing (e.g. Push It Down): never offered while the tutorial teaches Resolving. */
+export function rewardsSuppress(d: CardDef): boolean {
+  return JSON.stringify([d.effects, d.upgrade?.effects ?? []]).includes('"suppressedTarget"');
 }
 
 /** One Light card of `light` at a rolled rarity, with fallbacks for thin pools. */
@@ -74,7 +82,8 @@ function rollLightCard(r: SlotRoller, light: Light): CardId | null {
 function rollSlot(r: SlotRoller, chooseLight: () => Light): CardId | null {
   if (r.rng.float() < NEUTRAL_CHANCE) {
     const rarity = rollRarity(r.rng, r.weights);
-    const id = pickId(r.rng, neutralCards(r.ctx, r.act, rarity)) ?? pickId(r.rng, neutralCards(r.ctx, r.act));
+    const pool = (rar?: Rarity): CardDef[] => neutralCards(r.ctx, r.act, rar).filter((d) => !r.skipNeutral?.(d));
+    const id = pickId(r.rng, pool(rarity)) ?? pickId(r.rng, pool());
     if (id) return id;
   }
   return rollLightCard(r, chooseLight());
@@ -99,7 +108,14 @@ export interface CardOfferSpec {
 /** 12.2 card reward. */
 export function rollCardOffer(run: RunState, ctx: EngineCtx, rng: Rng, spec: CardOfferSpec): CardId[] {
   const act = cardAct(run);
-  const r: SlotRoller = { rng, ctx, act, weights: spec.elite ? ELITE_WEIGHTS : NORMAL_WEIGHTS };
+  const r: SlotRoller = {
+    rng,
+    ctx,
+    act,
+    weights: spec.elite ? ELITE_WEIGHTS : NORMAL_WEIGHTS,
+    // The tutorial's Act 1 teaches Resolving: no card that rewards Suppressing (17.1).
+    ...(run.tutorial && run.act === 1 ? { skipNeutral: rewardsSuppress } : {}),
+  };
   const lights = availableLights(ctx, act);
   if (lights.length === 0) return [];
   const counts = easeCounts(run.deck, ctx);

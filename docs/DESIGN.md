@@ -1135,7 +1135,7 @@ Taught when they first happen (any run, first time per profile):
 - The Numbness: coach mark "One feeling isn't enough here. Feel two at once."
 
 ### 17.3 Coach marks
-First run of a profile; never block input; one visible at a time, others queue; max 18 words; anchored with an arrow; dismissed by the relevant action or a click; each shows once per profile; Settings has "Reset tips". Braced names (`{Shade}`, `{Light}`, `{Card}`, `{Affliction}`, `{line}`) are filled from the trigger event, never hard-coded.
+Each shows the first time its moment happens on a profile, on any run (C1 to C3 only exist in the tutorial fight; the Act 2 and Deep marks C14 to C17 usually first happen on a later run); never block input; one visible at a time, others queue; a queued mark whose anchor was re-rendered finds it again (a card re-drawn on select, or another copy of the same card); max 18 words; anchored with an arrow and placed beside the anchor where it covers the least of End Turn, the top bar, lethal banners, intents, nameplates and the hand; dismissed by the relevant action or a click; each shows once per profile; Settings has "Reset tips" (clears the seen list). Braced names (`{Shade}`, `{Light}`, `{Card}`, `{Affliction}`, `{line}`) are filled from the trigger event, never hard-coded.
 
 | id | Trigger | Anchor | Copy |
 |---|---|---|---|
@@ -1919,7 +1919,7 @@ export interface Belief {
 | Bot | Belief / behaviour | Purpose |
 |---|---|---|
 | `random` | uniform over `legalActions` | floor; softlock and invariant fuzzer |
-| `confused` | chart rotated by -1 wheel step: its believed cure for each Shade is that Shade's actual DISSONANT Light (the "bad advice" bot, still a derangement of the true opposites). All knows* flags true, and map hints and the coverage draft are on, read through its rotated chart | must lose to `blind`: the chart is real information |
+| `confused` | chart rotated by -1 wheel step: its believed cure for each Shade is that Shade's actual DISSONANT Light (the "bad advice" bot, still a derangement of the true opposites). Lead ruling: otherwise identical to `greedyType` (all knows* flags false, no map hints, no coverage draft), so the two differ only in the chart they believe | must lose to `greedyType`: the chart is real information |
 | `blind` | typePct 100, all knows* false, no map hints, no coverage draft | type-blind baseline |
 | `greedyType` | true chart for damage only (opposite/dissonant); knowsResolve/Harmony/Flare/Cleanse/Faces false | "match the colour" autopilot |
 | `aware` | everything true | reference skilled bot |
@@ -1953,7 +1953,7 @@ Seeds are paired: a seed fixes the map, encounters, HP rolls, reward/shop offers
 |---|---|---|
 | `aware` win rate | 45-65% | >= 30% |
 | `aware` - `blind` paired win rate | >= +15 pp | point estimate >= +8 pp and McNemar p < 0.05 |
-| Ladder `random < confused < blind < greedyType < aware` | holds | `blind` - `confused` point estimate > 0 and McNemar p < 0.05 (`aware` > `blind` is the row above) |
+| Ladder `random < confused < greedyType < aware` and `blind < aware` | holds | `greedyType` - `confused` point estimate > 0 and McNemar p < 0.05 (`aware` > `blind` and `aware` > `greedyType` are the rows above and below). Lead ruling: `blind` - `confused` is not gated, since a bot that knows nothing is not reliably better than one that follows a wrong chart |
 | `aware` - `greedyType` (depth beyond matching colours) | >= +8 pp | point estimate >= +2 pp and McNemar p < 0.05 |
 | Decision divergence: share of decisions (2+ distinct options) where `aware`'s pick differs from `greedyType`'s | >= 25% | |
 | Type-flip rate: same, `aware` vs `blind` | >= 35% | |
@@ -1980,7 +1980,7 @@ Seeds are paired: a seed fixes the map, encounters, HP rolls, reward/shop offers
 | Invariant violations, softlocks, RunawayTriggers | 0 | 0 |
 | Preview/apply mismatches (property test) | 0 | 0 |
 
-**Gate rule.** Each CI gate runs on the same 300 fixed seeds (the 5 gate bots `random`, `confused`, `blind`, `greedyType`, `aware` x 300 runs x about 0.175 s / 4 cores, about 70 s). A paired-gap gate passes only when both hold: the point estimate meets its floor (+8 pp for aware-blind, +2 pp for aware-greedyType, above 0 for blind-confused), and a one-sided McNemar test on the discordant pairs gives p < 0.05.
+**Gate rule.** Each CI gate runs on the same 300 fixed seeds (the 5 gate bots `random`, `confused`, `blind`, `greedyType`, `aware` x 300 runs x about 0.175 s / 4 cores, about 70 s). A paired-gap gate passes only when both hold: the point estimate meets its floor (+8 pp for aware-blind, +2 pp for aware-greedyType, above 0 for greedyType-confused), and a one-sided McNemar test on the discordant pairs gives p < 0.05.
 
 When a target is missed, tune in this order: enemy HP/strike numbers, card numbers, Glimmer/price numbers, then `RulesConfig` percents (via `--set rules.x=a,b,c` sweeps on paired seeds). The chart structure and Harmony rules are not tuning knobs. The Resolve/Suppress rules are not swept either, but they are not frozen: if `buryAll` beats `resolveOnly` or another degenerate loop appears, the lead may change them by a recorded design decision (as v1.1 did with one Insight per id per run, B3).
 

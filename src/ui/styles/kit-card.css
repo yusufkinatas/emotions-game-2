@@ -527,6 +527,7 @@ button.card-face {
 
 .card-chip__full {
   display: none;
+  white-space: nowrap;
 }
 
 .card-face:is(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip__short {
@@ -539,6 +540,8 @@ button.card-face {
 
 .card-face:is(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-face__chips {
   z-index: 8;
+  /* The full sentence stays on one line; it may be wider than the card while expanded. */
+  max-width: none;
 }
 
 .card-chips--icons .card-face:not(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip {

@@ -136,7 +136,8 @@ export function cardChipMarkup(text: string): string {
   const soothed = words.map((w) => AFFLICTION_SHADE.get(w)).find(Boolean);
   if (words[0] === 'soothes' && soothed) {
     const aff = AFFLICTION_OF[soothed];
-    return chip(' card-chip--soothes', ` data-face="${soothed}"`, afflictionDrop(aff), AFFLICTION_NAME[aff], text);
+    // The short form keeps the verb (the drop icon names the affliction): a bare "Trembling" read as "gives Trembling".
+    return chip(' card-chip--soothes', ` data-face="${soothed}"`, afflictionDrop(aff), 'Soothes', text);
   }
   return chip('', '', '', text.split(' ')[0] ?? text, text);
 }

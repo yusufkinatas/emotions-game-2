@@ -44,7 +44,8 @@ app.applySettings();
 
 const encounter = params.get('encounter');
 if (encounter && engine.pack.encounters[encounter]) {
-  app.newRun({ tutorial: false }, num('seed'));
+  // A debug fight: never overwrites the saved run or counts in the profile's stats.
+  app.newRun({ tutorial: false }, num('seed'), true);
   if (app.state) {
     app.state = engine.debug.startCombat(app.state, encounter);
     app.render();

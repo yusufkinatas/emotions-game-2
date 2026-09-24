@@ -169,7 +169,8 @@ export class Hand {
     const mid = (n - 1) / 2;
     const hi = this.hover !== null ? this.order.indexOf(this.hover) : -1;
     const si = this.selected !== null ? this.order.indexOf(this.selected) : -1;
-    const spread = 24;
+    // Neighbours spread only into free room, so a full hand never pushes past the Compass or the right column.
+    const spread = Math.max(0, Math.min(24, x0 + 6));
     this.el.classList.toggle('card-chips--icons', pitch < 110);
     this.order.forEach((uid, i) => {
       const s = this.slots.get(uid)!;
@@ -183,6 +184,7 @@ export class Hand {
         rot = 0;
         y = 0;
       }
+      s.wrap.dataset.chipSide = x + CARD_W / 2 > HAND_W / 2 ? 'left' : 'right';
       s.wrap.style.setProperty('--x', x.toFixed(1));
       s.wrap.style.setProperty('--y', y.toFixed(1));
       s.wrap.style.setProperty('--rot', rot.toFixed(2));

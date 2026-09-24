@@ -237,6 +237,7 @@ const GAP_PAIRS: [string, string][] = [
   ['aware', 'blind'],
   ['aware', 'greedyType'],
   ['greedyType', 'blind'],
+  ['greedyType', 'confused'],
   ['blind', 'confused'],
   ['confused', 'random'],
   ['aware', 'aware-noResolve'],
@@ -323,20 +324,23 @@ export function computeMetrics(records: readonly RunRecord[]): Metrics {
   gapRow('aware', 'blind', 0.15, 0.08, false);
   gapRow('aware', 'greedyType', 0.08, 0.02, false);
 
-  const ladder = ['random', 'confused', 'blind', 'greedyType', 'aware'];
+  // Lead ruling (21.3): confused is greedyType with the chart rotated -1; blind sits beside it, below aware.
+  const ladder = ['random', 'confused', 'greedyType', 'aware'];
   const lw = ladder.map(winOf);
-  const holds = lw.every((x) => Number.isFinite(x)) ? lw.every((x, i) => i === 0 || x > lw[i - 1]!) : Number.NaN;
+  const blindW = winOf('blind');
+  const chain = lw.every((x) => Number.isFinite(x)) ? lw.every((x, i) => i === 0 || x > lw[i - 1]!) : Number.NaN;
+  const holds = Number.isNaN(chain) || !Number.isFinite(blindW) ? Number.NaN : chain && blindW < lw[3]!;
   add(
     'ladder',
-    'Ladder `random < confused < blind < greedyType < aware`',
+    'Ladder `random < confused < greedyType < aware` and `blind < aware`',
     'holds',
-    ladder.map((b, i) => `${b} ${pct(lw[i]!)}`).join(' < '),
+    `${ladder.map((b, i) => `${b} ${pct(lw[i]!)}`).join(' < ')}; blind ${pct(blindW)}`,
     Number.isNaN(holds) ? 'N/A' : holds ? 'PASS' : 'FAIL',
   );
-  const bc = gap('blind', 'confused');
+  const bc = gap('greedyType', 'confused');
   addGate(
-    'gate.blind.confused',
-    '`blind` - `confused`',
+    'gate.greedyType.confused',
+    '`greedyType` - `confused`',
     '> 0 and one-sided McNemar p < 0.05',
     bc ? `${pp(bc.diff)} (p=${num(bc.mcnemar.pExact, 4)})` : 'n/a',
     !bc ? 'N/A' : bc.diff > 0 && bc.mcnemar.pExact < 0.05 ? 'PASS' : 'FAIL',

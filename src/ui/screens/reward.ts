@@ -3,7 +3,7 @@
 // Skip (S) and Continue (Enter). Boss rewards reuse it with a rare card choice and a Keepsake choice.
 
 import type { CardDef, GameState, GoneEnemy, RewardOffer } from '../../engine/index';
-import { COACH_MARKS } from '../../content/index';
+import { COACH_MARKS, GLOSSARY } from '../../content/index';
 import { cureOf, LIGHTS } from '../../engine/index';
 import type { App, ScreenController } from '../app';
 import { h, replaceChildren } from '../dom';
@@ -17,6 +17,13 @@ import { focusedControl, arrowFocus, lightMixFor } from '../components/cardGrid'
 import { keepsakeFace } from '../components/keepsakes';
 import { audioOf, fadeIn, uiSound } from '../components/titleCard';
 import '../styles/screens.css';
+
+/** How long after the "not taken yet" warning a second Continue is ignored (so a double-click can't skip it). */
+const WARN_GRACE_MS = 600;
+
+/** Nothing to take and nowhere to go but the ending: the ending itself says how The Numbness left. */
+const skipsToEnding = (o: RewardOffer): boolean =>
+  o.then === 'victory' && o.glimmers <= 0 && !o.compass && o.cards.length === 0 && o.keepsakes.length === 0;
 
 const TITLES: Record<RewardOffer['source'], string> = {
   fight: 'Rewards',
@@ -97,6 +104,9 @@ export function rewardScreen(app: App): ScreenController {
   let skipped = false;
   let hoverDef: CardDef | null = null;
   let warned = false;
+  /** When the "not taken yet" warning appeared: a second Continue right after it (a double-click, Enter held) is ignored. */
+  let warnedAt = 0;
+  let autoContinued = false;
   let glimmerEl: HTMLElement | null = null;
   const timers: number[] = [];
   let built = false;
@@ -256,7 +266,7 @@ export function rewardScreen(app: App): ScreenController {
     cardsHead.hidden = false;
     const locked = offer.taken.card || skipped;
     // The engine marks both a take and a skip as taken; which one it was is only known on this screen.
-    cardsHead.textContent =
+    const heading =
       takenCard !== null
         ? 'Card added'
         : locked
@@ -266,6 +276,9 @@ export function rewardScreen(app: App): ScreenController {
             : offer.fullBloom
               ? 'Full Bloom: choose a card'
               : 'Choose a card';
+    // Full Bloom is never explained elsewhere on this screen: say what earned the 4th card.
+    const bloomWhy = offer.fullBloom && !locked ? (GLOSSARY.find((g) => g.term === 'Full Bloom')?.meaning ?? null) : null;
+    replaceChildren(cardsHead, heading, bloomWhy ? h('span', { class: 'reward-cards-head__why' }, bloomWhy) : null);
     const row = cardChoiceRow({
       engine: app.engine,
       cards: offer.cards,
@@ -303,9 +316,12 @@ export function rewardScreen(app: App): ScreenController {
   function onContinue(): void {
     const offer = offerOf();
     if (!offer) return;
-    if (offer.keepsakes.length > 0 && !offer.taken.keepsake && !warned) {
+    const pendingKeepsake = offer.keepsakes.length > 0 && !offer.taken.keepsake;
+    if (pendingKeepsake && warned && performance.now() - warnedAt < WARN_GRACE_MS) return;
+    if (pendingKeepsake && !warned) {
       // Nobody should lose a Keepsake by pressing Continue: the first press only points at it.
       warned = true;
+      warnedAt = performance.now();
       uiSound(app, 'notEnough');
       update();
       // A free Keepsake: offer its Take button. A boss choice has downsides, so keep focus on Continue
@@ -335,6 +351,15 @@ export function rewardScreen(app: App): ScreenController {
     const s = app.state;
     const offer = offerOf();
     if (!s || !offer) return;
+    if (skipsToEnding(offer)) {
+      // The final boss leaves nothing to take: go straight to the ending instead of an empty screen.
+      el.classList.add('is-skipping');
+      if (!autoContinued) {
+        autoContinued = true;
+        queueMicrotask(() => void app.dispatch({ t: 'continue' }));
+      }
+      return;
+    }
     top.update(app);
     // A different offer (a loaded save, or a reward straight after another) starts the screen afresh.
     const key = `${offer.source}|${offer.cards.join(',')}|${offer.keepsakes.join(',')}|${offer.outcomes.map((g) => g.uid).join(',')}|${s.run.floor}`;

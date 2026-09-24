@@ -214,6 +214,12 @@ export function mapScreen(app: App): ScreenController {
   let signature = '';
   let edgesHost: HTMLElement | null = null;
   let firstLayout = true;
+  /** The scrollTop the screen last set itself; any other scroll position means the player scrolled. */
+  let autoTop: number | null = null;
+  let userScrolled = false;
+  scroll.addEventListener('scroll', () => {
+    if (autoTop !== null && Math.abs(scroll.scrollTop - autoTop) > 2) userScrolled = true;
+  });
 
   const state = (): GameState | null => (app.state && app.state.phase.kind === 'map' ? app.state : null);
 
@@ -333,11 +339,13 @@ export function mapScreen(app: App): ScreenController {
       return { node, x, y, el: wrap, button };
     });
     drawEdges(hovered ?? selected);
-    if (firstLayout) {
+    // Keep the reachable row in view: on the first layout, and after a resize unless the player scrolled.
+    if (firstLayout || !userScrolled) {
       firstLayout = false;
       const anchor = placed.find((p) => p.node.id === (reachable[0] ?? s.run.map.current));
       if (anchor) scroll.scrollTop = Math.max(0, anchor.y - scroll.clientHeight * 0.62);
       else scroll.scrollTop = scroll.scrollHeight;
+      autoTop = scroll.scrollTop;
     }
   }
 
@@ -346,7 +354,7 @@ export function mapScreen(app: App): ScreenController {
     replaceChildren(
       header,
       h('h1', { class: 'map-header__act' }, act === 3 ? ACT_NAMES[3] : `Act ${act}: ${ACT_NAMES[act]}`),
-      h('span', { class: 'map-header__floor muted' }, `Floor ${s.run.floor}`),
+      h('span', { class: 'map-header__floor muted' }, s.run.floor === 0 ? 'Start: choose your first path' : `Floor ${s.run.floor}`),
     );
     replaceChildren(left, sidePanel(app, s));
     const summary = app.engine.deckSummary(s);

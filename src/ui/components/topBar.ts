@@ -94,7 +94,31 @@ export function createTopBar(app0: App): LiveTopBar {
 
   let ksSig = '';
   let numbSig = '';
+  let fitSig = '';
   let muted: boolean | null = null;
+
+  /**
+   * Never let items overlap: when everything does not fit on one row, step through compact levels
+   * (1 Codex keeps only its icon and key, 2 the Numbness meter drops "The Numbness:", 3 the Act label
+   * keeps only the floor and the meter only its count and pips, 4 Keepsakes overlap a little). Every
+   * dropped word stays in the item's tip and aria-label.
+   */
+  const fit = (): void => {
+    if (!el.isConnected || el.hidden) return;
+    for (let lvl = 0; lvl <= 4; lvl++) {
+      el.dataset.compact = String(lvl);
+      if (el.scrollWidth <= el.clientWidth + 1) break;
+    }
+  };
+  if (typeof ResizeObserver !== 'undefined') {
+    let w = 0;
+    new ResizeObserver(() => {
+      if (el.clientWidth !== w) {
+        w = el.clientWidth;
+        fit();
+      }
+    }).observe(el);
+  }
 
   const setHeart = (hp: number, max: number): void => {
     heartN.textContent = `${hp}/${max}`;
@@ -151,7 +175,10 @@ export function createTopBar(app0: App): LiveTopBar {
       }
 
       const actName = ACT_NAMES[run.act];
-      act.textContent = run.act === 3 ? `${actName} · Floor ${run.floor}` : `Act ${run.act} · Floor ${run.floor}`;
+      act.replaceChildren(
+        h('span', { class: 'tb-act__lead' }, run.act === 3 ? `${actName} · ` : `Act ${run.act} · `),
+        h('span', { class: 'tb-act__floor' }, `Floor ${run.floor}`),
+      );
       act.dataset.tip = `${actName}. Floor ${run.floor}.`;
       act.setAttribute('aria-label', `${run.act === 3 ? actName : `Act ${run.act}, ${actName}`}, floor ${run.floor}`);
 
@@ -169,7 +196,21 @@ export function createTopBar(app0: App): LiveTopBar {
               title: `At The Numbness your ${nm.willSurface.length} heaviest Buried card${nm.willSurface.length === 1 ? '' : 's'} will surface as Shades${nm.hiddenIntensity > 0 ? `; the rest add up to +${nm.hiddenIntensity} Intensity` : ''}.`,
             })
           : '';
+        // Wrap the meter's words so the compact levels can drop them and keep the count.
+        const text = numb.querySelector('.numb-meter__text');
+        const lead = text?.firstChild;
+        const tail = text?.lastChild;
+        if (lead && lead.nodeType === Node.TEXT_NODE) lead.replaceWith(h('span', { class: 'tb-numb__lead' }, lead.textContent ?? ''));
+        if (tail && tail !== lead && tail.nodeType === Node.TEXT_NODE) tail.replaceWith(h('span', { class: 'tb-numb__tail' }, tail.textContent ?? ''));
         numbSig = nSig;
+      }
+
+      const fs = [ksSig, act.textContent, deck.textContent, numbSig].join('|');
+      if (fs !== fitSig) {
+        fitSig = fs;
+        fit();
+        // First mount: the bar is attached after this update; measure once it is on screen.
+        if (!el.isConnected) requestAnimationFrame(fit);
       }
 
       const m = app.profile.settings.muted;

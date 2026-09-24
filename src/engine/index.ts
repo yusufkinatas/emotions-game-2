@@ -62,6 +62,8 @@ export { DEFAULT_RULES, resolveRules } from './rules';
 export { Rng, hash32, rngFrom } from './rng';
 export { assertInvariants, checkInvariants } from './invariants';
 export { canonicalJson } from './serialize';
+/** EnemyState.memory key for The Mask's remaining hit-turns (the combat UI reads it for its tooltip). */
+export { MEM_TURNS_LEFT } from './constants';
 export { sameAction } from './step';
 
 const inCombat = (s: GameState): boolean => s.phase.kind === 'combat' && s.combat !== null;

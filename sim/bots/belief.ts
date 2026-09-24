@@ -123,8 +123,11 @@ export const awareBelief = (name = 'aware', off: Partial<Flags> = {}): Belief =>
 /** True chart for damage only; no Resolve, Harmony, Flare, cleanse or face knowledge (and no run hints). */
 export const greedyTypeBelief = (): Belief => chartBelief('greedyType', TRUE_CHART, true, ALL_OFF);
 
-/** Rotated chart with every flag on, read through the wrong chart (M15). */
-export const confusedBelief = (): Belief => chartBelief('confused', ROTATED_CHART, false, ALL_ON);
+/**
+ * Lead ruling (21.1): greedyType's flags (all off) with the chart rotated -1 (M15), so confused differs from
+ * greedyType only in the chart it believes. Gated as greedyType - confused > 0 (21.3).
+ */
+export const confusedBelief = (): Belief => chartBelief('confused', ROTATED_CHART, false, ALL_OFF);
 
 /** Type-blind: every relation believed neutral (x1), every flag off. Its cure guesses never match anything. */
 export function blindBelief(): Belief {

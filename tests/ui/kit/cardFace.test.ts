@@ -101,7 +101,9 @@ describe('card face', () => {
     expect(chip).toContain('<span class="card-chip__short" aria-hidden="true">Playfulness</span>');
     expect(chip).toContain('<span class="card-chip__full">HARMONY → Playfulness</span>');
     expect(cardChipMarkup('Tends Buried Anger')).toContain('card-chip__short" aria-hidden="true">Tends<');
-    expect(cardChipMarkup('Soothes Seething')).toContain('card-chip__short" aria-hidden="true">Seething<');
+    // The Soothes short form keeps its verb (a bare "Seething" read as "this card gives Seething").
+    expect(cardChipMarkup('Soothes Seething')).toContain('card-chip__short" aria-hidden="true">Soothes<');
+    expect(cardChipMarkup('Soothes Seething')).toContain('<span class="card-chip__full">Soothes Seething</span>');
   });
 
   it('speaks its chips in the default label, since the drawn chips are aria-hidden', () => {

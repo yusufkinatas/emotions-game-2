@@ -69,7 +69,7 @@ export function eventScreen(app: App): ScreenController {
   const text = h('p', { class: 'event-text' });
   const options = h('div', { class: 'event-options', attrs: { role: 'list' } });
   const after = h('p', { class: 'event-after', attrs: { 'aria-live': 'polite' } });
-  const contBtn = h('button', { class: 'btn btn--primary event-continue', attrs: { type: 'button', hidden: true } }, 'Continue', h('span', { class: 'kbd' }, 'Enter'));
+  const contBtn = h('button', { class: 'btn btn--primary event-continue', attrs: { type: 'button', disabled: true } }, 'Continue', h('span', { class: 'kbd' }, 'Enter'));
   const panel = h('div', { class: 'event-panel panel' }, title, text, options, after, contBtn);
   const body = h('div', { class: 'event-layout' }, art, panel);
   const el = h('div', { class: 'screen event-screen' }, top.el, body);
@@ -129,12 +129,16 @@ export function eventScreen(app: App): ScreenController {
     );
     const afterLine = chosen !== null ? def?.options[chosen]?.after : undefined;
     after.textContent = afterLine ?? '';
-    after.hidden = !afterLine;
-    contBtn.hidden = !app.isLegal({ t: 'continue' });
+    // Both rows keep their space before a choice (visibility, not display), so the centred panel stays put.
+    after.classList.toggle('is-reserved', !afterLine);
+    const canContinue = app.isLegal({ t: 'continue' });
+    contBtn.disabled = !canContinue;
+    contBtn.classList.toggle('is-reserved', !canContinue);
+    contBtn.setAttribute('aria-hidden', String(!canContinue));
     if (first) fadeIn(el, app, 400);
     requestAnimationFrame(() => {
-      const target = !contBtn.hidden ? contBtn : options.querySelector<HTMLElement>('.event-option:not([aria-disabled="true"])');
-      if (target && (!el.contains(document.activeElement) || !contBtn.hidden)) target.focus({ preventScroll: true });
+      const target = !contBtn.disabled ? contBtn : options.querySelector<HTMLElement>('.event-option:not([aria-disabled="true"])');
+      if (target && (!el.contains(document.activeElement) || !contBtn.disabled)) target.focus({ preventScroll: true });
     });
   }
 
@@ -154,7 +158,7 @@ export function eventScreen(app: App): ScreenController {
       }
       if (arrowFocus(e, panel)) return true;
       if (e.key === 'Enter' && !focusedControl(el)) {
-        if (!contBtn.hidden) contBtn.click();
+        if (!contBtn.disabled) contBtn.click();
         else buttons.find((b) => b.getAttribute('aria-disabled') !== 'true')?.focus();
         return true;
       }

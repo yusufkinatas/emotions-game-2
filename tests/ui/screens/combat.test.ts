@@ -4,7 +4,7 @@ import { defaultPack } from '../../../src/content/index';
 import { createEngine } from '../../../src/engine/index';
 import type { GameState } from '../../../src/engine/types';
 import type { App } from '../../../src/ui/app';
-import { buildModel, handSortKey, inwardText } from '../../../src/ui/screens/combat/model';
+import { buildModel, handSortKey, inwardText, UNDO_AFTER_RELOAD } from '../../../src/ui/screens/combat/model';
 import { buildSelection, cycleFocus } from '../../../src/ui/screens/combat/selection';
 import { intentItems, promiseText, relationLabel, shadeChips } from '../../../src/ui/screens/combat/text';
 
@@ -64,6 +64,14 @@ describe('combat view model', () => {
     expect(banner?.kind).toBe('suppress');
     expect(banner?.resolveWith).toBe('Kind Word');
     expect(suppress.hand.find((c) => c.uid === love)?.resolveWith).toBe(true);
+  });
+
+  it('explains an empty Undo honestly: nothing played, hidden cards revealed, or a reload (Continue)', () => {
+    const s = fight('enc.a1.kettle', ['love.kind_word']);
+    expect(buildModel(fakeApp, s, noExtras).undoReason).toBe('Nothing to undo this turn.');
+    s.combat!.turnFlags.played = 1;
+    expect(buildModel(fakeApp, s, noExtras).undoReason).toBe('New cards were revealed');
+    expect(buildModel(fakeApp, s, { ...noExtras, resumed: true }).undoReason).toBe(UNDO_AFTER_RELOAD);
   });
 
   it('builds intent items, chips and promise text from engine data', () => {

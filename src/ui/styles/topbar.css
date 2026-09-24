@@ -28,7 +28,38 @@
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 12);
-  min-width: 0;
+}
+
+/* Items never shrink under their content (they used to squeeze and overlap); topBar.ts compacts instead. */
+.tb-left > *,
+.tb-mid > *,
+.tb-right > *,
+.tb-keepsakes > * {
+  flex: none;
+}
+
+.top-bar[data-compact='1'] .tb-btn__word,
+.top-bar[data-compact='2'] .tb-btn__word,
+.top-bar[data-compact='3'] .tb-btn__word,
+.top-bar[data-compact='4'] .tb-btn__word {
+  display: none;
+}
+
+.top-bar:is([data-compact='2'], [data-compact='3'], [data-compact='4']) .tb-numb__lead {
+  display: none;
+}
+
+.top-bar:is([data-compact='3'], [data-compact='4']) :is(.tb-act__lead, .tb-numb__tail) {
+  display: none;
+}
+
+.top-bar:is([data-compact='3'], [data-compact='4']) .tb-mid,
+.top-bar:is([data-compact='3'], [data-compact='4']) .tb-left {
+  gap: calc(var(--u) * 8);
+}
+
+.top-bar[data-compact='4'] .tb-keepsakes > * + * {
+  margin-left: calc(var(--u) * -10);
 }
 
 .tb-left {
