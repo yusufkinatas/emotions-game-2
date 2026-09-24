@@ -1,0 +1,11 @@
+/* App frame: the stage fills the viewport; overlays sit above it. */
+html, body { height: 100%; }
+#app { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.app-stage { position: absolute; inset: 0; }
+.app-overlay-layer { position: absolute; inset: 0; z-index: 50; }
+.app-overlay-layer[hidden] { display: none; }
+
+.debug-screen { padding: 24px; display: flex; flex-direction: column; gap: 12px; overflow: auto; height: 100%; box-sizing: border-box; }
+.debug-header { font-weight: 700; }
+.debug-combat { white-space: pre-wrap; font-size: 13px; background: rgba(0,0,0,.25); padding: 8px; border-radius: 8px; }
+.debug-actions { display: flex; flex-wrap: wrap; gap: 8px; }
