@@ -9,6 +9,7 @@ import { synth } from './audio/synth';
 import { debugScreen } from './screens/debug';
 import { OVERLAYS, SCREENS } from './screens/registry';
 import { createTips } from './tips';
+import { installMetaHooks } from './screens/hooks';
 import './styles/index.css';
 import './styles/app.css';
 
@@ -37,6 +38,7 @@ const app = new App(root, engine, {
 
 app.audio = synth as unknown as AudioApi;
 app.tips = createTips(app);
+installMetaHooks(app);
 synth.init();
 app.applySettings();
 
