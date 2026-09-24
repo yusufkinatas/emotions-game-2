@@ -75,75 +75,75 @@ const SHADES: Record<string, ShadeRow> = {
   'shade.grumble': {
     name: 'Grumble',
     faces: ['anger'],
-    hp: [40, 44],
+    hp: [48, 53],
     tier: 'normal',
     pattern: ['snap', 'stomp', 'huff'],
-    moves: { snap: 'Strike 7', stomp: 'Strike 5, 2 Seething', huff: 'Guard 6, Flare +1' },
+    moves: { snap: 'Strike 9', stomp: 'Strike 6, 2 Seething', huff: 'Guard 6, Flare +1' },
   },
   'shade.mope': {
     name: 'Mope',
     faces: ['sadness'],
-    hp: [46, 50],
+    hp: [55, 60],
     tier: 'normal',
     pattern: ['sigh', 'drizzle', 'curl_up'],
-    moves: { sigh: 'Strike 6, 1 Heavy', drizzle: 'Strike 2 x 3', curl_up: 'Guard 10' },
+    moves: { sigh: 'Strike 8, 1 Heavy', drizzle: 'Strike 3 x 3', curl_up: 'Guard 10' },
   },
   'shade.skitter': {
     name: 'Skitter',
     faces: ['fear'],
-    hp: [26, 30],
+    hp: [31, 36],
     tier: 'normal',
     pattern: ['hide', 'lunge', 'shiver'],
-    moves: { hide: 'Guard 8, Summon Doubt (max 2)', lunge: 'Strike 10', shiver: 'Strike 4, 2 Trembling' },
+    moves: { hide: 'Guard 8, Summon Doubt (max 2)', lunge: 'Strike 13', shiver: 'Strike 5, 2 Trembling' },
   },
   'shade.doubt': {
     name: 'Doubt',
     faces: ['fear'],
-    hp: [7, 7],
+    hp: [8, 8],
     tier: 'minion',
     pattern: ['nag'],
-    moves: { nag: 'Strike 3' },
+    moves: { nag: 'Strike 4' },
   },
   'shade.echo': {
     name: 'Echo',
     faces: ['loneliness'],
-    hp: [32, 36],
+    hp: [38, 43],
     tier: 'normal',
     pattern: ['call_out', 'cold_shoulder', 'drift'],
-    moves: { call_out: 'Strike 6', cold_shoulder: 'Strike 4, 2 Isolated', drift: 'Guard 8, Scatter 1' },
+    moves: { call_out: 'Strike 8', cold_shoulder: 'Strike 5, 2 Isolated', drift: 'Guard 8, Scatter 1' },
   },
   'shade.looming': {
     name: 'The Looming',
     faces: ['fear'],
-    hp: [84, 88],
+    hp: [101, 106],
     tier: 'elite',
     pattern: ['loom', 'pounce', 'shriek'],
-    moves: { loom: 'Guard 12, Summon Doubt (max 3)', pounce: 'Strike 14', shriek: 'Strike 4 x 3, 2 Trembling' },
+    moves: { loom: 'Guard 12, Summon Doubt (max 3)', pounce: 'Strike 18', shriek: 'Strike 5 x 3, 2 Trembling' },
   },
   'shade.kettle': {
     name: 'The Kettle',
     faces: ['anger'],
-    hp: [90, 94],
+    hp: [108, 113],
     tier: 'elite',
     pattern: ['rattle', 'whistle', 'simmer'],
     moves: {
-      rattle: 'Strike 8',
-      whistle: 'Strike 5 x 2, 2 Seething',
+      rattle: 'Strike 10',
+      whistle: 'Strike 6 x 2, 2 Seething',
       simmer: 'Guard 12, Pressure +2',
-      boil_over: 'Strike 24, 3 Seething, Pressure = 0',
+      boil_over: 'Strike 30, 3 Seething, Pressure = 0',
     },
   },
   'shade.mask': {
     name: 'The Mask',
     faces: ['anger', 'sadness', 'loneliness', 'fear'],
-    hp: [150, 150],
+    hp: [180, 180],
     tier: 'boss',
     pattern: { anger: 'rage', sadness: 'weep', loneliness: 'turn_away', fear: 'startle' },
     moves: {
-      rage: 'Strike 12',
-      weep: 'Strike 5 x 2, 2 Heavy',
+      rage: 'Strike 15',
+      weep: 'Strike 6 x 2, 2 Heavy',
       turn_away: 'Guard 15, 2 Isolated',
-      startle: 'Strike 8, 2 Trembling',
+      startle: 'Strike 10, 2 Trembling',
     },
   },
   'shade.tut_grumble': {
@@ -181,92 +181,92 @@ const SHADES: Record<string, ShadeRow> = {
   'shade.fret': {
     name: 'Fret',
     faces: ['anxiety'],
-    hp: [42, 46],
+    hp: [59, 64],
     tier: 'normal',
     pattern: ['flurry', 'fidget', 'pace'],
-    moves: { flurry: 'Strike 3 x (1 + Worry)', fidget: 'Worry +2, 2 Restless', pace: 'Guard 8' },
+    moves: { flurry: 'Strike 4 x (1 + Worry)', fidget: 'Worry +2, 2 Restless', pace: 'Guard 8' },
   },
   'shade.slump': {
     name: 'Slump',
     faces: ['despair'],
-    hp: [50, 54],
+    hp: [70, 76],
     tier: 'normal',
     pattern: ['sigh_deeply', 'sink', 'collapse'],
-    moves: { sigh_deeply: 'Strike 6, 1 Hollow', sink: 'Guard 12', collapse: 'Strike 15' },
+    moves: { sigh_deeply: 'Strike 8, 1 Hollow', sink: 'Guard 12', collapse: 'Strike 21' },
   },
   'shade.old_grudge': {
     name: 'Old Grudge',
     faces: ['anger', 'sadness'],
-    hp: [60, 64],
+    hp: [84, 90],
     tier: 'normal',
     pattern: ['mutter', 'rehash', 'brood'],
-    moves: { mutter: 'Strike 6, 2 Seething', rehash: 'Strike 4 + 3 per Tally, Tally = 0', brood: 'Guard 10, 1 Heavy' },
+    moves: { mutter: 'Strike 8, 2 Seething', rehash: 'Strike 6 + 3 per Tally, Tally = 0', brood: 'Guard 10, 1 Heavy' },
   },
   'shade.longing': {
     name: 'Longing',
     faces: ['sadness', 'loneliness'],
-    hp: [58, 62],
+    hp: [81, 87],
     tier: 'normal',
     pattern: ['reach_back', 'remember', 'ache'],
-    moves: { reach_back: 'Strike 9', remember: 'Guard 10, 1 Heavy, 1 Isolated', ache: 'Strike 4 x 3' },
+    moves: { reach_back: 'Strike 13', remember: 'Guard 10, 1 Heavy, 1 Isolated', ache: 'Strike 6 x 3' },
   },
   'shade.wallflower': {
     name: 'Wallflower',
     faces: ['loneliness', 'fear'],
-    hp: [38, 42],
+    hp: [53, 59],
     tier: 'normal',
     pattern: ['peek', 'wilt', 'prickle'],
-    moves: { peek: '2 Trembling', wilt: 'Scatter 1, 2 Isolated', prickle: 'Strike 8' },
+    moves: { peek: '2 Trembling', wilt: 'Scatter 1, 2 Isolated', prickle: 'Strike 11' },
   },
   'shade.dread': {
     name: 'Dread',
     faces: ['fear', 'despair'],
-    hp: [56, 60],
+    hp: [78, 84],
     tier: 'normal',
     pattern: ['creak', 'shadow'],
-    moves: { creak: 'Strike 6', shadow: '2 Trembling, 1 Hollow', the_thing: 'Strike 24' },
+    moves: { creak: 'Strike 8', shadow: '2 Trembling, 1 Hollow', the_thing: 'Strike 34' },
   },
   'shade.knot': {
     name: 'The Knot',
     faces: ['anxiety', 'anger'],
-    hp: [108, 112],
+    hp: [151, 157],
     tier: 'elite',
     pattern: ['twist', 'clench', 'lash'],
-    moves: { twist: 'Strike 6 x 2', clench: 'Guard 16, Tension +2', lash: 'Strike 14', snap: 'Strike 22, Tension = 0' },
+    moves: { twist: 'Strike 8 x 2', clench: 'Guard 16, Tension +2', lash: 'Strike 20', snap: 'Strike 31, Tension = 0' },
   },
   'shade.apathy': {
     name: 'Apathy',
     faces: [],
-    hp: [90, 94],
+    hp: [126, 132],
     tier: 'elite',
     pattern: ['shrug', 'grey_out', 'sigh'],
-    moves: { shrug: 'Strike 10', grey_out: '2 Numb, Guard 10', sigh: 'Strike 6 x 2' },
+    moves: { shrug: 'Strike 14', grey_out: '2 Numb, Guard 10', sigh: 'Strike 8 x 2' },
   },
   'shade.spiral': {
     name: 'The Spiral',
     faces: ['despair', 'anxiety'],
-    hp: [200, 200],
+    hp: [280, 280],
     tier: 'boss',
     pattern: ['what_if', 'whats_the_point', 'around_again'],
-    moves: { what_if: 'Strike 3 x Coil, 1 Restless', whats_the_point: '2 Hollow, Guard 15', around_again: 'Strike 12, Coil +1' },
+    moves: { what_if: 'Strike 4 x Coil, 1 Restless', whats_the_point: '2 Hollow, Guard 15', around_again: 'Strike 17, Coil +1' },
   },
   'shade.numbness': {
     name: 'The Numbness',
     faces: [],
-    hp: [180, 180],
+    hp: [396, 396],
     tier: 'final',
-    // Thaw "at 90 or less" of 180 (the contract's phases thresholds are percents of max Intensity).
+    // Thaw "at 198 or less" of 396 (the contract's phases thresholds are percents of max Intensity).
     pattern: [
       { at: 100, moves: ['static', 'fog', 'nothing_much'] },
       { at: 50, moves: ['flatline', 'fog2', 'static_storm'] },
     ],
     moves: {
-      static: 'Strike 12',
+      static: 'Strike 19',
       fog: 'Guard 14, 1 Numb',
-      nothing_much: 'Strike 8, 1 Heavy, 1 Hollow',
-      flatline: 'Strike 18',
+      nothing_much: 'Strike 13, 1 Heavy, 1 Hollow',
+      flatline: 'Strike 29',
       fog2: 'Guard 14, 2 Numb',
-      static_storm: 'Strike 4 x 4',
+      static_storm: 'Strike 6 x 4',
     },
   },
   'shade.surfaced_anger': {
@@ -363,19 +363,26 @@ describe('passive encodings implement the DESIGN 7 rule text', () => {
   const passives = (id: string) => pack.enemies[id]!.passives ?? [];
   const on = (id: string, trigger: string) => passives(id).filter((p) => p.on === trigger);
 
-  it('Wallow marks on a hit, then (after its action) restores unless marked, then unmarks, in that order', () => {
+  it('Wallow marks on a hit, stops at half Intensity, then (after its action) restores unless marked or low, then unmarks', () => {
     for (const [id, lights] of [
       ['shade.mope', ['joy']],
       ['shade.longing', ['joy', 'friendship']],
     ] as const) {
       const ps = passives(id).filter((p) => p.name === 'Wallow');
-      expect(ps.map((p) => p.on)).toEqual(['hitTaken', 'afterOwnAction', 'afterOwnAction']);
+      expect(ps.map((p) => p.on)).toEqual(['hitTaken', 'hpThreshold', 'afterOwnAction', 'afterOwnAction']);
       expect(ps[0]!.if).toEqual({ c: 'sourceLights', has: [...lights], mode: 'any' });
       expect(ps[0]!.effects).toEqual([{ op: 'mark', key: 'soothed' }]);
-      expect(ps[1]!.if).toEqual({ c: 'not', of: { c: 'marked', key: 'soothed' } });
-      expect(ps[1]!.effects).toEqual([{ op: 'mend', amount: 5, to: 'self' }]);
-      expect(ps[2]!.if).toBeUndefined();
-      expect(ps[2]!.effects).toEqual([{ op: 'unmark', key: 'soothed' }]);
+      expect(ps[1]).toMatchObject({ thresholdPct: 50, once: true, effects: [{ op: 'mark', key: 'low' }] });
+      expect(ps[2]!.if).toEqual({
+        c: 'and',
+        of: [
+          { c: 'not', of: { c: 'marked', key: 'soothed' } },
+          { c: 'not', of: { c: 'marked', key: 'low' } },
+        ],
+      });
+      expect(ps[2]!.effects).toEqual([{ op: 'mend', amount: 5, to: 'self' }]);
+      expect(ps[3]!.if).toBeUndefined();
+      expect(ps[3]!.effects).toEqual([{ op: 'unmark', key: 'soothed' }]);
     }
   });
 
@@ -389,9 +396,17 @@ describe('passive encodings implement the DESIGN 7 rule text', () => {
     ]);
   });
 
-  it('Grows in the Dark: no card with Courage this turn -> Flare +1 at the end of your turn', () => {
+  it('Grows in the Dark: no card with Courage this turn and under 3 Flare -> Flare +1 at the end of your turn', () => {
     const [p] = on('shade.looming', 'playerTurnEnd');
-    expect(p).toMatchObject({ if: { c: 'not', of: { c: 'playedLightThisTurn', light: 'courage' } } });
+    expect(p).toMatchObject({
+      if: {
+        c: 'and',
+        of: [
+          { c: 'not', of: { c: 'playedLightThisTurn', light: 'courage' } },
+          { c: 'status', id: 'flare', on: 'self', op: '<', n: 3 },
+        ],
+      },
+    });
     expect(p!.effects).toEqual([{ op: 'status', id: 'flare', stacks: 1, to: 'self' }]);
   });
 
@@ -485,9 +500,11 @@ describe('passive encodings implement the DESIGN 7 rule text', () => {
     expect(hit!.effects).toEqual([{ op: 'status', id: 'tension', stacks: -1, to: 'self' }]);
   });
 
-  it('Spiral Coil: starts 2, +1 after its action, -1 per Hope or Calm card (-2 with both), -1 per face turn', () => {
+  it('Spiral Coil: starts 2, +1 after its action, -1 per Hope or Calm card (-2 with both), -1 per face turn, -1 per OPPOSITE card hit', () => {
     const ps = passives('shade.spiral').filter((p) => p.name === 'Coil');
-    expect(ps.map((p) => p.on)).toEqual(['combatStart', 'afterOwnAction', 'cardPlayed', 'faceTurned']);
+    expect(ps.map((p) => p.on)).toEqual(['combatStart', 'afterOwnAction', 'cardPlayed', 'faceTurned', 'hitTaken']);
+    expect(ps[4]!.if).toEqual({ c: 'and', of: [{ c: 'hitFromCard' }, { c: 'relation', is: ['opposite'] }] });
+    expect(ps[4]!.effects).toEqual([{ op: 'status', id: 'coil', stacks: -1, to: 'self' }]);
     expect(ps[0]!.effects).toEqual([{ op: 'setStatus', id: 'coil', n: 2, to: 'self' }]);
     expect(ps[1]!.effects).toEqual([{ op: 'status', id: 'coil', stacks: 1, to: 'self' }]);
     expect(ps[2]!.if).toEqual({ c: 'sourceLights', has: ['hope', 'calm'], mode: 'any' });
@@ -619,10 +636,10 @@ describe('encounters and pools match DESIGN 8', () => {
     'enc.a1.mope': ['mope'],
     'enc.a1.skitter': ['skitter'],
     'enc.a1.grumble_echo': ['grumble', 'echo'],
-    'enc.a1.mope_skitter': ['mope 40-44', 'skitter'],
-    'enc.a1.two_grumbles': ['grumble 26-30', 'grumble 26-30'],
-    'enc.a1.echo_mope': ['echo', 'mope 40-44'],
-    'enc.a1.two_skitters': ['skitter 22-26', 'skitter 22-26'],
+    'enc.a1.mope_skitter': ['mope 48-53', 'skitter'],
+    'enc.a1.two_grumbles': ['grumble 31-36', 'grumble 31-36'],
+    'enc.a1.echo_mope': ['echo', 'mope 48-53'],
+    'enc.a1.two_skitters': ['skitter 26-31', 'skitter 26-31'],
     'enc.a1.echo': ['echo'],
     'enc.a1.looming': ['looming'],
     'enc.a1.kettle': ['kettle'],
@@ -632,15 +649,15 @@ describe('encounters and pools match DESIGN 8', () => {
     'enc.a2.old_grudge': ['old_grudge'],
     'enc.a2.longing': ['longing'],
     'enc.a2.dread': ['dread'],
-    'enc.a2.wallflower_grumble': ['grumble 34-38', 'wallflower'],
-    'enc.a2.wallflower_fret': ['fret 34-38', 'wallflower'],
-    'enc.a2.two_frets': ['fret 32-36', 'fret 32-36'],
-    'enc.a2.slump_echo': ['slump', 'echo 28-32'],
+    'enc.a2.wallflower_grumble': ['grumble 48-53', 'wallflower'],
+    'enc.a2.wallflower_fret': ['fret 48-53', 'wallflower'],
+    'enc.a2.two_frets': ['fret 45-50', 'fret 45-50'],
+    'enc.a2.slump_echo': ['slump', 'echo 39-45'],
     'enc.a2.knot': ['knot'],
     'enc.a2.apathy': ['apathy'],
     'enc.a2.spiral': ['spiral'],
     'enc.deep.numbness': ['numbness'],
-    'enc.mem.echo': ['echo 32-36'],
+    'enc.mem.echo': ['echo 38-43'],
   };
 
   it('every encounter row', () => {
@@ -723,13 +740,13 @@ describe('Keepsakes match DESIGN 9', () => {
   it('trigger hooks do what the effect column says', () => {
     const hooks = (id: string) =>
       Object.fromEntries(Object.entries(ks(id).on ?? {}).map(([t, h]) => [t, { effects: h!.effects, limit: h!.limit }]));
-    expect(hooks('ks.warm_locket')).toEqual({ combatWon: { effects: [{ op: 'mend', amount: 8, to: 'player' }], limit: undefined } });
+    expect(hooks('ks.warm_locket')).toEqual({ combatWon: { effects: [{ op: 'mend', amount: 5, to: 'player' }], limit: undefined } });
     // Sun Charm and Morning Tea feed the turn-1 draw and Spirit of 5.2 through next_draw / next_spirit.
-    expect(hooks('ks.sun_charm')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'next_draw', stacks: 2, to: 'player' }], limit: undefined } });
+    expect(hooks('ks.sun_charm')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'next_draw', stacks: 3, to: 'player' }], limit: undefined } });
     expect(hooks('ks.morning_tea')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'next_spirit', stacks: 1, to: 'player' }], limit: undefined } });
     // L7: turn 1 start (after the Guard reset), so Welcome Mat's Guard from this summon is kept.
     expect(hooks('ks.woven_bracelet')).toEqual({ turn1Start: { effects: [{ op: 'summon', companion: 'comp.lantern_moth' }], limit: undefined } });
-    expect(hooks('ks.brave_pebble')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'nerve', stacks: 1, to: 'player' }], limit: undefined } });
+    expect(hooks('ks.brave_pebble')).toEqual({ combatStart: { effects: [{ op: 'status', id: 'nerve', stacks: 2, to: 'player' }], limit: undefined } });
     expect(hooks('ks.tuning_fork')).toEqual({ harmonized: { effects: [{ op: 'draw', n: 1 }], limit: 'turn' } });
     expect(hooks('ks.pressed_flower')).toEqual({ resolved: { effects: [{ op: 'mend', amount: 3, to: 'player' }], limit: undefined } });
     expect(hooks('ks.warm_socks')).toEqual({ turn1Start: { effects: [{ op: 'guard', amount: 6 }], limit: undefined } });
@@ -745,8 +762,8 @@ describe('Keepsakes match DESIGN 9', () => {
 
   it('player text names every number of the effect column', () => {
     const NUMBERS: Record<string, string[]> = {
-      'ks.warm_locket': ['8'],
-      'ks.sun_charm': ['1', '2'],
+      'ks.warm_locket': ['5'],
+      'ks.sun_charm': ['1', '3'],
       'ks.pressed_flower': ['3'],
       'ks.morning_tea': ['1'],
       'ks.warm_socks': ['1', '6'],

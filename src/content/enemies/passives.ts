@@ -17,13 +17,15 @@ export function firstTimeAlone(name: string, key: string, text: string, effects:
 }
 
 /**
- * Wallow (Mope, Longing): after its action it restores 5 Intensity unless a hit carrying one of `lights`
- * (card or automatic) landed on it since its previous action.
+ * Wallow (Mope, Longing): while it is above half Intensity, after its action it restores 5 Intensity unless a
+ * hit carrying one of `lights` (card or automatic) landed on it since its previous action. The first time it is
+ * at half Intensity or less it stops (the `low` mark), so a deck without those Lights can still finish it.
  */
 export function wallow(lights: Light[], text: string): PassiveDef[] {
   return [
     { name: 'Wallow', on: 'hitTaken', if: has(...lights), effects: [mark('soothed')], text },
-    { name: 'Wallow', on: 'afterOwnAction', if: not(marked('soothed')), effects: [shadeMend(5)] },
+    { name: 'Wallow', on: 'hpThreshold', thresholdPct: 50, once: true, effects: [mark('low')] },
+    { name: 'Wallow', on: 'afterOwnAction', if: and(not(marked('soothed')), not(marked('low'))), effects: [shadeMend(5)] },
     { name: 'Wallow', on: 'afterOwnAction', effects: [unmark('soothed')] },
   ];
 }

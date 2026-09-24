@@ -368,7 +368,7 @@ The immediate win check (R-8b) and the Heart-0 check (5.5) run after every hit a
 1. `turn += 1`.
 2. Remove all player Guard.
 3. `energy = 3 + keepsake bonuses (+1 Chipped Teacup, +1 Spiral Shell, +1 Morning Tea on turn 1) + next_spirit - (1 if Hollow >= 1)`, minimum 0. Clear `next_spirit`.
-4. Draw 5 + `next_draw` (+2 Sun Charm on turn 1). Clear `next_draw`. If the draw pile is empty when drawing, shuffle the discard pile into it (`shuffle` stream).
+4. Draw 5 + `next_draw` (+3 Sun Charm on turn 1). Clear `next_draw`. If the draw pile is empty when drawing, shuffle the discard pile into it (`shuffle` stream).
 5. Turn-start triggers: Moods (Better Days, Lionheart), then Keepsakes (Warm Socks and Woven Bracelet on turn 1).
 6. Resolve due Promises (creation order). Win check: R-8b after each Promise hit (a Promise that finishes the last Shade wins before the player acts).
 7. Player may act: `play`, `endTurn` (and `choose`/`confirm` while a choice is pending).
@@ -435,7 +435,7 @@ Steps 1 to 6 are deterministic, so IntentView projects them: every intent pill s
 **Projected intents.** IntentView shows the projected intent after 5.6 steps 1 to 6, taken from `preview({t:'endTurn'})`. When it differs from the current intent, the pill shows the projected one with an "after end of turn" tag. Tooltip: "Lantern Moth will turn it to Fear." (Other causes: Short Fuse and Grows in the Dark adding Flare, a Companion hit turning a face or moving a gauge.) From the player turn whose enemy phase will Fester (`turn >= festerTurn`, 4.17), the projection also includes Festering (5.7 step 1): strikes show the +1 Flare and the tooltip adds "The Shades fester: +1 Flare." (joined with any other cause), so the shown per-strike number is what lands. A play preview's `intentAfter` is the pill the Shade will show after that play, from the same projection.
 
 ### 5.8 Combat end
-- **Won:** all non-Fleeting Shades gone (R-8b). Build `CombatResult` (heart after, Glimmers, deck mutations in order: Buried adds/Weight changes, Tends, Insight transforms, removals of Buried cards whose Insight was already created (4.10); Keepsake counters incl. Paper Crane; stats). Warm Locket Mends 8. Go to rewards (12).
+- **Won:** all non-Fleeting Shades gone (R-8b). Build `CombatResult` (heart after, Glimmers, deck mutations in order: Buried adds/Weight changes, Tends, Insight transforms, removals of Buried cards whose Insight was already created (4.10); Keepsake counters incl. Paper Crane; stats). Warm Locket Mends 5. Go to rewards (12).
 - **Lost:** Heart 0 with no Paper Crane, or turn limit. Go to defeat screen.
 
 ---
@@ -555,7 +555,7 @@ A Blend card's Note is both Lights. A Blend card is Harmonized only by an adjace
 |---|---|---|---|---|---|---|---|
 | `neutral.name_it` | Name It | ease | 1 | C | enemy | Ease 4. Then the target becomes Understood. | Ease 7. |
 | `neutral.pause` | Pause | skill | 0 | C | none | Draw 2. Let Go. | Draw 3. |
-| `neutral.push_it_down` | Push It Down | ease | 1 | C | enemy | Ease 9. If this Suppresses a Shade, gain 2 Spirit. | Ease 12. |
+| `neutral.push_it_down` | Push It Down | ease | 1 | C | enemy | Ease 7. If this Suppresses a Shade, gain 2 Spirit. | Ease 10. |
 | `neutral.look_inward` | Look Inward | skill | 1 | U | none | Put a Buried card from your draw or discard pile into your hand. Draw 1. | Cost 0. |
 | `neutral.sit_with_it` | Sit With It | skill | 1 | R | none | Tend a Buried card in your hand, whatever its type. Let Go. | Cost 0. |
 
@@ -606,14 +606,14 @@ Companions don't act while you have 1+ Isolated (4.13).
 
 | id | name | faces | HP | passives | moves (pattern order) |
 |---|---|---|---|---|---|
-| `shade.grumble` | Grumble | anger | 40-44 | **Short Fuse:** at the end of your turn, if a card without Love hit it this turn, Flare +1 (once per turn). | `snap` Strike 7 -> `stomp` Strike 5, 2 Seething -> `huff` Guard 6, Flare +1 |
-| `shade.mope` | Mope | sadness | 46-50 | **Wallow:** after its action, restores 5 Intensity unless a hit with Joy landed on it since its previous action. | `sigh` Strike 6, 1 Heavy -> `drizzle` Strike 2 x 3 -> `curl_up` Guard 10 |
-| `shade.skitter` | Skitter | fear | 26-30 | **Summoner:** combat start: Summon Doubt. Its Doubts Fade when it leaves (R-8a). | `hide` Guard 8, Summon Doubt (max 2) -> `lunge` Strike 10 -> `shiver` Strike 4, 2 Trembling |
-| `shade.doubt` | Doubt | fear | 7 | **Fleeting.** | `nag` Strike 3 (every turn) |
-| `shade.echo` | Echo | loneliness | 32-36 | **Last One Left:** the first time it is the only Shade on the field (checked at combat start and whenever a Shade leaves), Flare +2 and Guard 10. | `call_out` Strike 6 -> `cold_shoulder` Strike 4, 2 Isolated -> `drift` Guard 8, Scatter 1 |
-| `shade.looming` | The Looming (elite) | fear | 84-88 | **Summoner:** combat start: Summon Doubt x2. **Grows in the Dark:** at the end of your turn, if you played no card with Courage this turn, Flare +1. | `loom` Guard 12, Summon Doubt (max 3) -> `pounce` Strike 14 -> `shriek` Strike 4 x 3, 2 Trembling |
-| `shade.kettle` | The Kettle (elite) | anger | 90-94 | **Pressure** (gauge 0 to 6, starts 0): after each of your cards that hit it resolves, Pressure +1 if the card has no Love, or -2 (min 0) if it has Love. While Pressure is 6, its intent is overridden to `boil_over` (lifted again if Pressure drops below 6 before it acts). After `boil_over`, Pressure = 0. | `rattle` Strike 8 -> `whistle` Strike 5 x 2, 2 Seething -> `simmer` Guard 12, Pressure +2; override `boil_over` Strike 24, 3 Seething |
-| `shade.mask` | The Mask (boss) | anger, sadness, loneliness, fear | 150 | **Many Faces:** turns on OPPOSITE hits (R-5) and also at the end of each of its actions. Its forehead shows the next face. Your hits (card or automatic) can turn it at most twice per player turn. Further OPPOSITE hits still deal x2 and remove Flare but don't turn it. Chip: "Turns left 2/1/0" (resets at the end of your turn, 5.6 step 8). **Cracked:** the first time it is at 50% of its max Intensity or less (75 of 150), Flare +3. | `byFace`: anger -> `rage` Strike 12; sadness -> `weep` Strike 5 x 2, 2 Heavy; loneliness -> `turn_away` Guard 15, 2 Isolated; fear -> `startle` Strike 8, 2 Trembling |
+| `shade.grumble` | Grumble | anger | 48-53 | **Short Fuse:** at the end of your turn, if a card without Love hit it this turn, Flare +1 (once per turn). | `snap` Strike 9 -> `stomp` Strike 6, 2 Seething -> `huff` Guard 6, Flare +1 |
+| `shade.mope` | Mope | sadness | 55-60 | **Wallow:** while it is above half Intensity, after its action it restores 5 Intensity unless a hit with Joy landed on it since its previous action. It stops for good the first time it is at 50% of its max Intensity or less, so a deck without Joy can still finish it. | `sigh` Strike 8, 1 Heavy -> `drizzle` Strike 3 x 3 -> `curl_up` Guard 10 |
+| `shade.skitter` | Skitter | fear | 31-36 | **Summoner:** combat start: Summon Doubt. Its Doubts Fade when it leaves (R-8a). | `hide` Guard 8, Summon Doubt (max 2) -> `lunge` Strike 13 -> `shiver` Strike 5, 2 Trembling |
+| `shade.doubt` | Doubt | fear | 8 | **Fleeting.** | `nag` Strike 4 (every turn) |
+| `shade.echo` | Echo | loneliness | 38-43 | **Last One Left:** the first time it is the only Shade on the field (checked at combat start and whenever a Shade leaves), Flare +2 and Guard 10. | `call_out` Strike 8 -> `cold_shoulder` Strike 5, 2 Isolated -> `drift` Guard 8, Scatter 1 |
+| `shade.looming` | The Looming (elite) | fear | 101-106 | **Summoner:** combat start: Summon Doubt x2. **Grows in the Dark:** at the end of your turn, if you played no card with Courage this turn and it has less than 3 Flare, Flare +1. | `loom` Guard 12, Summon Doubt (max 3) -> `pounce` Strike 18 -> `shriek` Strike 5 x 3, 2 Trembling |
+| `shade.kettle` | The Kettle (elite) | anger | 108-113 | **Pressure** (gauge 0 to 6, starts 0): after each of your cards that hit it resolves, Pressure +1 if the card has no Love, or -2 (min 0) if it has Love. While Pressure is 6, its intent is overridden to `boil_over` (lifted again if Pressure drops below 6 before it acts). After `boil_over`, Pressure = 0. | `rattle` Strike 10 -> `whistle` Strike 6 x 2, 2 Seething -> `simmer` Guard 12, Pressure +2; override `boil_over` Strike 30, 3 Seething |
+| `shade.mask` | The Mask (boss) | anger, sadness, loneliness, fear | 180 | **Many Faces:** turns on OPPOSITE hits (R-5) and also at the end of each of its actions. Its forehead shows the next face. Your hits (card or automatic) can turn it at most twice per player turn. Further OPPOSITE hits still deal x2 and remove Flare but don't turn it. Chip: "Turns left 2/1/0" (resets at the end of your turn, 5.6 step 8). **Cracked:** the first time it is at 50% of its max Intensity or less (90 of 180), Flare +3. | `byFace`: anger -> `rage` Strike 15; sadness -> `weep` Strike 6 x 2, 2 Heavy; loneliness -> `turn_away` Guard 15, 2 Isolated; fear -> `startle` Strike 10, 2 Trembling |
 
 The Mask is the Harmony walk made into a boss: Love, then Joy, then Friendship, then Courage each hit x2 because every OPPOSITE hit turns it to the face the next Light cures, and a Harmonized card covers two faces. Turning it on purpose also chooses which move it makes (turn it to Loneliness and it only Guards). Because your hits can turn it at most twice per player turn, its face moves 1 to 3 steps per cycle of 4, so Loneliness comes up at most every other turn and the turns in between cost you `weep`, `startle` or `rage`: it can't be locked on `turn_away`.
 
@@ -632,21 +632,21 @@ Compound faces are listed outer first; the outer face's cure is DISSONANT agains
 
 | id | name | faces | HP | passives | moves (pattern order) |
 |---|---|---|---|---|---|
-| `shade.fret` | Fret | anxiety | 42-46 | **Worry** (starts 0, max 6): after its action, Worry +1. Each of your cards with Calm that hits it removes 2 Worry. | `flurry` Strike 3 x (1 + Worry) -> `fidget` Worry +2, 2 Restless -> `pace` Guard 8 |
-| `shade.slump` | Slump | despair | 50-54 | **Heavy Silence:** after its action, if you played 2 or fewer cards during your last turn, Guard 8. | `sigh_deeply` Strike 6, 1 Hollow -> `sink` Guard 12 -> `collapse` Strike 15 |
-| `shade.old_grudge` | Old Grudge | anger / sadness | 60-64 | **Keeps Score:** each hit from your cards that isn't OPPOSITE adds 1 Tally (max 6). | `mutter` Strike 6, 2 Seething -> `rehash` Strike 4 + 3 per Tally, then Tally = 0 -> `brood` Guard 10, 1 Heavy |
-| `shade.longing` | Longing | sadness / loneliness | 58-62 | **Wallow:** after its action, restores 5 Intensity unless a hit with Joy or Friendship landed on it since its previous action. | `reach_back` Strike 9 -> `remember` Guard 10, 1 Heavy, 1 Isolated -> `ache` Strike 4 x 3 |
-| `shade.wallflower` | Wallflower | loneliness / fear | 38-42 | **Shy:** while another Shade stands, cards can't target it unless they Reach Shy (ALL hits and Companions still reach it). **Cornered:** the first time it is the only Shade, Flare +3. | `peek` 2 Trembling -> `wilt` Scatter 1, 2 Isolated -> `prickle` Strike 8 |
-| `shade.dread` | Dread | fear / despair | 56-60 | **Countdown** (starts 3): while 0, intent is overridden to `the_thing`. After it acts: Countdown = 3 if it used `the_thing`, else -1. Once per your turn, a hit from a card with Courage or Hope pushes Countdown +1 (max 3). | `creak` Strike 6 -> `shadow` 2 Trembling, 1 Hollow; override `the_thing` Strike 24 |
-| `shade.knot` | The Knot (elite) | anxiety / anger | 108-112 | **Tension** (0 to 6): +1 for each card you play (outward or Inward) whose effective Lights include neither Calm nor Love. Each hit on it from a card with Calm or Love: -1 (min 0). While 6, intent is overridden to `snap`; after `snap`, Tension = 0. | `twist` Strike 6 x 2 -> `clench` Guard 16, Tension +2 -> `lash` Strike 14; override `snap` Strike 22 |
-| `shade.apathy` | Apathy (elite) | none (numb rules) | 90-94 | **Muffled, Veiled, Surfacing (your 1 heaviest Buried card)** (R-16). Suppressing its Surfaced Shade: Apathy gains +10 x Weight max Intensity and Intensity. Can't be Understood. Suppress adds no Buried card. | `shrug` Strike 10 -> `grey_out` 2 Numb, Guard 10 -> `sigh` Strike 6 x 2 |
-| `shade.spiral` | The Spiral (boss) | despair / anxiety | 200 | **Coil** (starts 2, max 6): after its action, Coil +1. Each card you play (outward or Inward) with Hope or Calm unwinds 1 Coil, or 2 if it has both (min 1). It also unwinds 1 whenever the Spiral's face turns (so Name It gives any deck a way to unwind it). `what_if` peaks at Strike 3 x 6 = 18 (30 with Deepening). **Deepening:** the first time it is at 50% of its max Intensity or less (100 of 200), Flare +2. | `what_if` Strike 3 x Coil, 1 Restless -> `whats_the_point` 2 Hollow, Guard 15 -> `around_again` Strike 12, Coil +1 |
+| `shade.fret` | Fret | anxiety | 59-64 | **Worry** (starts 0, max 6): after its action, Worry +1. Each of your cards with Calm that hits it removes 2 Worry. | `flurry` Strike 4 x (1 + Worry) -> `fidget` Worry +2, 2 Restless -> `pace` Guard 8 |
+| `shade.slump` | Slump | despair | 70-76 | **Heavy Silence:** after its action, if you played 2 or fewer cards during your last turn, Guard 8. | `sigh_deeply` Strike 8, 1 Hollow -> `sink` Guard 12 -> `collapse` Strike 21 |
+| `shade.old_grudge` | Old Grudge | anger / sadness | 84-90 | **Keeps Score:** each hit from your cards that isn't OPPOSITE adds 1 Tally (max 6). | `mutter` Strike 8, 2 Seething -> `rehash` Strike 6 + 3 per Tally, then Tally = 0 -> `brood` Guard 10, 1 Heavy |
+| `shade.longing` | Longing | sadness / loneliness | 81-87 | **Wallow:** while it is above half Intensity, after its action it restores 5 Intensity unless a hit with Joy or Friendship landed on it since its previous action. It stops for good the first time it is at 50% of its max Intensity or less. | `reach_back` Strike 13 -> `remember` Guard 10, 1 Heavy, 1 Isolated -> `ache` Strike 6 x 3 |
+| `shade.wallflower` | Wallflower | loneliness / fear | 53-59 | **Shy:** while another Shade stands, cards can't target it unless they Reach Shy (ALL hits and Companions still reach it). **Cornered:** the first time it is the only Shade, Flare +3. | `peek` 2 Trembling -> `wilt` Scatter 1, 2 Isolated -> `prickle` Strike 11 |
+| `shade.dread` | Dread | fear / despair | 78-84 | **Countdown** (starts 3): while 0, intent is overridden to `the_thing`. After it acts: Countdown = 3 if it used `the_thing`, else -1. Once per your turn, a hit from a card with Courage or Hope pushes Countdown +1 (max 3). | `creak` Strike 8 -> `shadow` 2 Trembling, 1 Hollow; override `the_thing` Strike 34 |
+| `shade.knot` | The Knot (elite) | anxiety / anger | 151-157 | **Tension** (0 to 6): +1 for each card you play (outward or Inward) whose effective Lights include neither Calm nor Love. Each hit on it from a card with Calm or Love: -1 (min 0). While 6, intent is overridden to `snap`; after `snap`, Tension = 0. | `twist` Strike 8 x 2 -> `clench` Guard 16, Tension +2 -> `lash` Strike 20; override `snap` Strike 31 |
+| `shade.apathy` | Apathy (elite) | none (numb rules) | 126-132 | **Muffled, Veiled, Surfacing (your 1 heaviest Buried card)** (R-16). Suppressing its Surfaced Shade: Apathy gains +10 x Weight max Intensity and Intensity. Can't be Understood. Suppress adds no Buried card. | `shrug` Strike 14 -> `grey_out` 2 Numb, Guard 10 -> `sigh` Strike 8 x 2 |
+| `shade.spiral` | The Spiral (boss) | despair / anxiety | 280 | **Coil** (starts 2, max 6): after its action, Coil +1. Each card you play (outward or Inward) with Hope or Calm unwinds 1 Coil, or 2 if it has both (min 1). It also unwinds 1 whenever the Spiral's face turns (so Name It gives any deck a way to unwind it), and 1 more for each OPPOSITE hit from your cards (so an OPPOSITE card hit unwinds 2 in total). `what_if` peaks at Strike 4 x 6 = 24 (36 with Deepening). **Deepening:** the first time it is at 50% of its max Intensity or less (140 of 280), Flare +2. | `what_if` Strike 4 x Coil, 1 Restless -> `whats_the_point` 2 Hollow, Guard 15 -> `around_again` Strike 17, Coil +1 |
 
 ### 7.3 The Deep
 
 | id | name | faces | HP | passives | moves |
 |---|---|---|---|---|---|
-| `shade.numbness` | The Numbness (final boss) | none (numb rules) | 180 | **Muffled, Veiled, Surfacing (your 3 heaviest Buried cards)** (R-16). Combat start: +6 max Intensity and Intensity per Weight of Buried cards not Surfaced. Suppressing a Surfaced Shade: +10 x Weight max Intensity and Intensity. Can't be Understood. **Thaw:** when it first drops to 50% of its current max Intensity or less (90 of 180; growth raises it), its pattern switches to Phase 2 and its intent re-derives to `flatline`. | Phase 1: `static` Strike 12 -> `fog` Guard 14, 1 Numb -> `nothing_much` Strike 8, 1 Heavy, 1 Hollow. Phase 2: `flatline` Strike 18 -> `fog2` Guard 14, 2 Numb -> `static_storm` Strike 4 x 4 |
+| `shade.numbness` | The Numbness (final boss) | none (numb rules) | 396 | **Muffled, Veiled, Surfacing (your 3 heaviest Buried cards)** (R-16). Combat start: +6 max Intensity and Intensity per Weight of Buried cards not Surfaced. Suppressing a Surfaced Shade: +10 x Weight max Intensity and Intensity. Can't be Understood. **Thaw:** when it first drops to 50% of its current max Intensity or less (198 of 396; growth raises it), its pattern switches to Phase 2 and its intent re-derives to `flatline`. | Phase 1: `static` Strike 19 -> `fog` Guard 14, 1 Numb -> `nothing_much` Strike 13, 1 Heavy, 1 Hollow. Phase 2: `flatline` Strike 29 -> `fog2` Guard 14, 2 Numb -> `static_storm` Strike 6 x 4 |
 | `shade.surfaced_anger` | Surfaced Anger | anger | 12 x Weight | none | `flare_up` Strike 8 -> `smolder` Strike 5, 2 Seething |
 | `shade.surfaced_sadness` | Surfaced Sadness | sadness | 12 x Weight | none | `sigh` Strike 6, 1 Heavy -> `curl_up` Guard 8 |
 | `shade.surfaced_loneliness` | Surfaced Loneliness | loneliness | 12 x Weight | none | `call_out` Strike 6 -> `cold_shoulder` Strike 4, 2 Isolated |
@@ -696,10 +696,10 @@ Surfaced Shades are named (not Fleeting). They act in the first enemy phase (5.7
 | `enc.a1.mope` | mope | Act 1 early |
 | `enc.a1.skitter` | skitter (+1 Doubt from its passive) | Act 1 early |
 | `enc.a1.grumble_echo` | grumble, echo | Act 1 standard |
-| `enc.a1.mope_skitter` | mope (40-44), skitter | Act 1 standard |
-| `enc.a1.two_grumbles` | grumble (26-30), grumble (26-30) | Act 1 standard |
-| `enc.a1.echo_mope` | echo, mope (40-44) | Act 1 standard |
-| `enc.a1.two_skitters` | skitter (22-26), skitter (22-26) | Act 1 standard |
+| `enc.a1.mope_skitter` | mope (48-53), skitter | Act 1 standard |
+| `enc.a1.two_grumbles` | grumble (31-36), grumble (31-36) | Act 1 standard |
+| `enc.a1.echo_mope` | echo, mope (48-53) | Act 1 standard |
+| `enc.a1.two_skitters` | skitter (26-31), skitter (26-31) | Act 1 standard |
 | `enc.a1.echo` | echo | Act 1 standard |
 | `enc.a1.looming` | looming (+2 Doubts) | Act 1 elite |
 | `enc.a1.kettle` | kettle | Act 1 elite |
@@ -709,15 +709,15 @@ Surfaced Shades are named (not Fleeting). They act in the first enemy phase (5.7
 | `enc.a2.old_grudge` | old_grudge | Act 2 standard |
 | `enc.a2.longing` | longing | Act 2 standard |
 | `enc.a2.dread` | dread | Act 2 standard |
-| `enc.a2.wallflower_grumble` | grumble (34-38), wallflower | Act 2 standard |
-| `enc.a2.wallflower_fret` | fret (34-38), wallflower | Act 2 standard |
-| `enc.a2.two_frets` | fret (32-36), fret (32-36) | Act 2 standard |
-| `enc.a2.slump_echo` | slump, echo (28-32) | Act 2 standard |
+| `enc.a2.wallflower_grumble` | grumble (48-53), wallflower | Act 2 standard |
+| `enc.a2.wallflower_fret` | fret (48-53), wallflower | Act 2 standard |
+| `enc.a2.two_frets` | fret (45-50), fret (45-50) | Act 2 standard |
+| `enc.a2.slump_echo` | slump, echo (39-45) | Act 2 standard |
 | `enc.a2.knot` | knot | Act 2 elite |
 | `enc.a2.apathy` | apathy | Act 2 elite |
 | `enc.a2.spiral` | spiral | Act 2 boss |
 | `enc.deep.numbness` | numbness (+ Surfaced) | The Deep |
-| `enc.mem.echo` | echo (32-36) | Memory "The Wishing Well" (pays base 10 + Resolve 8, counts as a win, no card reward) |
+| `enc.mem.echo` | echo (38-43) | Memory "The Wishing Well" (pays base 10 + Resolve 8, counts as a win, no card reward) |
 
 **Pools by row** (normal run; tutorial differences in 11.3):
 
@@ -744,10 +744,10 @@ No duplicates in a run. Pool draws skip owned Keepsakes; if a rarity is exhauste
 ### 9.2 Charms (choose 1 of 4 at run start; the profile's first run gets Warm Locket automatically)
 | id | name | effect | adds card |
 |---|---|---|---|
-| `ks.warm_locket` | Warm Locket | At the end of each combat you win, Mend 8. | Kind Word |
-| `ks.sun_charm` | Sun Charm | On turn 1 of each combat, draw 2 extra cards. | Bright Spark |
+| `ks.warm_locket` | Warm Locket | At the end of each combat you win, Mend 5. | Kind Word |
+| `ks.sun_charm` | Sun Charm | On turn 1 of each combat, draw 3 extra cards. | Bright Spark |
 | `ks.woven_bracelet` | Woven Bracelet | At the start of each combat, Summon a Lantern Moth. | Reach Out |
-| `ks.brave_pebble` | Brave Pebble | At the start of each combat, gain 1 Nerve. | Brave Strike |
+| `ks.brave_pebble` | Brave Pebble | At the start of each combat, gain 2 Nerve. | Brave Strike |
 
 ### 9.3 Pool (elite rewards, Chests, Sanctuary, events). Rarity weights for random draws: Common 50, Uncommon 35, Rare 15.
 | id | name | rarity | effect |
@@ -2153,3 +2153,6 @@ Each line names the red-team finding (B = blocker, M = major, minor-N = minor it
 - **minor-26** Mend happens after the boss Keepsake pick, so a Spiral Shell taken at that boss already halves that act transition's Mend (12.4).
 - **M10** The Deep's sale Blend slot is chosen with the `shop` stream, and the third Blend is random (13).
 - **Header** Title and status line updated to v1.1.
+
+**Balance passes**
+- **B-1 quick balance pass:** from the simulator's tuning run (docs/balance-report.md). Act 1 Shades Intensity x1.2 and strikes x1.25, Act 2 Shades Intensity x1.4 and strikes x1.4 (encounter HP overrides scale with their act), The Numbness 180 -> 396 Intensity and strikes x1.6. Tutorial Shades unchanged. Push It Down Ease 9 -> 7 (upgraded 12 -> 10), Warm Locket Mend 8 -> 5, Brave Pebble 1 -> 2 Nerve, Sun Charm 2 -> 3 extra cards on turn 1. Stall fixes: Mope's and Longing's Wallow stop the first time they are at half Intensity or less, an OPPOSITE card hit unwinds 1 more Coil on The Spiral, and Grows in the Dark only adds Flare below 3 Flare (6.9, 7.1, 7.2, 7.3, 8, 9.2).

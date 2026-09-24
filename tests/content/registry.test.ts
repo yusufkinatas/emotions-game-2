@@ -491,8 +491,8 @@ const EXPECTED: Record<string, [number, number, string, string]> = {
   'neutral.pause': [0, 0, 'Draw 2. Let Go.', 'Draw 3. Let Go.'],
   'neutral.push_it_down': [
     1, 1,
-    'Ease 9. If this Suppresses a Shade, gain 2 Spirit.',
-    'Ease 12. If this Suppresses a Shade, gain 2 Spirit.',
+    'Ease 7. If this Suppresses a Shade, gain 2 Spirit.',
+    'Ease 10. If this Suppresses a Shade, gain 2 Spirit.',
   ],
   'neutral.look_inward': [
     1, 0,

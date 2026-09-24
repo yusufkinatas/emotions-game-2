@@ -16,20 +16,20 @@ export const ENCOUNTERS: EncounterDef[] = [
   one('enc.a1.mope', 'shade.mope'),
   one('enc.a1.skitter', 'shade.skitter'),
   { id: 'enc.a1.grumble_echo', members: [{ enemy: 'shade.grumble' }, { enemy: 'shade.echo' }] },
-  { id: 'enc.a1.mope_skitter', members: [{ enemy: 'shade.mope', hp: [40, 44] }, { enemy: 'shade.skitter' }] },
+  { id: 'enc.a1.mope_skitter', members: [{ enemy: 'shade.mope', hp: [48, 53] }, { enemy: 'shade.skitter' }] },
   {
     id: 'enc.a1.two_grumbles',
     members: [
-      { enemy: 'shade.grumble', hp: [26, 30] },
-      { enemy: 'shade.grumble', hp: [26, 30] },
+      { enemy: 'shade.grumble', hp: [31, 36] },
+      { enemy: 'shade.grumble', hp: [31, 36] },
     ],
   },
-  { id: 'enc.a1.echo_mope', members: [{ enemy: 'shade.echo' }, { enemy: 'shade.mope', hp: [40, 44] }] },
+  { id: 'enc.a1.echo_mope', members: [{ enemy: 'shade.echo' }, { enemy: 'shade.mope', hp: [48, 53] }] },
   {
     id: 'enc.a1.two_skitters',
     members: [
-      { enemy: 'shade.skitter', hp: [22, 26] },
-      { enemy: 'shade.skitter', hp: [22, 26] },
+      { enemy: 'shade.skitter', hp: [26, 31] },
+      { enemy: 'shade.skitter', hp: [26, 31] },
     ],
   },
   one('enc.a1.echo', 'shade.echo'),
@@ -45,17 +45,17 @@ export const ENCOUNTERS: EncounterDef[] = [
   one('enc.a2.dread', 'shade.dread'),
   {
     id: 'enc.a2.wallflower_grumble',
-    members: [{ enemy: 'shade.grumble', hp: [34, 38] }, { enemy: 'shade.wallflower' }],
+    members: [{ enemy: 'shade.grumble', hp: [48, 53] }, { enemy: 'shade.wallflower' }],
   },
-  { id: 'enc.a2.wallflower_fret', members: [{ enemy: 'shade.fret', hp: [34, 38] }, { enemy: 'shade.wallflower' }] },
+  { id: 'enc.a2.wallflower_fret', members: [{ enemy: 'shade.fret', hp: [48, 53] }, { enemy: 'shade.wallflower' }] },
   {
     id: 'enc.a2.two_frets',
     members: [
-      { enemy: 'shade.fret', hp: [32, 36] },
-      { enemy: 'shade.fret', hp: [32, 36] },
+      { enemy: 'shade.fret', hp: [45, 50] },
+      { enemy: 'shade.fret', hp: [45, 50] },
     ],
   },
-  { id: 'enc.a2.slump_echo', members: [{ enemy: 'shade.slump' }, { enemy: 'shade.echo', hp: [28, 32] }] },
+  { id: 'enc.a2.slump_echo', members: [{ enemy: 'shade.slump' }, { enemy: 'shade.echo', hp: [39, 45] }] },
   one('enc.a2.knot', 'shade.knot'),
   one('enc.a2.apathy', 'shade.apathy'),
   one('enc.a2.spiral', 'shade.spiral'),
@@ -64,7 +64,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   one('enc.deep.numbness', 'shade.numbness'),
 
   // Memory "The Wishing Well": pays base 10 + Resolve 8, counts as a win, no card reward.
-  { id: 'enc.mem.echo', members: [{ enemy: 'shade.echo', hp: [32, 36] }] },
+  { id: 'enc.mem.echo', members: [{ enemy: 'shade.echo', hp: [38, 43] }] },
 ];
 
 const A1_EARLY = ['enc.a1.grumble', 'enc.a1.mope', 'enc.a1.skitter'];

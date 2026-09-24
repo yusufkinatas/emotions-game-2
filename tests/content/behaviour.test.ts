@@ -50,16 +50,27 @@ const atIndex = (s: GameState, i: number, index: number) =>
 describe('Act 1 passives', () => {
   it('Mope Wallow: +5 after its action unless a Joy hit landed since its previous action', () => {
     let s = edit(fight('enc.a1.mope'), (c) => {
-      c.enemies[0]!.hp = 30;
+      c.enemies[0]!.hp = 40;
     });
     s = endTurn(s);
-    expect(shade(s).hp).toBe(35);
+    expect(shade(s).hp).toBe(45);
     s = play(s, 'joy.bright_spark');
     const afterHit = shade(s).hp;
     s = endTurn(s);
     expect(shade(s).hp).toBe(afterHit);
     s = endTurn(s);
     expect(shade(s).hp).toBe(afterHit + 5);
+  });
+
+  it('Mope Wallow stops once it has been at half Intensity or less', () => {
+    let s = edit(fight('enc.a1.mope'), (c) => {
+      c.enemies[0]!.hp = Math.floor(c.enemies[0]!.maxHp / 2) + 3;
+    });
+    s = play(s, 'courage.brave_strike'); // no Joy: not soothed, but now at half or less
+    const low = shade(s).hp;
+    expect(low * 2).toBeLessThanOrEqual(shade(s).maxHp);
+    s = endTurn(s);
+    expect(shade(s).hp).toBe(low);
   });
 
   it('Grumble Short Fuse: a card hit without Love this turn gives 1 Flare at the end of your turn (once)', () => {
@@ -91,6 +102,12 @@ describe('Act 1 passives', () => {
     s = play(s, 'courage.stand_firm', null);
     s = endTurn(s);
     expect(st(shade(s), 'flare')).toBe(1);
+    s = edit(s, (c) => {
+      c.enemies[0]!.statuses.flare = 3;
+      c.player.guard = 200; // survive this turn's Pounce and Doubts
+    });
+    s = endTurn(s);
+    expect(st(shade(s), 'flare')).toBe(3); // Grows in the Dark stops at 3 Flare
   });
 
   it('Echo Last One Left: alone at combat start, or once another Shade leaves: Flare +2 and Guard 10', () => {
@@ -144,7 +161,7 @@ describe('Act 2 passives', () => {
     expect(st(shade(s), 'worry')).toBe(3);
     expect(engine.intents(s)[0]).toMatchObject({ moveId: 'pace' });
     s = endTurn(s);
-    expect(engine.intents(s)[0]).toMatchObject({ moveId: 'flurry', strikes: { perStrike: 3, count: 5 } });
+    expect(engine.intents(s)[0]).toMatchObject({ moveId: 'flurry', strikes: { perStrike: 4, count: 5 } });
     s = play(s, 'calm.lullaby');
     expect(st(shade(s), 'worry')).toBe(2);
   });
@@ -161,24 +178,24 @@ describe('Act 2 passives', () => {
     expect(shade(s).guard).toBe(0);
   });
 
-  it('Old Grudge keeps score of non-OPPOSITE card hits and Rehash strikes 4 + 3 per Tally, then resets', () => {
+  it('Old Grudge keeps score of non-OPPOSITE card hits and Rehash strikes 6 + 3 per Tally, then resets', () => {
     let s = atIndex(fight('enc.a2.old_grudge'), 0, 1); // rehash next
     s = play(s, 'courage.brave_strike'); // neutral vs Anger
     s = play(s, 'love.kind_word'); // OPPOSITE: no Tally, turns to Sadness
     s = play(s, 'love.kind_word'); // DISSONANT vs Sadness
     expect(st(shade(s), 'tally')).toBe(2);
     expect(engine.intents(s)[0]).toMatchObject({ moveId: 'rehash' });
-    expect(engine.intents(s)[0]!.strikes!.perStrike).toBe(4 + 3 * 2 + st(shade(s), 'flare'));
+    expect(engine.intents(s)[0]!.strikes!.perStrike).toBe(6 + 3 * 2 + st(shade(s), 'flare'));
     s = endTurn(s);
     expect(st(shade(s), 'tally')).toBe(0);
   });
 
   it('Longing Wallow is soothed by Joy or Friendship hits', () => {
     let s = edit(fight('enc.a2.longing'), (c) => {
-      c.enemies[0]!.hp = 40;
+      c.enemies[0]!.hp = 60;
     });
     s = endTurn(s);
-    expect(shade(s).hp).toBe(45);
+    expect(shade(s).hp).toBe(65);
     s = play(s, 'friendship.reach_out');
     const hp = shade(s).hp;
     s = endTurn(s);
@@ -227,15 +244,19 @@ describe('Act 2 passives', () => {
     expect(st(shade(s), 'tension')).toBe(0);
   });
 
-  it('The Spiral: Coil starts 2, +1 after acting, unwinds 2 for Hope+Calm and 1 per face turn, Deepening at 100', () => {
+  it('The Spiral: Coil starts 2, +1 after acting, unwinds 2 for Hope+Calm, 1 per face turn and 1 per OPPOSITE card hit, Deepening at 140', () => {
     let s = atIndex(fight('enc.a2.spiral'), 0, 0);
     expect(st(shade(s), 'coil')).toBe(2);
     s = endTurn(s);
     expect(st(shade(s), 'coil')).toBe(3);
-    s = play(s, 'blend.wait_it_out'); // Hope hits Despair: OPPOSITE, turns (-1), and the card has both (-2)
-    expect(st(shade(s), 'coil')).toBe(1);
     s = edit(s, (c) => {
-      c.enemies[0]!.hp = 101;
+      c.enemies[0]!.statuses.coil = 6;
+    });
+    // Hope hits Despair: OPPOSITE (-1), turns (-1), and the card has both (-2)
+    s = play(s, 'blend.wait_it_out');
+    expect(st(shade(s), 'coil')).toBe(2);
+    s = edit(s, (c) => {
+      c.enemies[0]!.hp = 141;
     });
     s = play(s, 'courage.brave_strike');
     expect(st(shade(s), 'flare')).toBe(2);
@@ -252,9 +273,9 @@ describe('numb rules and The Deep', () => {
     expect(shade(s).hp).toBe(hp - 3 - 14);
   });
 
-  it('The Numbness thaws into Phase 2 at half Intensity (90 of 180) and its intent becomes Flatline', () => {
+  it('The Numbness thaws into Phase 2 at half Intensity (198 of 396) and its intent becomes Flatline', () => {
     let s = edit(fight('enc.deep.numbness'), (c) => {
-      c.enemies[0]!.hp = 95;
+      c.enemies[0]!.hp = Math.floor(c.enemies[0]!.maxHp / 2) + 5;
     });
     s = play(s, 'blend.sunbeam');
     expect(shade(s).intent?.moveId).toBe('flatline');
@@ -286,9 +307,9 @@ describe('intents with several afflictions', () => {
 });
 
 describe('turn-1 Keepsakes and Charms', () => {
-  it('Sun Charm draws 7 on turn 1 only; Morning Tea gives 4 Spirit on turn 1 only; Warm Socks 6 Guard', () => {
+  it('Sun Charm draws 8 on turn 1 only; Morning Tea gives 4 Spirit on turn 1 only; Warm Socks 6 Guard', () => {
     let s = fight('enc.a1.grumble', { charm: 'ks.sun_charm' });
-    expect(combat(s).piles.hand).toHaveLength(7);
+    expect(combat(s).piles.hand).toHaveLength(8);
     s = endTurn(s);
     expect(combat(s).piles.hand).toHaveLength(5);
     s = fight('enc.a1.grumble', { keepsakes: ['ks.morning_tea'] });
@@ -305,8 +326,8 @@ describe('turn-1 Keepsakes and Charms', () => {
     expect(both.player.statuses.seething ?? 0).toBe(0);
   });
 
-  it('Brave Pebble gives 1 Nerve; Woven Bracelet summons a Lantern Moth', () => {
-    expect(combat(fight('enc.a1.grumble', { charm: 'ks.brave_pebble' })).player.statuses.nerve).toBe(1);
+  it('Brave Pebble gives 2 Nerve; Woven Bracelet summons a Lantern Moth', () => {
+    expect(combat(fight('enc.a1.grumble', { charm: 'ks.brave_pebble' })).player.statuses.nerve).toBe(2);
     expect(combat(fight('enc.a1.grumble', { charm: 'ks.woven_bracelet' })).companions.map((c) => c.defId)).toEqual([
       'comp.lantern_moth',
     ]);
