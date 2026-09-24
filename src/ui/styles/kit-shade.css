@@ -1,8 +1,11 @@
 /*
  * Shade silhouettes (DESIGN 16.7) and the Shade slot. Inside the SVG, px are viewBox units (200x210).
+ * Colour rule (16.0): Shades are ink with low-chroma grey rims; only cracks, irises, threads and badges
+ * carry hue, and that hue is always the cure of the showing face (--cure).
  * State hooks on the root <svg class="shade-art">:
- *   data-face / data-showing / data-next  face colour, compound badge, Mask forehead
+ *   data-face / data-showing / data-next  face colour, expression, compound badge, Mask forehead
  *   data-flare + --flare                  0..5, grows 4% per stack
+ *   data-ornament + --coil                elite and boss dressing, The Spiral's Coil rings
  *   .is-flinch .is-swell                  hover: OPPOSITE card / DISSONANT card
  *   .is-hit .is-resolving .is-deep .is-suppressed .is-turning
  */
@@ -11,13 +14,15 @@
   display: block;
   overflow: visible;
   --flare: 0;
+  --coil: 2;
   --idle-rate: 1;
   --idle-delay: 0s;
-  --body-hi: #30284a;
-  --body-mid: #1a1628;
-  --body-lo: #0b0911;
-  --rim-light: #43386a;
-  --limb: #1a1626;
+  --body-hi: #2e2b38;
+  --body-mid: #1a1821;
+  --body-lo: #0a090d;
+  --rim-light: #4d4958;
+  --limb: #1b1922;
+  --feature: rgb(237 233 242 / 0.62);
 }
 
 .shade-art :where(g, path, circle, ellipse) {
@@ -32,12 +37,16 @@
 .sa-dissolve-edge { stop-color: white; }
 
 .sa-shadow {
-  fill: rgb(0 0 0 / 0.45);
+  fill: rgb(0 0 0 / 0.5);
 }
 
+/* A soft halo in the cure colour, drawn as wide strokes (no blur filter, so idling costs nothing). */
 .sa-aura {
-  fill: var(--cure);
-  opacity: calc(0.16 + var(--flare) * 0.03);
+  fill: none;
+  stroke: var(--cure);
+  stroke-width: 11;
+  stroke-linejoin: round;
+  opacity: calc(0.1 + var(--flare) * 0.02);
   transition: opacity 160ms ease;
 }
 
@@ -74,14 +83,14 @@
 }
 
 .sa-eye__white { fill: var(--pearl); }
-.sa-pupil { fill: #120f1a; }
+.sa-pupil { fill: #110f15; }
 .sa-glint { fill: #ffffff; }
 .sa-iris { fill: var(--cure); }
-.sa-lid { fill: #1d1830; }
+.sa-lid { fill: #1c1a23; }
 
 .sa-mouth {
   fill: none;
-  stroke: rgb(237 232 245 / 0.55);
+  stroke: var(--feature);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -91,7 +100,7 @@
 
 .sa-puff {
   fill: none;
-  stroke: rgb(237 232 245 / 0.22);
+  stroke: rgb(237 233 242 / 0.22);
   stroke-width: 2.2;
   stroke-linecap: round;
   animation: var(--a-flicker) 1.4s ease-in-out infinite;
@@ -99,21 +108,31 @@
 
 .sa-brow {
   fill: none;
-  stroke: rgb(237 232 245 / 0.55);
+  stroke: var(--feature);
   stroke-width: 2.4;
   stroke-linecap: round;
 }
 
 .sa-closed-eye {
   fill: none;
-  stroke: #6a5d8e;
+  stroke: #6d6a77;
   stroke-width: 1.8;
   stroke-linecap: round;
 }
 
+/* Compounds: both faces' expressions are drawn; the showing one is visible (crossfade on a turn). */
+.sa-expr {
+  transition: opacity var(--t-face) ease;
+}
+
+.shade-art[data-showing='inner'] .sa-expr[data-mood='outer'],
+.shade-art:not([data-showing='inner']) .sa-expr[data-mood='inner'] {
+  opacity: 0;
+}
+
 /* ---------- cracks glow in the cure colour of the showing face ---------- */
 .sa-cracks {
-  opacity: calc(0.78 + var(--flare) * 0.045);
+  opacity: calc(0.8 + var(--flare) * 0.04);
   transition: opacity 160ms ease;
 }
 
@@ -143,6 +162,15 @@
   opacity: 0.5;
 }
 
+.sa-crack__burst {
+  fill: none;
+  stroke: color-mix(in srgb, var(--cure) 45%, white);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
 .sa-flash {
   fill: #ffffff;
   opacity: 0;
@@ -168,13 +196,22 @@
   animation-delay: var(--idle-delay);
 }
 
-.sa-hollow { fill: #07060b; }
+.sa-hollow { fill: #060508; }
+.sa-brim { fill: var(--body-mid); stroke: none; }
 .sa-hood-shade { fill: #000000; }
 
 .sa-tear {
-  fill: #cddcf2;
+  fill: #cfdcee;
   opacity: 0;
   animation: var(--a-tear) 2.6s ease-in infinite;
+}
+
+.sa-rain {
+  fill: none;
+  stroke: rgb(206 214 228 / 0.55);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  animation: var(--a-rain) 1.3s linear infinite;
 }
 
 /* ---------- Loneliness ---------- */
@@ -184,7 +221,7 @@
 }
 
 .sa-ring__rim { fill: none; stroke: var(--rim-light); stroke-width: 10; }
-.sa-ring { fill: none; stroke: #151221; stroke-width: 7; }
+.sa-ring { fill: none; stroke: #141218; stroke-width: 7; }
 .sa-ring__inner { fill: none; stroke: var(--cure); stroke-width: 1; opacity: 0.14; }
 
 .sa-hug {
@@ -213,18 +250,24 @@
   animation: var(--a-idle-fear) 0.333s steps(1, end) infinite;
 }
 
+/* Legs are filled ink with a rim, so they read as solid on the dark stage. */
+.sa-limb--leg .sa-limb__ink {
+  stroke: #24212c;
+}
+
 /* ---------- Despair ---------- */
 .shade-art[data-family='despair'] .sa-idle {
   animation: var(--a-idle-despair) calc(5s * var(--idle-rate)) ease-in-out infinite;
   animation-delay: var(--idle-delay);
 }
 
-.sa-pit { fill: #050409; }
+.sa-pit { fill: #050407; }
+.sa-pit__deep { fill: #010102; }
 .sa-pit__rim { fill: none; stroke: var(--rim-light); stroke-width: 2; }
-.sa-pit__lip { fill: #120f1b; stroke: var(--rim-light); stroke-width: 1.6; stroke-linejoin: round; }
+.sa-pit__lip { fill: #121117; stroke: var(--rim-light); stroke-width: 1.6; stroke-linejoin: round; }
 
 .sa-particle {
-  fill: #b0a6d6;
+  fill: #aeabb6;
   opacity: 0;
   animation: var(--a-particle) 3s ease-in infinite;
 }
@@ -234,26 +277,39 @@
   animation: var(--a-twinkle) 2.4s ease-in-out infinite;
 }
 
-/* ---------- Anxiety ---------- */
+/* ---------- Anxiety: the outline itself is a scribble that redraws ---------- */
 .shade-art[data-family='anxiety'] .sa-idle {
   animation: var(--a-idle-anxiety) 0.2s steps(1, end) infinite;
 }
 
-.sa-scribble {
+.sa-scribble-rim {
   fill: none;
-  stroke: #4c4170;
-  stroke-width: calc(2.4px + var(--flare) * 0.75px);
+  stroke: var(--rim-light);
+  stroke-width: calc(2.1px + var(--flare) * 0.55px);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.sa-scribble--a { animation: var(--a-scribble) 0.6s steps(1, end) infinite; }
-.sa-scribble--b { opacity: 0; animation: var(--a-scribble) 0.6s steps(1, end) infinite reverse; }
+.sa-scribble-rim--a { animation: var(--a-scribble) 0.6s steps(1, end) infinite; }
+.sa-scribble-rim--b { opacity: 0; animation: var(--a-scribble) 0.6s steps(1, end) infinite reverse; }
+
+.sa-hand {
+  fill: var(--limb);
+  stroke: var(--rim-light);
+  stroke-width: 1.6;
+}
+
+.sa-hand__line {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
 
 .sa-thread {
   fill: none;
   stroke: var(--cure);
-  stroke-width: 1.7;
+  stroke-width: calc(1.6px + var(--flare) * 0.35px);
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.9;
@@ -266,7 +322,7 @@
 }
 
 .sa-hook__rim { fill: none; stroke: var(--rim-light); stroke-width: 26; stroke-linecap: round; }
-.sa-hook { fill: none; stroke: #1a1628; stroke-width: 21; stroke-linecap: round; }
+.sa-hook { fill: none; stroke: #1a1821; stroke-width: 21; stroke-linecap: round; }
 .sa-ember { fill: var(--cure); animation: var(--a-flicker) 1.1s ease-in-out infinite; }
 .sa-ember__glow { fill: var(--cure); opacity: 0.35; animation: var(--a-flicker) 1.6s ease-in-out infinite reverse; }
 
@@ -276,33 +332,35 @@
   animation-delay: var(--idle-delay);
 }
 
-.sa-maskface { fill: #2b2442; stroke: #54487c; stroke-width: 2.2; }
+.sa-cowl { fill: #050407; }
+.sa-maskface { fill: #2b2932; stroke: #5a5664; stroke-width: 2.2; }
 .sa-maskface__shine { fill: #ffffff; opacity: 0.07; }
-.sa-maskbrow { fill: none; stroke: #54487c; stroke-width: 2.4; stroke-linecap: round; }
+.sa-maskline { fill: none; stroke: #8e8a99; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.sa-maskpupil { fill: #0d0c10; }
+.sa-maskmouth { fill: #0d0c10; stroke: #8e8a99; stroke-width: 1.8; }
+.sa-masktear { fill: #cfdcee; opacity: 0.85; }
 
 .sa-slit {
   fill: var(--cure);
 }
 
-.sa-mface {
-  color: var(--cure);
-  opacity: 0;
-  transition: opacity var(--t-face) ease;
-}
-
+.sa-mexpr,
+.sa-mface,
 .sa-nface {
-  color: #9a90b8;
   opacity: 0;
   transition: opacity var(--t-face) ease;
 }
 
-.shade-art[data-face='anger'] .sa-mface--anger,
-.shade-art[data-face='sadness'] .sa-mface--sadness,
-.shade-art[data-face='loneliness'] .sa-mface--loneliness,
-.shade-art[data-face='fear'] .sa-mface--fear,
-.shade-art[data-face='despair'] .sa-mface--despair,
-.shade-art[data-face='anxiety'] .sa-mface--anxiety {
-  opacity: 0.95;
+.sa-mface { color: var(--cure); }
+.sa-nface { color: #a19dab; }
+
+.shade-art[data-face='anger'] :is(.sa-mexpr--anger, .sa-mface--anger),
+.shade-art[data-face='sadness'] :is(.sa-mexpr--sadness, .sa-mface--sadness),
+.shade-art[data-face='loneliness'] :is(.sa-mexpr--loneliness, .sa-mface--loneliness),
+.shade-art[data-face='fear'] :is(.sa-mexpr--fear, .sa-mface--fear),
+.shade-art[data-face='despair'] :is(.sa-mexpr--despair, .sa-mface--despair),
+.shade-art[data-face='anxiety'] :is(.sa-mexpr--anxiety, .sa-mface--anxiety) {
+  opacity: 1;
 }
 
 .shade-art[data-next='anger'] .sa-nface--anger,
@@ -311,15 +369,17 @@
 .shade-art[data-next='fear'] .sa-nface--fear,
 .shade-art[data-next='despair'] .sa-nface--despair,
 .shade-art[data-next='anxiety'] .sa-nface--anxiety {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
+/* Fissures: thin, dark-edged splits that let the cure colour through. */
 .sa-mcrack {
   fill: none;
   stroke: var(--cure);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 1.5;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  filter: drop-shadow(0 0 1.5px var(--cure));
   transition: opacity 300ms ease;
 }
 
@@ -357,28 +417,94 @@
   opacity: 0.3;
 }
 
-/* ---------- compound badge (inner face) ---------- */
+/* ---------- compound badge (inner face), on the body ---------- */
+/* Dim: ink disc with a dashed rim. Lit (the inner face is showing): a filled disc in its cure colour. */
 .sa-badge__disc {
-  fill: #141120;
-  stroke: color-mix(in srgb, var(--badge-c) 40%, var(--rim-light));
-  stroke-width: 2;
+  fill: #121016;
+  stroke: color-mix(in srgb, var(--badge-c) 45%, var(--rim-light));
+  stroke-width: 1.8;
+  stroke-dasharray: 3.4 2.6;
+  transition: fill var(--t-face) ease;
 }
 
 .sa-badge__sigil {
-  color: #7a7196;
+  color: #8e8a99;
 }
 
 .shade-art[data-showing='inner'] .sa-badge__disc {
-  fill: color-mix(in srgb, var(--badge-c) 32%, #141120);
-  stroke: var(--badge-c);
+  fill: var(--badge-c);
+  stroke: var(--pearl);
+  stroke-dasharray: none;
 }
 
 .shade-art[data-showing='inner'] .sa-badge__sigil {
-  color: var(--pearl);
+  color: var(--ink);
 }
 
 .shade-art[data-showing='inner'] .sa-badge {
-  filter: drop-shadow(0 0 5px var(--badge-c));
+  filter: drop-shadow(0 0 4px var(--badge-c));
+}
+
+/* ---------- ornaments (elites and bosses) ---------- */
+.sa-orn__ink {
+  fill: var(--limb);
+  stroke: var(--rim-light);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.sa-orn__band-rim {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.sa-orn__band {
+  fill: none;
+  stroke: #25222c;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.sa-orn__tail {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+}
+
+.sa-steam {
+  fill: none;
+  stroke: rgb(226 224 232 / 0.4);
+  stroke-width: 3;
+  stroke-linecap: round;
+  animation: var(--a-steam) 1.7s ease-out infinite;
+}
+
+.sa-coil {
+  transition: opacity 250ms ease;
+}
+
+.sa-coils .sa-orn__band {
+  stroke: #211f28;
+}
+
+.sa-orn__pitspiral {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 1.4;
+  opacity: 0.7;
+}
+
+.sa-looming__shadow {
+  fill: rgb(0 0 0 / 0.42);
+  stroke: rgb(77 73 88 / 0.35);
+  stroke-width: 1.5;
+}
+
+.sa-looming__eye {
+  fill: rgb(237 233 242 / 0.14);
 }
 
 /* ---------- flare (4% per stack) ---------- */
@@ -396,7 +522,7 @@
 
 .shade-art.is-flinch .sa-react { transform: translateX(6px); }
 .shade-art.is-swell .sa-react { transform: scale(1.03); }
-.shade-art.is-swell .sa-aura { opacity: 0.5; }
+.shade-art.is-swell .sa-aura { opacity: 0.3; }
 .shade-art.is-swell .sa-cracks { opacity: 1; }
 
 .shade-art.is-hit .sa-react {
@@ -421,32 +547,57 @@
 .sa-seal ellipse { fill: var(--ink); stroke: var(--rim-light); stroke-width: 2; }
 .sa-seal .sa-seal__ring { fill: none; stroke: var(--pearl); stroke-width: 1.4; opacity: 0.55; }
 
+.sa-dissolve-crack {
+  fill: none;
+  stroke: black;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+/*
+ * Resolve (about 1.1 s): the cracks flare bright first (0 to 180 ms), then the ink dissolves outward from
+ * the core and along the cracks while a 50px light form rises, holds about 300 ms and drifts up.
+ */
 .shade-art.is-resolving .sa-dissolver {
   mask: var(--dmask);
 }
 
+.shade-art.is-resolving .sa-cracks {
+  opacity: 1;
+}
+
+.shade-art.is-resolving .sa-crack__burst {
+  animation: var(--a-crack-burst) 420ms ease-out forwards;
+}
+
 .shade-art.is-resolving .sa-dissolve {
   transform: scale(0);
-  animation: var(--a-dissolve-mask) 1000ms ease-in-out 110ms forwards;
+  animation: var(--a-dissolve-mask) 850ms ease-in 150ms forwards;
+}
+
+.shade-art.is-resolving .sa-dissolve-crack {
+  animation: var(--a-dissolve-crack) 800ms ease-in 150ms forwards;
 }
 
 .shade-art.is-resolving .sa-react {
-  animation: var(--a-dissolve) 1.1s ease-in-out 110ms forwards;
+  animation: var(--a-dissolve) 950ms ease-in-out 150ms forwards;
 }
 
 .shade-art.is-resolving .sa-shadow {
-  animation: kf-fade-out 700ms ease 200ms forwards;
+  animation: kf-fade-out 700ms ease 250ms forwards;
 }
 
 .shade-art.is-resolving .sa-bloom circle {
-  animation: var(--a-bloom) 1s ease-out 110ms forwards;
+  animation: var(--a-bloom) 1s ease-out 100ms forwards;
 }
 
 .shade-art.is-resolving .sa-mote:not(.sa-mote--second),
 .shade-art.is-deep .sa-mote--second {
   transform-box: fill-box;
   transform-origin: center;
-  animation: var(--a-mote) 1.1s ease-out 150ms forwards;
+  animation: var(--a-mote) 1.15s ease-out 150ms forwards;
 }
 
 .shade-art.is-suppressed .sa-react {
@@ -472,10 +623,21 @@
   }
 }
 
-/* Hit-stop (18.1): pause stage animations briefly. Add to any ancestor for 60 or 110 ms. */
-.is-hitstop,
-.is-hitstop * {
+/*
+ * Hit-stop (18.1): pause stage animations for 60 ms (OPPOSITE) or 110 ms (Resolve). It is off under
+ * reduced motion, so the class does nothing there. Prefer hitStop(el, ms) from the kit, which also
+ * pauses the SVG heat shimmer.
+ */
+:root:not([data-motion='reduced']) .is-hitstop,
+:root:not([data-motion='reduced']) .is-hitstop * {
   animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .is-hitstop,
+  :root:not([data-motion='full']) .is-hitstop * {
+    animation-play-state: running !important;
+  }
 }
 
 /* ---------- Resolved forms ---------- */
@@ -493,14 +655,11 @@
   grid-template-rows: calc(var(--u) * 44) calc(var(--u) * 212) auto;
   justify-items: center;
   align-items: end;
+  align-content: start;
   width: calc(var(--u) * 205);
   padding-top: calc(var(--u) * 4);
   border-radius: var(--r-lg);
   transition: transform var(--t-hover) var(--ease-out);
-}
-
-.shade-slot {
-  align-content: start;
 }
 
 .shade-slot__intent {
@@ -521,16 +680,29 @@
   isolation: isolate;
 }
 
+/* A lit floor pool and a faint back-glow, so ink Shades separate from the dark stage. */
 .shade-slot__art::before {
-  /* soft stage light behind the silhouette */
   content: '';
   position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 4%;
-  height: 70%;
+  left: 2%;
+  right: 2%;
+  bottom: -2%;
+  height: 26%;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--cure, var(--pearl)) 14%, transparent), transparent 70%);
+  background: radial-gradient(ellipse at 50% 55%, rgb(236 232 244 / 0.13), rgb(236 232 244 / 0.04) 55%, transparent 72%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.shade-slot__art::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 8%;
+  height: 72%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 62%, color-mix(in srgb, var(--cure, var(--pearl)) 13%, transparent), rgb(236 232 244 / 0.04) 45%, transparent 70%);
   pointer-events: none;
   z-index: -1;
 }
@@ -538,10 +710,11 @@
 .shade-slot__feet {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--u) * -4);
+  bottom: calc(var(--u) * -6);
   display: flex;
   gap: calc(var(--u) * 4);
   transform: translateX(-50%);
+  z-index: 2;
 }
 
 .shade-slot[data-targetable='true'] {
@@ -563,11 +736,4 @@
 
 .shade-slot.is-shaking {
   animation: var(--a-shake-v) 400ms ease;
-}
-
-.sa-pit__deep { fill: #010103; }
-
-.shade-art.is-resolving .sa-badge,
-.shade-art.is-suppressed .sa-badge {
-  animation: kf-fade-out 400ms ease forwards;
 }

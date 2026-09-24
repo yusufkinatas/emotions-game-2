@@ -19,13 +19,14 @@ const BOLD = [
   65, 58, 71, 37, 71, 84,
 ];
 
-/** Estimated width in px of `s` at font size `px`. Non-ASCII characters count as a wide letter. */
+/** Estimated width in px of `s` at font size `px`. The middle dot is narrow; other non-ASCII characters count as a wide letter. */
 export function textWidth(s: string, px: number, bold = false, letterSpacingEm = 0): number {
   const table = bold ? BOLD : REGULAR;
   let w = 0;
   for (const ch of s) {
     const c = ch.codePointAt(0)!;
-    w += (c >= 32 && c <= 126 ? table[c - 32]! : 80) + letterSpacingEm * 100;
+    const adv = c >= 32 && c <= 126 ? table[c - 32]! : c === 0xb7 ? 40 : 80;
+    w += adv + letterSpacingEm * 100;
   }
   return (w * px) / 100;
 }
@@ -78,8 +79,8 @@ const TEXT_PAD_V = 6;
 export const TEXT_W = 110;
 /** Name plate text width: body 122 - 2 x 3 margin - 2 x 4 padding - 2 border - 2 slack. */
 export const NAME_W = 104;
-/** Footer width: body 122 - 2 x 8 margin - 2 slack. */
-export const FOOTER_W = 104;
+/** Footer width: body 122 - 2 x 6 margin - 2 slack. */
+export const FOOTER_W = 108;
 
 export const NAME_SIZES = [14, 13, 12] as const;
 

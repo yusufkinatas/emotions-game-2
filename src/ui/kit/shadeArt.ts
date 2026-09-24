@@ -7,11 +7,13 @@
 // without re-rendering. Geometry that depends on Flare (spikes, eyes, ring, pit) is drawn at render time.
 
 import type { Light, Shade } from '../../engine/emotions';
-import { cureOf } from '../../engine/emotions';
-import { rand } from './hash';
+import { cureOf, isShade } from '../../engine/emotions';
+import { hashSeed, rand } from './hash';
 import { SHADE_NAME } from './names';
 import { GENERATORS } from './shadeFamilies';
 import { CX, GROUND, cracks } from './shadeGeometry';
+import { MAX_COILS, ornamentLayers } from './shadeOrnaments';
+import type { ShadeOrnament } from './shadeOrnaments';
 import { sigilBody } from './sigils';
 import { attrs, cssLen, esc, n, svgElement, uniqueId } from './svg';
 
@@ -22,9 +24,9 @@ export interface ShadeArtOpts {
   family: ShadeFamily;
   /** Any number; use the Shade's uid. Same seed, same Shade. */
   seed: number;
-  /** Showing face (drives crack colour). null for the numb family (Apathy, The Numbness). */
+  /** Showing face (drives crack colour and expression). null for the numb family (Apathy, The Numbness). */
   face: Shade | null;
-  /** Compounds: the inner face. Its sigil badge lights while it is the showing face. */
+  /** Compounds: the inner face. Its badge lights while it shows, and the expression follows it. */
   innerFace?: Shade | null;
   /** The Mask: the next face, shown small on its forehead. */
   nextFace?: Shade | null;
@@ -32,8 +34,12 @@ export interface ShadeArtOpts {
   flare?: number;
   /** Rendered height: number = px, string = CSS length. Default calc(var(--u) * 200). */
   size?: number | string;
-  /** EnemyDef.visual.scale: shrinks or grows the body inside the fixed frame (0.45 to 1.15). */
+  /** EnemyDef.visual.scale: shrinks or grows the body inside the fixed frame (clamped to 0.45..1.35). */
   scale?: number;
+  /** Elite and boss dressing: see ornamentFor(enemyId). */
+  ornament?: ShadeOrnament | null;
+  /** The Spiral: its Coil gauge, shown as rings (1 to 6). setShadeGauge updates it. */
+  gauge?: number;
   /** Numb family: lasting two-colour cracks left by FELT hits, oldest first. */
   feltCracks?: readonly (readonly [Light, Light])[];
   /** Numb family: Apathy's smaller, slouched oval. */
@@ -80,38 +86,53 @@ export function resolvedFormMarkup(light: Light, o: { size?: number | string; cl
 // ------------------------------------------------------------------------------------------------
 
 const clampFlare = (f: number | undefined): number => Math.max(0, Math.min(5, Math.floor(f ?? 0)));
+const clampCoil = (g: number | undefined): number => Math.max(0, Math.min(MAX_COILS, Math.floor(g ?? 2)));
 
-function badgeMarkup(inner: Shade): string {
+/** Scale range of EnemyDef.visual.scale the frame can hold. */
+export const SHADE_SCALE = { min: 0.45, max: 1.35 } as const;
+
+/** Size of the Resolve light form in the 200x210 frame (review: 44 to 56 px at the default height). */
+const MOTE_SIZE = 50;
+
+function badgeMarkup(inner: Shade, [x, y]: [number, number]): string {
   const cure = cureOf(inner);
+  const s = 15;
   return (
     `<g class="sa-badge" style="--badge-c:var(--${cure})">` +
-    `<circle class="sa-badge__disc" cx="166" cy="30" r="17"/>` +
-    `<g class="sa-badge__sigil" transform="translate(154 18) scale(1)">${sigilBody(inner)}</g>` +
+    `<circle class="sa-badge__disc" cx="${n(x)}" cy="${n(y)}" r="12"/>` +
+    `<g class="sa-badge__sigil" transform="translate(${n(x - s / 2)} ${n(y - s / 2)}) scale(${n(s / 24)})">${sigilBody(inner)}</g>` +
     `</g>`
   );
 }
 
+function moteMarkup(light: Light, [x, y]: [number, number], cls: string, dx = 0, dy = 0): string {
+  const s = MOTE_SIZE;
+  return `<g transform="translate(${n(x - s / 2 + dx)} ${n(y - s / 2 + dy)}) scale(${n(s / 24)})"><g class="sa-mote${cls}" style="color:var(--${light})"><g fill="currentColor">${MOTE[light]}</g></g></g>`;
+}
+
 /** Shade silhouette markup (string). Use renderShade for an element. */
 export function shadeMarkup(o: ShadeArtOpts): string {
-  const r = rand(o.seed * 2654435761 + o.family.length);
+  const rng = (feature: string) => rand(hashSeed(o.seed, o.family, feature));
   const flare = clampFlare(o.flare);
-  const parts = GENERATORS[o.family]({ r, flare, opts: o });
+  const parts = GENERATORS[o.family]({ rng, flare, opts: o });
   const id = uniqueId('sa');
-  const scale = Math.max(0.45, Math.min(1.15, o.scale ?? 1));
+  const scale = Math.max(SHADE_SCALE.min, Math.min(SHADE_SCALE.max, o.scale ?? 1));
   const face = o.family === 'numb' ? null : o.face;
   const showing = o.innerFace && face === o.innerFace ? 'inner' : 'outer';
-  const idleDur = r.range(0.85, 1.15);
-  const idleDelay = -r.range(0, 4);
+  const timing = rng('idle');
+  const idleDur = timing.range(0.85, 1.15);
+  const idleDelay = -timing.range(0, 4);
   const [iox, ioy] = parts.idleOrigin ?? [CX, GROUND];
   const bodyPath = parts.body;
   const cr = parts.crack;
-  const crackPaths = cr ? cracks(r, cr.x, cr.y, cr.spread, cr.count, cr.lo, cr.hi) : [];
+  const crackPaths = cr ? cracks(rng('cracks'), cr.x, cr.y, cr.spread, cr.count, cr.lo, cr.hi) : [];
   const crackLayer =
     crackPaths.length || parts.glow
       ? `<g class="sa-cracks" clip-path="url(#${id}c)">` +
         crackPaths.map((d) => `<path class="sa-crack__glow" d="${d}"/>`).join('') +
         crackPaths.map((d) => `<path class="sa-crack" d="${d}"/>`).join('') +
         crackPaths.map((d) => `<path class="sa-crack__core" d="${d}"/>`).join('') +
+        crackPaths.map((d) => `<path class="sa-crack__burst" d="${d}"/>`).join('') +
         `</g>` +
         (parts.glow ? `<g class="sa-cracks sa-cracks--free">${parts.glow}</g>` : '')
       : '';
@@ -119,38 +140,49 @@ export function shadeMarkup(o: ShadeArtOpts): string {
   const heatDef = heatOn
     ? `<filter id="${id}h" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.018 0.07" numOctaves="1" seed="${o.seed % 97}"><animate attributeName="baseFrequency" dur="1.8s" values="0.018 0.07;0.024 0.09;0.018 0.07" repeatCount="indefinite"/></feTurbulence><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter>`
     : '';
+  // The Resolve dissolve: a hole grows from the core while the cracks themselves open up.
+  const [kx, ky] = parts.core;
+  const crackHoles = crackPaths
+    .map((d) => `<path class="sa-dissolve-crack" d="${d}" style="transform-origin:${n(cr!.x)}px ${n(cr!.y)}px"/>`)
+    .join('');
   const defs =
     `<defs>` +
     `<radialGradient id="${id}g" cx="42%" cy="30%" r="75%"><stop offset="0%" class="sa-stop-hi"/><stop offset="55%" class="sa-stop-mid"/><stop offset="100%" class="sa-stop-lo"/></radialGradient>` +
     `<clipPath id="${id}c"><path d="${bodyPath}"/></clipPath>` +
     `<clipPath id="${id}t"><rect x="0" y="0" width="200" height="${n(GROUND - 96)}"/></clipPath>` +
     `<clipPath id="${id}m"><ellipse cx="100" cy="94" rx="34" ry="43"/></clipPath>` +
-    `<filter id="${id}b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>` +
     `<radialGradient id="${id}l"><stop offset="0%" class="sa-bloom-stop"/><stop offset="100%" class="sa-bloom-stop" stop-opacity="0"/></radialGradient>` +
     `<radialGradient id="${id}r" cx="50%" cy="50%" r="50%"><stop offset="0%" class="sa-dissolve-hole"/><stop offset="70%" class="sa-dissolve-hole"/><stop offset="100%" class="sa-dissolve-edge"/></radialGradient>` +
-    `<mask id="${id}d" maskUnits="userSpaceOnUse" x="-20" y="-20" width="240" height="250"><rect x="-20" y="-20" width="240" height="250" fill="white"/><circle class="sa-dissolve" cx="${n(parts.core[0])}" cy="${n(parts.core[1])}" r="150" fill="url(#${id}r)" style="transform-origin:${n(parts.core[0])}px ${n(parts.core[1])}px"/></mask>` +
+    `<mask id="${id}d" maskUnits="userSpaceOnUse" x="-20" y="-20" width="240" height="250"><rect x="-20" y="-20" width="240" height="250" fill="white"/><circle class="sa-dissolve" cx="${n(kx)}" cy="${n(ky)}" r="150" fill="url(#${id}r)" style="transform-origin:${n(kx)}px ${n(ky)}px"/>${crackHoles}</mask>` +
     heatDef +
     `</defs>`;
   const fixIds = (s: string) =>
     s.replace(/url\(#HOODCLIP\)/g, `url(#${id}t)`).replace(/url\(#MASKCLIP\)/g, `url(#${id}m)`).replace(/url\(#BODYCLIP\)/g, `url(#${id}c)`);
   const flash = parts.flash ?? `<path class="sa-flash" d="${bodyPath}"/>`;
+  const orn = o.ornament ? ornamentLayers(o.ornament, parts, rng('ornament')) : {};
+  // Expressions: one per face for compounds, crossfaded by data-showing so a turn changes the mood.
+  const outerMood: Shade | null = isShade(o.family) ? o.family : face;
+  const expr = (mood: Shade | null, which: 'outer' | 'inner') =>
+    mood ? `<g class="sa-expr" data-mood="${which}">${parts.face(mood)}</g>` : '';
+  const faces = expr(outerMood, 'outer') + (o.innerFace ? expr(o.innerFace, 'inner') : '');
+  const rim = parts.outline ?? `<path class="sa-rim" d="${bodyPath}"/>`;
   const bodyLayers =
-    `<path class="sa-aura" d="${bodyPath}" filter="url(#${id}b)"/>` +
+    `<path class="sa-aura" d="${bodyPath}"/>` +
     (parts.back ?? '') +
     `<path class="sa-ink" d="${bodyPath}" fill="url(#${id}g)"/>` +
-    `<path class="sa-rim" d="${bodyPath}"/>` +
+    rim +
     crackLayer +
-    fixIds(parts.front ?? '');
-  const mote = face
-    ? `<g transform="translate(${n(parts.core[0] - 14)} ${n(parts.core[1] - 14)}) scale(${n(28 / 24)})"><g class="sa-mote" style="color:var(--${cureOf(face)})"><g fill="currentColor">${MOTE[cureOf(face)]}</g></g></g>`
-    : '';
+    fixIds(parts.front ?? '') +
+    faces +
+    (orn.front ?? '') +
+    (o.innerFace ? badgeMarkup(o.innerFace, parts.badge) : '');
+  const mote = face ? moteMarkup(cureOf(face), parts.core, '') : '';
   const mote2 =
     o.innerFace && face
       ? (() => {
-          const other = face === o.innerFace ? o.family : o.innerFace;
-          if (other === 'doubt' || other === 'mask' || other === 'numb' || other === face) return '';
-          const l = cureOf(other);
-          return `<g transform="translate(${n(parts.core[0] + 4)} ${n(parts.core[1] - 8)})"><g class="sa-mote sa-mote--second" style="color:var(--${l})"><g fill="currentColor">${MOTE[l]}</g></g></g>`;
+          const other = face === o.innerFace ? outerMood : o.innerFace;
+          if (!other || other === face) return '';
+          return moteMarkup(cureOf(other), parts.core, ' sa-mote--second', 20, 10);
         })()
       : '';
   const numbCracks = o.family === 'numb' ? (o.feltCracks?.length ?? 0) : 0;
@@ -166,9 +198,13 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     'data-next': o.nextFace ?? null,
     'data-showing': o.innerFace ? showing : null,
     'data-flare': flare,
+    'data-ornament': o.ornament ?? null,
     'data-felt': numbCracks || null,
     'data-slouched': o.family === 'numb' && o.slouched ? 'true' : null,
-    style: `--flare:${flare};--idle-rate:${n(idleDur)};--idle-delay:${n(idleDelay)}s;--dmask:url(#${id}d);height:${height};width:calc(${height} * 200 / 210)`,
+    style:
+      `--flare:${flare};--idle-rate:${n(idleDur)};--idle-delay:${n(idleDelay)}s;--dmask:url(#${id}d);` +
+      (o.ornament === 'spiral' ? `--coil:${clampCoil(o.gauge)};` : '') +
+      `height:${height};width:calc(${height} * 200 / 210)`,
     role: 'img',
     'aria-label': label,
   });
@@ -181,6 +217,7 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     `<g class="sa-react">` +
     `<g class="sa-flare">` +
     `<g class="sa-dissolver">` +
+    (orn.staticBack ?? '') +
     (parts.staticBack ?? '') +
     `<g class="sa-idle" style="${idleStyle}">` +
     `<g class="sa-body"${heatOn ? ` style="filter:url(#${id}h)"` : ''}>${bodyLayers}</g>` +
@@ -190,12 +227,11 @@ export function shadeMarkup(o: ShadeArtOpts): string {
     `</g>` +
     `</g>` +
     `</g>` +
-    `<g class="sa-bloom"><circle cx="${n(parts.core[0])}" cy="${n(parts.core[1])}" r="80" fill="url(#${id}l)" style="transform-origin:${n(parts.core[0])}px ${n(parts.core[1])}px"/></g>` +
+    `<g class="sa-bloom"><circle cx="${n(kx)}" cy="${n(ky)}" r="80" fill="url(#${id}l)" style="transform-origin:${n(kx)}px ${n(ky)}px"/></g>` +
     mote +
     mote2 +
     `<g class="sa-seal" style="transform-origin:${CX}px ${GROUND - 6}px"><ellipse cx="${CX}" cy="${GROUND - 6}" rx="30" ry="12"/><ellipse class="sa-seal__ring" cx="${CX}" cy="${GROUND - 6}" rx="20" ry="7"/></g>` +
     `</g>` +
-    (o.innerFace ? badgeMarkup(o.innerFace) : '') +
     `</svg>`
   );
 }
@@ -206,8 +242,8 @@ export function renderShade(o: ShadeArtOpts): SVGSVGElement {
 }
 
 /**
- * Turn a rendered Shade to another face without re-rendering: crack colour, the compound badge and The
- * Mask's crossfade all follow. For The Mask also pass the next face for its forehead.
+ * Turn a rendered Shade to another face without re-rendering: crack colour, expression, the compound
+ * badge and The Mask's crossfade all follow. For The Mask also pass the next face for its forehead.
  */
 export function setShadeFace(svg: SVGSVGElement, face: Shade, nextFace?: Shade | null): void {
   svg.dataset.face = face;
@@ -227,6 +263,11 @@ export function setShadeFlare(svg: SVGSVGElement, flare: number): void {
   const f = clampFlare(flare);
   svg.dataset.flare = String(f);
   svg.style.setProperty('--flare', String(f));
+}
+
+/** The Spiral: show its Coil gauge (rings) without re-rendering. */
+export function setShadeGauge(svg: SVGSVGElement, gauge: number): void {
+  svg.style.setProperty('--coil', String(clampCoil(gauge)));
 }
 
 const REACTION_CLASS: Record<ShadeReaction, string> = {

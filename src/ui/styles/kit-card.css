@@ -1,7 +1,12 @@
 /*
  * Card faces (DESIGN 16.2): 130x182 reference, frame per Light with its pattern, Blend diagonal split,
- * Buried (ink, cracked cure-colour border, Weight pips), Insight (pearl, six-hue sheen), card states.
- * --cu is the card unit (1 reference px by default). Scale a card with style="--cu: calc(var(--u) * 1.4)".
+ * Buried (ink, cracked cure-colour border band, Weight pips and "W2"), Insight (turning six-hue border,
+ * prism mark), card states. --cu is the card unit (1 reference px by default).
+ *
+ * Text floor: nothing on a card is smaller than 12 reference px except the 10px caps footer (16.2).
+ * Long rules texts keep their size and take height from the art band instead: data-fit on the root is
+ * md (art 70, text 13/16), sm (56, 12/14), xs (40, 12/13) or xxs (26, 12/12.5). cardFit.ts picks it
+ * from a width estimate and fitCards() confirms it against the real font.
  */
 
 /* ---------- frame patterns: white tiles used as masks over the Light colour ---------- */
@@ -35,6 +40,11 @@
   --lift: 0px;
   --scale: 1;
   --tilt-deg: 0deg;
+  /* text tier (md by default) */
+  --art-h: 70;
+  --text-size: 13;
+  --num-size: 16;
+  --text-lh: 1.22;
   position: relative;
   display: block;
   flex: none;
@@ -58,12 +68,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.card-face[data-fit='sm'] { --art-h: 56; --text-size: 12; --num-size: 14; --text-lh: 1.2; }
+.card-face[data-fit='xs'] { --art-h: 40; --text-size: 12; --num-size: 13; --text-lh: 1.15; }
+.card-face[data-fit='xxs'] { --art-h: 26; --text-size: 12; --num-size: 12.5; --text-lh: 1.15; }
+
 button.card-face {
   cursor: pointer;
 }
 
 .card-face::before {
-  /* drop shadow and state glow, animated by opacity only */
+  /* drop shadow, deepened while lifted */
   content: '';
   position: absolute;
   inset: 0;
@@ -74,13 +88,12 @@ button.card-face {
 }
 
 .card-face::after {
+  /* state glow: a soft pearl halo while playable (16.2), animated by opacity only */
   content: '';
   position: absolute;
   inset: calc(var(--cu) * -3);
   border-radius: calc(var(--cu) * 14);
-  box-shadow:
-    0 0 0 calc(var(--cu) * 1.5) rgb(244 239 230 / 0.75),
-    0 0 calc(var(--cu) * 16) calc(var(--cu) * 2) rgb(244 239 230 / 0.45);
+  box-shadow: 0 0 calc(var(--cu) * 14) calc(var(--cu) * 1) rgb(244 239 230 / 0.5);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-hover) var(--ease-out);
@@ -129,11 +142,11 @@ button.card-face {
     linear-gradient(180deg, var(--surface) 0%, var(--ink) 92%);
 }
 
-/* ---------- art band (70px) ---------- */
+/* ---------- art band (70px, shorter for long texts) ---------- */
 .card-face__art {
   position: relative;
   flex: none;
-  height: calc(var(--cu) * 70);
+  height: calc(var(--cu) * var(--art-h));
   overflow: hidden;
   background:
     radial-gradient(ellipse 60% 75% at 50% 45%, color-mix(in srgb, var(--c) 30%, transparent), transparent 75%),
@@ -180,11 +193,18 @@ button.card-face {
   border-bottom-color: color-mix(in srgb, var(--c2) 35%, transparent);
 }
 
+/* The motif is drawn for the 70px band; shorter bands show its middle, the shortest scales it down. */
 .card-face__motif {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 50%;
   width: 100%;
-  height: 100%;
+  height: calc(var(--cu) * 70);
+  transform: translateY(-50%);
+}
+
+.card-face[data-fit='xxs'] .card-face__motif {
+  transform: translateY(-50%) scale(0.62);
 }
 
 .motif__glow {
@@ -200,7 +220,7 @@ button.card-face {
   filter: drop-shadow(0 0 calc(var(--cu) * 5) color-mix(in srgb, currentColor 70%, transparent));
 }
 
-/* ---------- name ---------- */
+/* ---------- name (14px bold; 13 and 12 on one line, then 12 on two lines, never ellipsised) ---------- */
 .card-face__name {
   position: relative;
   z-index: 1;
@@ -216,11 +236,28 @@ button.card-face {
   border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
   box-shadow: 0 calc(var(--cu) * 2) calc(var(--cu) * 5) rgb(0 0 0 / 0.45);
   font-weight: 800;
-  font-size: calc(var(--cu) * 14);
+  font-size: calc(var(--cu) * var(--name-size, 14));
   letter-spacing: -0.01em;
   line-height: 1;
   white-space: nowrap;
   color: var(--text);
+}
+
+.card-face__name > span {
+  flex: none;
+}
+
+.card-face[data-name-lines='2'] .card-face__name {
+  height: calc(var(--cu) * 32);
+  margin-top: calc(var(--cu) * -14);
+  font-size: calc(var(--cu) * 12);
+  line-height: 1.05;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.card-face[data-name-lines='2'] .card-face__name > span {
+  flex: 0 1 auto;
 }
 
 .card-face[data-kind='blend'] .card-face__name {
@@ -230,59 +267,36 @@ button.card-face {
     linear-gradient(90deg, color-mix(in srgb, var(--c) 70%, transparent), color-mix(in srgb, var(--c2) 70%, transparent)) border-box;
 }
 
-.card-face__name > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-face__name--sm { font-size: calc(var(--cu) * 12.5); }
-.card-face__name--xs { font-size: calc(var(--cu) * 11); letter-spacing: -0.02em; }
-.card-face__name--xxs { font-size: calc(var(--cu) * 10); letter-spacing: -0.03em; }
-
 .card-face[data-upgraded='true'] .card-face__name {
   color: var(--pearl);
   text-shadow: 0 0 calc(var(--cu) * 6) color-mix(in srgb, var(--c) 80%, transparent);
 }
 
-/* ---------- rules text (13px, max 3 lines, numbers bold 16px) ---------- */
+/* ---------- rules text (13px, numbers bold 16px; 12px floor) ---------- */
 .card-face__text {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: calc(var(--cu) * 4) calc(var(--cu) * 6) calc(var(--cu) * 2);
+  padding: calc(var(--cu) * 4) calc(var(--cu) * 5) calc(var(--cu) * 2);
 }
 
 .card-face__text p {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-  font-size: calc(var(--cu) * 13);
-  line-height: 1.22;
+  font-size: calc(var(--cu) * var(--text-size));
+  line-height: var(--text-lh);
   color: var(--text);
   text-wrap: balance;
 }
 
-/* Long rules texts step down so the 6.x texts fit: 13px (3 lines), then 11.5, 10.5, 9.5. */
-.card-face__text--sm p { font-size: calc(var(--cu) * 11.5); -webkit-line-clamp: 5; line-clamp: 5; line-height: 1.2; }
-.card-face__text--xs p { font-size: calc(var(--cu) * 10.5); -webkit-line-clamp: 6; line-clamp: 6; line-height: 1.16; }
-.card-face__text--xxs p { font-size: calc(var(--cu) * 9.5); -webkit-line-clamp: 7; line-clamp: 7; line-height: 1.14; }
-
 .card-face__text .n {
-  font-size: calc(var(--cu) * 16);
+  font-size: calc(var(--cu) * var(--num-size));
   font-weight: 800;
   color: var(--pearl);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
 }
-
-.card-face__text--sm .n { font-size: calc(var(--cu) * 14); }
-.card-face__text--xs .n,
-.card-face__text--xxs .n { font-size: calc(var(--cu) * 12.5); }
 
 .card-face__text .trend {
   display: inline-block;
@@ -306,40 +320,52 @@ button.card-face {
   font-style: italic;
 }
 
-/* ---------- footer (10px caps) ---------- */
+/* ---------- footer (10px caps; the kind word drops before the type word would clip) ---------- */
 .card-face__footer {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--cu) * 4);
   height: calc(var(--cu) * 16);
-  margin: 0 calc(var(--cu) * 8) calc(var(--cu) * 3);
+  margin: 0 calc(var(--cu) * 6) calc(var(--cu) * 3);
   border-top: 1px solid var(--line);
   font-size: calc(var(--cu) * 10);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
 }
 
-.card-face__footer--sm { font-size: calc(var(--cu) * 9); letter-spacing: 0.07em; }
-.card-face__footer--xs { font-size: calc(var(--cu) * 8.5); letter-spacing: 0.04em; }
-.card-face__footer--xxs { font-size: calc(var(--cu) * 8); letter-spacing: 0.02em; }
+.card-face__footer-rest {
+  white-space: pre;
+}
+
+.card-face__footer[data-footer='short'] .card-face__footer-rest {
+  display: none;
+}
+
+/* ---------- rarity: a small gem on the bottom edge of the frame ---------- */
+.card-face__rarity {
+  position: absolute;
+  z-index: 3;
+  left: calc(50% - var(--cu) * 4);
+  bottom: calc(var(--cu) * -3.5);
+}
 
 .rarity {
   display: inline-block;
   flex: none;
-  width: calc(var(--cu) * 6);
-  height: calc(var(--cu) * 6);
+  width: calc(var(--cu) * 8);
+  height: calc(var(--cu) * 8);
   transform: rotate(45deg);
-  border-radius: calc(var(--cu) * 1);
+  border-radius: calc(var(--cu) * 1.5);
+  box-shadow: 0 0 0 calc(var(--cu) * 1.5) var(--ink);
 }
 
-.rarity--common { background: transparent; box-shadow: inset 0 0 0 1px var(--text-2); }
+.rarity--common { background: var(--ink); box-shadow: 0 0 0 calc(var(--cu) * 1.5) var(--ink), inset 0 0 0 calc(var(--cu) * 1.5) var(--text-2); }
 .rarity--uncommon { background: var(--silver); }
-.rarity--rare { background: var(--pearl); box-shadow: 0 0 calc(var(--cu) * 5) var(--pearl); }
+.rarity--rare { background: var(--pearl); box-shadow: 0 0 0 calc(var(--cu) * 1.5) var(--ink), 0 0 calc(var(--cu) * 6) var(--pearl); }
 .rarity--blend { background: linear-gradient(135deg, var(--c) 50%, var(--c2) 50%); }
 
 /* ---------- cost gem (30px pearl circle, 18px number) ---------- */
@@ -451,6 +477,8 @@ button.card-face {
 }
 
 /* ---------- context chips (max 2, above the card) ---------- */
+/* Compact by default (icon + one word, never wider than the card); the full sentence shows while the
+   card is hovered, focused or selected. Add .card-chips--icons to a crowded hand for icon-only chips. */
 .card-face__chips {
   position: absolute;
   z-index: 4;
@@ -460,6 +488,8 @@ button.card-face {
   flex-direction: column;
   align-items: center;
   gap: calc(var(--cu) * 3);
+  width: max-content;
+  max-width: calc(var(--cu) * 130);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -469,29 +499,61 @@ button.card-face {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--cu) * 4);
-  height: calc(var(--cu) * 20);
-  padding: 0 calc(var(--cu) * 8) 0 calc(var(--cu) * 6);
-  border-radius: var(--r-pill);
+  max-width: 100%;
+  min-height: calc(var(--cu) * 22);
+  padding: calc(var(--cu) * 2) calc(var(--cu) * 8) calc(var(--cu) * 2) calc(var(--cu) * 6);
+  border-radius: calc(var(--cu) * 11);
   border: 1px solid color-mix(in srgb, var(--chip-c) 60%, transparent);
-  background: color-mix(in srgb, var(--ink) 92%, transparent);
+  background: color-mix(in srgb, var(--ink) 94%, transparent);
   box-shadow: 0 calc(var(--cu) * 2) calc(var(--cu) * 6) rgb(0 0 0 / 0.45);
   font-size: calc(var(--cu) * 12);
   font-weight: 700;
-  white-space: nowrap;
+  line-height: 1.1;
+  text-align: left;
   color: var(--text);
 }
 
-.card-chip .sigil {
+.card-chip .sigil,
+.card-chip .drop {
+  flex: none;
   width: calc(var(--cu) * 13);
   height: calc(var(--cu) * 13);
   color: var(--chip-c);
+}
+
+.card-chip__short {
+  white-space: nowrap;
+}
+
+.card-chip__full {
+  display: none;
+}
+
+.card-face:is(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip__short {
+  display: none;
+}
+
+.card-face:is(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip__full {
+  display: inline;
+}
+
+.card-face:is(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-face__chips {
+  z-index: 8;
+}
+
+.card-chips--icons .card-face:not(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip {
+  padding: calc(var(--cu) * 2) calc(var(--cu) * 5);
+}
+
+.card-chips--icons .card-face:not(:hover, :focus-visible, .is-hover, [data-state='selected']) .card-chip__short {
+  display: none;
 }
 
 .card-chip--harmony {
   border-color: transparent;
   background:
     linear-gradient(var(--ink), var(--ink)) padding-box,
-    linear-gradient(90deg, var(--c), var(--c2)) border-box;
+    linear-gradient(90deg, var(--c, var(--pearl)) 50%, var(--c2, var(--pearl)) 50%) border-box;
 }
 
 .card-chip--harmony .sigil {
@@ -547,12 +609,20 @@ button.card-face {
 }
 
 .card-face[data-kind='buried'] .card-face__name {
-  border-color: color-mix(in srgb, var(--cure) 35%, transparent);
-  color: var(--text-2);
+  border-color: color-mix(in srgb, var(--cure) 45%, transparent);
+  color: var(--text);
 }
 
 .card-face[data-kind='buried'] .card-face__text p {
-  color: var(--text-2);
+  color: var(--text);
+}
+
+.card-face[data-kind='buried'] .card-face__text .kw {
+  color: color-mix(in srgb, var(--cure) 45%, var(--text));
+}
+
+.card-face[data-kind='buried'] .card-face__footer {
+  color: color-mix(in srgb, var(--cure) 30%, var(--text-2));
 }
 
 .card-face[data-kind='buried'] .card-face__badge {
@@ -564,6 +634,7 @@ button.card-face {
   background: radial-gradient(circle, color-mix(in srgb, var(--cure) 35%, var(--ink-rim)), var(--ink-rim));
 }
 
+/* Cracks live in a 10px band along the frame so they never cross the rules text or footer. */
 .card-face__cracks {
   position: absolute;
   inset: 0;
@@ -577,7 +648,7 @@ button.card-face {
 .cracks__glow path {
   fill: none;
   stroke: var(--cure);
-  stroke-width: 4;
+  stroke-width: 3.5;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.25;
@@ -599,13 +670,22 @@ button.card-face {
   display: flex;
   align-items: center;
   gap: calc(var(--cu) * 3);
-  height: calc(var(--cu) * 22);
-  padding: 0 calc(var(--cu) * 7);
+  height: calc(var(--cu) * 24);
+  padding: 0 calc(var(--cu) * 7) 0 calc(var(--cu) * 8);
   border-radius: var(--r-pill);
   background: var(--ink);
   box-shadow:
     0 0 0 calc(var(--cu) * 1.5) color-mix(in srgb, var(--cure) 70%, transparent),
     0 calc(var(--cu) * 3) calc(var(--cu) * 6) rgb(0 0 0 / 0.5);
+}
+
+.card-face__weight-n {
+  margin-left: calc(var(--cu) * 2);
+  font-size: calc(var(--cu) * 12);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .pip {
@@ -635,7 +715,7 @@ button.card-face {
   width: calc(var(--cu) * 14);
   height: calc(var(--cu) * 14);
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(120 108 160 / 0.55), transparent 70%);
+  background: radial-gradient(circle, rgb(128 124 140 / 0.5), transparent 70%);
   opacity: 0;
   animation: var(--a-wisp) 2s ease-out infinite;
 }
@@ -644,25 +724,36 @@ button.card-face {
 .card-face__wisps i:nth-child(2) { left: 50%; animation-delay: 0.7s; }
 .card-face__wisps i:nth-child(3) { left: 70%; animation-delay: 1.35s; }
 
-/* ---------- Insight (pearl frame, six-hue sheen, no gold) ---------- */
+/* ---------- Insight: pearl card inside a slowly turning six-hue border, prism mark (no gold) ---------- */
 .card-face[data-kind='insight'] .card-face__frame {
-  background:
-    conic-gradient(
-      from 200deg,
-      color-mix(in srgb, var(--love) 45%, var(--pearl)),
-      color-mix(in srgb, var(--joy) 35%, var(--pearl)),
-      color-mix(in srgb, var(--friendship) 40%, var(--pearl)),
-      color-mix(in srgb, var(--courage) 40%, var(--pearl)),
-      color-mix(in srgb, var(--hope) 45%, var(--pearl)),
-      color-mix(in srgb, var(--calm) 45%, var(--pearl)),
-      color-mix(in srgb, var(--love) 45%, var(--pearl))
-    );
+  background: var(--pearl);
+}
+
+.card-face__iris {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.card-face__iris > i {
+  /* a square larger than the card's diagonal, so turning it never shows a corner */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--cu) * 240);
+  height: calc(var(--cu) * 240);
+  margin: calc(var(--cu) * -120) 0 0 calc(var(--cu) * -120);
+  background: conic-gradient(var(--love), var(--joy), var(--friendship), var(--courage), var(--hope), var(--calm), var(--love));
+  animation: var(--a-iris) 9s linear infinite;
 }
 
 .card-face[data-kind='insight'] .card-face__body {
   background:
-    radial-gradient(ellipse 90% 50% at 50% 0%, rgb(244 239 230 / 0.18), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--pearl) 10%, var(--surface)) 0%, var(--ink) 95%);
+    radial-gradient(ellipse 90% 50% at 50% 0%, rgb(244 239 230 / 0.2), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pearl) 12%, var(--surface)) 0%, var(--ink) 95%);
+  box-shadow: inset 0 0 0 calc(var(--cu) * 1.5) rgb(244 239 230 / 0.8);
 }
 
 .card-face[data-kind='insight'] .card-face__art {
@@ -673,7 +764,7 @@ button.card-face {
 }
 
 .card-face[data-kind='insight'] .card-face__name {
-  border-color: rgb(244 239 230 / 0.7);
+  border-color: rgb(244 239 230 / 0.75);
   color: var(--pearl);
 }
 
@@ -700,30 +791,42 @@ button.card-face {
   bottom: -10%;
   left: 0;
   width: 55%;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.07), transparent);
   transform: translateX(-130%) skewX(-18deg);
   animation: var(--a-sheen) 4.5s ease-in-out infinite;
 }
 
+/* The INSIGHT label sits on the top edge between the gem and the badge, so it costs no art space. */
 .card-face__label {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   left: 50%;
-  top: calc(var(--cu) * 8);
-  transform: translateX(-50%);
-  padding: calc(var(--cu) * 2) calc(var(--cu) * 7);
+  top: calc(var(--cu) * -8);
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--cu) * 3);
+  height: calc(var(--cu) * 18);
+  padding: 0 calc(var(--cu) * 6) 0 calc(var(--cu) * 5);
   border-radius: var(--r-pill);
-  background: rgb(244 239 230 / 0.92);
+  transform: translateX(-50%);
+  background: var(--pearl);
+  box-shadow: 0 0 0 calc(var(--cu) * 1.5) var(--ink), 0 calc(var(--cu) * 2) calc(var(--cu) * 5) rgb(0 0 0 / 0.45);
   color: var(--ink);
-  font-size: calc(var(--cu) * 8.5);
+  font-size: calc(var(--cu) * 12);
   font-weight: 900;
-  letter-spacing: 0.2em;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.card-face__prism {
+  width: calc(var(--cu) * 13);
+  height: calc(var(--cu) * 13);
+  flex: none;
 }
 
 /* ---------- states ---------- */
 .card-face[data-state='playable']::after {
   opacity: 0.55;
-  box-shadow: 0 0 calc(var(--cu) * 14) calc(var(--cu) * 1) rgb(244 239 230 / 0.5);
   animation: kf-card-glow 2.4s ease-in-out infinite;
 }
 
@@ -732,14 +835,40 @@ button.card-face {
   50% { opacity: 0.75; }
 }
 
+/* Selected: lifted 40px at 1.15x with a bright outline and glow in the card's own Light colour, so it can
+   never be mistaken for an Insight card's pearl frame. */
 .card-face[data-state='selected'] {
   --lift: calc(var(--u) * -40);
   --scale: 1.15;
   z-index: 5;
 }
 
+.card-face[data-state='selected']::before {
+  box-shadow:
+    0 calc(var(--cu) * 22) calc(var(--cu) * 26) rgb(0 0 0 / 0.6),
+    0 calc(var(--cu) * 2) calc(var(--cu) * 4) rgb(0 0 0 / 0.5);
+}
+
 .card-face[data-state='selected']::after {
+  inset: calc(var(--cu) * -4);
+  border-radius: calc(var(--cu) * 15);
+  border: calc(var(--cu) * 2.5) solid color-mix(in srgb, var(--c) 70%, white);
+  box-shadow:
+    0 0 calc(var(--cu) * 12) calc(var(--cu) * 2) color-mix(in srgb, var(--c) 75%, transparent),
+    0 0 calc(var(--cu) * 28) calc(var(--cu) * 4) color-mix(in srgb, var(--c) 35%, transparent);
   opacity: 1;
+  animation: none;
+}
+
+.card-face[data-kind='blend'][data-state='selected']::after {
+  border-color: color-mix(in srgb, var(--c) 50%, var(--c2) 50%);
+  border-left-color: color-mix(in srgb, var(--c) 70%, white);
+  border-top-color: color-mix(in srgb, var(--c) 70%, white);
+  border-right-color: color-mix(in srgb, var(--c2) 70%, white);
+  border-bottom-color: color-mix(in srgb, var(--c2) 70%, white);
+  box-shadow:
+    calc(var(--cu) * -6) calc(var(--cu) * -4) calc(var(--cu) * 16) calc(var(--cu) * 1) color-mix(in srgb, var(--c) 60%, transparent),
+    calc(var(--cu) * 6) calc(var(--cu) * 4) calc(var(--cu) * 16) calc(var(--cu) * 1) color-mix(in srgb, var(--c2) 60%, transparent);
 }
 
 .card-face[data-state='unaffordable'] {
@@ -774,9 +903,65 @@ button.card-face {
   --shake-amp: calc(var(--cu) * 3);
 }
 
-/* Small size for piles, deck grids and reward tiles. */
+/* ---------- mini (piles, deck strips, reward tiles): gem, badge and name only ---------- */
 .card-face--mini {
   --cu: calc(var(--u) * 0.6);
+}
+
+.card-face--mini .card-face__text,
+.card-face--mini .card-face__footer,
+.card-face--mini .card-face__chips,
+.card-face--mini .card-face__label,
+.card-face--mini .card-face__rarity,
+.card-face--mini .card-face__wisps {
+  display: none;
+}
+
+.card-face--mini .card-face__art {
+  flex: 1 1 auto;
+  height: auto;
+}
+
+.card-face--mini .card-face__motif {
+  transform: translateY(-50%) scale(1.25);
+}
+
+.card-face--mini .card-face__name,
+.card-face--mini[data-name-lines='2'] .card-face__name {
+  height: auto;
+  min-height: calc(var(--u) * 30);
+  margin: calc(var(--u) * -8) calc(var(--u) * 2) calc(var(--u) * 3);
+  padding: calc(var(--u) * 3) calc(var(--u) * 3);
+  font-size: calc(var(--u) * 12);
+  line-height: 1.05;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.card-face--mini .card-face__name > span {
+  flex: 0 1 auto;
+}
+
+.card-face--mini .card-face__gem {
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
+  top: calc(var(--u) * -6);
+  left: calc(var(--u) * -6);
+}
+
+.card-face--mini .gem__n {
+  font-size: calc(var(--u) * 14);
+}
+
+.card-face--mini .card-face__weight {
+  height: calc(var(--u) * 20);
+  top: calc(var(--u) * -6);
+  left: calc(var(--u) * -6);
+  padding: 0 calc(var(--u) * 5);
+}
+
+.card-face--mini .card-face__weight-n {
+  font-size: calc(var(--u) * 12);
 }
 
 .card-face--large {

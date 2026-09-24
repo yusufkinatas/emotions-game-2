@@ -10,6 +10,7 @@ import { CARD_KEYWORD_RE, TEXT_FLOOR, fitCard, footerFits } from './cardFit';
 import { hashSeed, rand } from './hash';
 import { AFFLICTION_NAME, BLEND_NAME, LIGHT_NAME, SHADE_NAME } from './names';
 import { markIcon, sigil, sigilBody } from './sigils';
+import { afflictionDrop } from './widgets';
 import { attrs, esc, n, toElement } from './svg';
 
 export type CardState = 'idle' | 'playable' | 'selected' | 'unaffordable' | 'numbed';
@@ -134,8 +135,8 @@ export function cardChipMarkup(text: string): string {
   }
   const soothed = words.map((w) => AFFLICTION_SHADE.get(w)).find(Boolean);
   if (words[0] === 'soothes' && soothed) {
-    const aff = AFFLICTION_NAME[AFFLICTION_OF[soothed]];
-    return chip(' card-chip--soothes', ` data-face="${soothed}"`, sigil(soothed), aff, text);
+    const aff = AFFLICTION_OF[soothed];
+    return chip(' card-chip--soothes', ` data-face="${soothed}"`, afflictionDrop(aff), AFFLICTION_NAME[aff], text);
   }
   return chip('', '', '', text.split(' ')[0] ?? text, text);
 }
