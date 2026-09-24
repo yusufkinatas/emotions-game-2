@@ -1,0 +1,301 @@
+/*
+ * Keyframes (DESIGN 18.1). Transform and opacity only (18.3). Components pick keyframes through the
+ * --a-* switches in tokens.css, so reduced motion swaps names instead of duplicating rules.
+ * Keyframes prefixed kf-shade-* / kf-idle-* run inside Shade SVGs, where px are viewBox units.
+ */
+
+/* ---------- generic ---------- */
+@keyframes kf-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kf-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes kf-fade-in-out {
+  0%, 100% { opacity: 0; }
+  35% { opacity: 1; }
+}
+
+@keyframes kf-crossfade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes kf-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes kf-pop-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kf-deal-in {
+  from { opacity: 0; transform: translateY(calc(var(--u) * 30)) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes kf-rise {
+  from { opacity: 0; transform: translateY(calc(var(--u) * 40)); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes kf-ignite {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kf-grow-ring {
+  0% { opacity: 0; transform: scale(0.35); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes kf-flip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes kf-sheen {
+  0%, 55% { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(130%) skewX(-18deg); }
+}
+
+@keyframes kf-heartbeat {
+  0%, 40%, 100% { transform: scale(1); opacity: 0.55; }
+  12% { transform: scale(1.04); opacity: 1; }
+  24% { transform: scale(1.015); opacity: 0.75; }
+  30% { transform: scale(1.035); opacity: 0.95; }
+}
+
+@keyframes kf-vignette {
+  0%, 100% { opacity: 0; }
+  30% { opacity: 0.85; }
+}
+
+@keyframes kf-stage-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+
+@keyframes kf-bloom {
+  0% { opacity: 0; transform: scale(0.5); }
+  35% { opacity: 0.3; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* ---------- shakes and strikes (HTML) ---------- */
+@keyframes kf-shake-h {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(calc(var(--shake-amp, calc(var(--u) * 4)) * -1)); }
+  40% { transform: translateX(var(--shake-amp, calc(var(--u) * 4))); }
+  60% { transform: translateX(calc(var(--shake-amp, calc(var(--u) * 4)) * -0.6)); }
+  80% { transform: translateX(calc(var(--shake-amp, calc(var(--u) * 4)) * 0.4)); }
+}
+
+@keyframes kf-shake-v {
+  0%, 100% { transform: none; }
+  20% { transform: translateY(calc(var(--u) * 8)); }
+  40% { transform: translateY(calc(var(--u) * -6)); }
+  60% { transform: translateY(calc(var(--u) * 4)); }
+  80% { transform: translateY(calc(var(--u) * -2)); }
+}
+
+@keyframes kf-lunge {
+  0%, 100% { transform: none; }
+  27% { transform: translateX(calc(var(--lunge-x, calc(var(--u) * -60)) * -0.14)); }
+  53% { transform: translateX(var(--lunge-x, calc(var(--u) * -60))); }
+}
+
+@keyframes kf-step {
+  0%, 100% { transform: none; }
+  50% { transform: translateX(calc(var(--lunge-x, calc(var(--u) * -60)) * 0.33)); }
+}
+
+@keyframes kf-card-fly {
+  0% { transform: none; opacity: 1; }
+  100% {
+    transform: translate(var(--fly-x, 0px), var(--fly-y, calc(var(--u) * -160))) scale(0.3);
+    opacity: 0.2;
+  }
+}
+
+@keyframes kf-inward-ring {
+  0% { transform: scale(0.6); opacity: 0.85; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes kf-shard {
+  0% { transform: none; opacity: 1; }
+  100% { transform: translate(var(--sx, 0px), var(--sy, 0px)) rotate(var(--sr, 40deg)) scale(0.6); opacity: 0; }
+}
+
+@keyframes kf-wisp {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  30% { opacity: 0.55; }
+  100% { transform: translateY(calc(var(--cu, var(--u)) * -26)) scale(1.3); opacity: 0; }
+}
+
+/* ---------- floating numbers ---------- */
+@keyframes kf-float-rise {
+  0% { transform: translateY(0); opacity: 1; }
+  64% { opacity: 1; }
+  100% { transform: translateY(calc(var(--u) * -40)); opacity: 0; }
+}
+
+@keyframes kf-float-sink {
+  0% { transform: translateY(0); opacity: 1; }
+  64% { opacity: 1; }
+  100% { transform: translateY(calc(var(--u) * 12)); opacity: 0; }
+}
+
+@keyframes kf-float-pop {
+  0% { transform: scale(1.3); }
+  30%, 100% { transform: scale(1); }
+}
+
+/* ---------- Shade reactions (SVG units) ---------- */
+@keyframes kf-squash {
+  0% { transform: none; }
+  30% { transform: translateX(10px) scale(1.08, 0.92); }
+  100% { transform: none; }
+}
+
+@keyframes kf-shade-flash {
+  0%, 100% { opacity: 0; }
+  25% { opacity: var(--flash-max); }
+}
+
+@keyframes kf-dissolve {
+  0% { transform: none; opacity: 1; }
+  25% { transform: scale(1.03); opacity: 1; }
+  100% { transform: translateY(-10px) scale(1.14); opacity: 0; }
+}
+
+@keyframes kf-dissolve-mask {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kf-crush {
+  0% { transform: none; opacity: 1; }
+  25% { transform: scale(1.04, 1.06); opacity: 1; }
+  100% { transform: translateY(40px) scale(1.08, 0.1); opacity: 0.85; }
+}
+
+@keyframes kf-seal {
+  0%, 45% { transform: scale(0); opacity: 0; }
+  75% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes kf-mote-rise {
+  0% { transform: translateY(0) scale(0.4); opacity: 0; }
+  22% { transform: translateY(-6px) scale(1.15); opacity: 1; }
+  70% { transform: translateY(-40px) scale(1); opacity: 1; }
+  100% { transform: translateY(-70px) scale(0.9); opacity: 0; }
+}
+
+/* ---------- Shade idles (16.7) ---------- */
+@keyframes kf-idle-breathe {
+  0%, 100% { transform: scale(0.98, 0.985); }
+  50% { transform: scale(1.02, 1.015); }
+}
+
+@keyframes kf-idle-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+@keyframes kf-idle-drift {
+  0%, 100% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+}
+
+@keyframes kf-idle-shiver {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(1px, 0); }
+  50% { transform: translate(0, 1px); }
+  75% { transform: translate(-1px, 0); }
+  100% { transform: translate(0, -1px); }
+}
+
+@keyframes kf-idle-sink {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+@keyframes kf-idle-vibrate {
+  0% { transform: translate(0.6px, -0.4px); }
+  20% { transform: translate(-0.8px, 0.5px); }
+  40% { transform: translate(0.5px, 0.8px); }
+  60% { transform: translate(-0.4px, -0.7px); }
+  80% { transform: translate(0.8px, 0.3px); }
+  100% { transform: translate(-0.6px, 0.2px); }
+}
+
+@keyframes kf-idle-bob {
+  0%, 100% { transform: translateY(-5px); }
+  50% { transform: translateY(5px); }
+}
+
+@keyframes kf-idle-rotate {
+  0%, 100% { transform: rotate(-3.5deg) translateY(-3px); }
+  50% { transform: rotate(3.5deg) translateY(3px); }
+}
+
+@keyframes kf-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.08); }
+}
+
+@keyframes kf-tear {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.9; transform: translateY(4px) scale(1); }
+  100% { transform: translateY(58px) scale(0.8); opacity: 0; }
+}
+
+@keyframes kf-particle-in {
+  0% { transform: translate(var(--px), var(--py)) scale(1); opacity: 0; }
+  25% { opacity: 0.8; }
+  100% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+}
+
+@keyframes kf-glance {
+  0%, 38%, 100% { transform: translateX(0); }
+  44%, 62% { transform: translateX(-3.5px); }
+  68%, 80% { transform: translateX(2.5px); }
+}
+
+@keyframes kf-flicker {
+  0%, 100% { opacity: 0.55; }
+  18% { opacity: 1; }
+  34% { opacity: 0.7; }
+  51% { opacity: 0.95; }
+  72% { opacity: 0.6; }
+  86% { opacity: 0.9; }
+}
+
+@keyframes kf-static {
+  0%, 100% { opacity: 0.06; }
+  25% { opacity: 0.14; }
+  50% { opacity: 0.04; }
+  75% { opacity: 0.11; }
+}
+
+@keyframes kf-scribble {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes kf-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}

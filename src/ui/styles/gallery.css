@@ -1,0 +1,370 @@
+/* Styles for the developer gallery only (gallery.html). */
+body {
+  padding: 24px 32px 64px;
+}
+
+.g-head h1 {
+  font-family: var(--font-title);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.g-head p {
+  color: var(--text-2);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.g-toolbar {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  margin-bottom: 8px;
+  background: linear-gradient(180deg, var(--bg-1) 70%, transparent);
+}
+
+.g-section {
+  margin-top: 28px;
+  padding: 24px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.02);
+}
+
+.g-section > header h2 {
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.g-section > header p {
+  color: var(--text-2);
+  margin: 4px 0 16px;
+  max-width: 900px;
+}
+
+.g-group {
+  margin-top: 18px;
+}
+
+.g-group h3 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.g-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.g-sigil-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 56px;
+  color: var(--text);
+}
+
+.g-sigil-row > span {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.g-shade-sigil {
+  color: #cfc7e3;
+}
+
+.g-shade-sigil .sigil {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cure) 70%, transparent));
+}
+
+.g-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.g-tile {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid var(--line);
+}
+
+.g-tile__art {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+}
+
+.g-tile figcaption {
+  font-size: 11px;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.g-icon {
+  color: var(--text);
+  font-size: 40px;
+  line-height: 0;
+}
+
+.g-icon--small {
+  font-size: 14px;
+}
+
+.g-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 22px;
+  padding: 14px 8px 8px;
+}
+
+.g-cards--chips {
+  padding-top: 70px;
+}
+
+.g-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.g-card figcaption {
+  font-size: 11px;
+  color: var(--text-2);
+  max-width: 140px;
+  text-align: center;
+}
+
+.g-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.g-stage {
+  position: relative;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 70%, rgb(90 70 140 / 0.25), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.02), rgb(0 0 0 / 0.2));
+  border: 1px solid var(--line);
+}
+
+.g-greyscale {
+  filter: grayscale(1);
+}
+
+body {
+  background-attachment: scroll;
+}
+
+.g-shade {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.g-shade__stage {
+  display: grid;
+  place-items: end center;
+  min-width: 180px;
+  padding: 10px 8px 6px;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 78%, color-mix(in srgb, var(--cure, var(--pearl)) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.015), rgb(0 0 0 / 0.18));
+  border: 1px solid var(--line);
+}
+
+.g-shade figcaption {
+  font-size: 11px;
+  color: var(--text-2);
+  text-align: center;
+  max-width: 190px;
+}
+
+.g-forms .g-tile {
+  min-width: 90px;
+}
+
+.g-tile--compass {
+  width: 250px;
+  padding: 18px 10px 12px;
+}
+
+.g-tile--compass .g-tile__art {
+  min-height: 230px;
+}
+
+.g-bars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 40px;
+  max-width: 900px;
+}
+
+.g-bars > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.g-bars > div > span:last-child {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.g-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.g-tile--bubble .g-tile__art {
+  min-height: 120px;
+  min-width: 130px;
+  justify-content: center;
+}
+
+.g-intents {
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.g-float__art {
+  position: relative;
+  width: 150px;
+  height: 90px;
+  justify-content: center;
+}
+
+.g-float__art > .float-num {
+  left: 50%;
+  top: 62%;
+}
+
+.g-float {
+  cursor: pointer;
+}
+
+.g-banners {
+  gap: 16px;
+  align-items: center;
+}
+
+.g-stage-row {
+  display: flex;
+  gap: 24px;
+  padding: 18px 12px 12px;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 70%, rgb(90 70 140 / 0.22), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.015), rgb(0 0 0 / 0.2));
+  border: 1px solid var(--line);
+}
+
+.g-palettes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.g-palette {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.g-palette h3 {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.g-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.g-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.g-swatch__chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+}
+
+.g-palette .g-cards {
+  gap: 18px 12px;
+  padding-top: 18px;
+}
+
+.g-greyscale {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.g-grey-sigil {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  color: #cfc7e3;
+}
+
+.g-grey-sigil small {
+  font-size: 10px;
+  color: var(--text-2);
+}
+
+.g-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-left: 12px;
+  font-size: 12px;
+}
+
+.g-nav a {
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.g-nav a:hover {
+  color: var(--pearl);
+}

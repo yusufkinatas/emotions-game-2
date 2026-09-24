@@ -1,0 +1,573 @@
+/*
+ * Shade silhouettes (DESIGN 16.7) and the Shade slot. Inside the SVG, px are viewBox units (200x210).
+ * State hooks on the root <svg class="shade-art">:
+ *   data-face / data-showing / data-next  face colour, compound badge, Mask forehead
+ *   data-flare + --flare                  0..5, grows 4% per stack
+ *   .is-flinch .is-swell                  hover: OPPOSITE card / DISSONANT card
+ *   .is-hit .is-resolving .is-deep .is-suppressed .is-turning
+ */
+
+.shade-art {
+  display: block;
+  overflow: visible;
+  --flare: 0;
+  --idle-rate: 1;
+  --idle-delay: 0s;
+  --body-hi: #30284a;
+  --body-mid: #1a1628;
+  --body-lo: #0b0911;
+  --rim-light: #43386a;
+  --limb: #1a1626;
+}
+
+.shade-art :where(g, path, circle, ellipse) {
+  transform-box: view-box;
+}
+
+.sa-stop-hi { stop-color: var(--body-hi); }
+.sa-stop-mid { stop-color: var(--body-mid); }
+.sa-stop-lo { stop-color: var(--body-lo); }
+.sa-bloom-stop { stop-color: var(--cure); }
+.sa-dissolve-hole { stop-color: black; }
+.sa-dissolve-edge { stop-color: white; }
+
+.sa-shadow {
+  fill: rgb(0 0 0 / 0.45);
+}
+
+.sa-aura {
+  fill: var(--cure);
+  opacity: calc(0.16 + var(--flare) * 0.03);
+  transition: opacity 160ms ease;
+}
+
+.sa-rim {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.sa-limb__rim {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-limb__ink {
+  fill: none;
+  stroke: var(--limb);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-fist {
+  fill: var(--limb);
+  stroke: var(--rim-light);
+  stroke-width: 1.6;
+}
+
+/* ---------- eyes and faces ---------- */
+.sa-eye {
+  animation: var(--a-blink) 5s ease-in-out infinite;
+}
+
+.sa-eye__white { fill: var(--pearl); }
+.sa-pupil { fill: #120f1a; }
+.sa-glint { fill: #ffffff; }
+.sa-iris { fill: var(--cure); }
+.sa-lid { fill: #1d1830; }
+
+.sa-mouth {
+  fill: none;
+  stroke: rgb(237 232 245 / 0.55);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-fang { fill: var(--pearl); opacity: 0.9; }
+
+.sa-puff {
+  fill: none;
+  stroke: rgb(237 232 245 / 0.22);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  animation: var(--a-flicker) 1.4s ease-in-out infinite;
+}
+
+.sa-brow {
+  fill: none;
+  stroke: rgb(237 232 245 / 0.55);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.sa-closed-eye {
+  fill: none;
+  stroke: #6a5d8e;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* ---------- cracks glow in the cure colour of the showing face ---------- */
+.sa-cracks {
+  opacity: calc(0.78 + var(--flare) * 0.045);
+  transition: opacity 160ms ease;
+}
+
+.sa-crack__glow {
+  fill: none;
+  stroke: var(--cure);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.26;
+}
+
+.sa-crack {
+  fill: none;
+  stroke: var(--cure);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-crack__core {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+.sa-flash {
+  fill: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sa-flash--stroke {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 22;
+  stroke-linecap: round;
+}
+
+/* ---------- Anger ---------- */
+.shade-art[data-family='anger'] .sa-idle {
+  animation: var(--a-idle-anger) calc(0.9s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+/* ---------- Sadness ---------- */
+.shade-art[data-family='sadness'] .sa-idle {
+  animation: var(--a-idle-sadness) calc(4s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-hollow { fill: #07060b; }
+.sa-hood-shade { fill: #000000; }
+
+.sa-tear {
+  fill: #cddcf2;
+  opacity: 0;
+  animation: var(--a-tear) 2.6s ease-in infinite;
+}
+
+/* ---------- Loneliness ---------- */
+.shade-art[data-family='loneliness'] .sa-idle {
+  animation: var(--a-idle-loneliness) calc(7s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-ring__rim { fill: none; stroke: var(--rim-light); stroke-width: 10; }
+.sa-ring { fill: none; stroke: #151221; stroke-width: 7; }
+.sa-ring__inner { fill: none; stroke: var(--cure); stroke-width: 1; opacity: 0.14; }
+
+.sa-hug {
+  fill: none;
+  stroke: var(--rim-light);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.sa-glance .sa-look {
+  animation: var(--a-glance) 8s ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-point { fill: var(--cure); }
+.sa-point__glow {
+  fill: var(--cure);
+  opacity: 0.4;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: var(--a-twinkle) 2.8s ease-in-out infinite;
+}
+
+/* ---------- Fear ---------- */
+.shade-art[data-family='fear'] .sa-idle {
+  animation: var(--a-idle-fear) 0.333s steps(1, end) infinite;
+}
+
+/* ---------- Despair ---------- */
+.shade-art[data-family='despair'] .sa-idle {
+  animation: var(--a-idle-despair) calc(5s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-pit { fill: #050409; }
+.sa-pit__rim { fill: none; stroke: var(--rim-light); stroke-width: 2; }
+.sa-pit__lip { fill: #120f1b; stroke: var(--rim-light); stroke-width: 1.6; stroke-linejoin: round; }
+
+.sa-particle {
+  fill: #b0a6d6;
+  opacity: 0;
+  animation: var(--a-particle) 3s ease-in infinite;
+}
+
+.sa-glint-star {
+  fill: var(--cure);
+  animation: var(--a-twinkle) 2.4s ease-in-out infinite;
+}
+
+/* ---------- Anxiety ---------- */
+.shade-art[data-family='anxiety'] .sa-idle {
+  animation: var(--a-idle-anxiety) 0.2s steps(1, end) infinite;
+}
+
+.sa-scribble {
+  fill: none;
+  stroke: #4c4170;
+  stroke-width: calc(2.4px + var(--flare) * 0.75px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-scribble--a { animation: var(--a-scribble) 0.6s steps(1, end) infinite; }
+.sa-scribble--b { opacity: 0; animation: var(--a-scribble) 0.6s steps(1, end) infinite reverse; }
+
+.sa-thread {
+  fill: none;
+  stroke: var(--cure);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* ---------- Doubt ---------- */
+.shade-art[data-family='doubt'] .sa-idle {
+  animation: var(--a-idle-doubt) calc(1.8s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-hook__rim { fill: none; stroke: var(--rim-light); stroke-width: 26; stroke-linecap: round; }
+.sa-hook { fill: none; stroke: #1a1628; stroke-width: 21; stroke-linecap: round; }
+.sa-ember { fill: var(--cure); animation: var(--a-flicker) 1.1s ease-in-out infinite; }
+.sa-ember__glow { fill: var(--cure); opacity: 0.35; animation: var(--a-flicker) 1.6s ease-in-out infinite reverse; }
+
+/* ---------- The Mask ---------- */
+.shade-art[data-family='mask'] .sa-idle {
+  animation: var(--a-idle-mask) calc(7s * var(--idle-rate)) ease-in-out infinite;
+  animation-delay: var(--idle-delay);
+}
+
+.sa-maskface { fill: #2b2442; stroke: #54487c; stroke-width: 2.2; }
+.sa-maskface__shine { fill: #ffffff; opacity: 0.07; }
+.sa-maskbrow { fill: none; stroke: #54487c; stroke-width: 2.4; stroke-linecap: round; }
+
+.sa-slit {
+  fill: var(--cure);
+}
+
+.sa-mface {
+  color: var(--cure);
+  opacity: 0;
+  transition: opacity var(--t-face) ease;
+}
+
+.sa-nface {
+  color: #9a90b8;
+  opacity: 0;
+  transition: opacity var(--t-face) ease;
+}
+
+.shade-art[data-face='anger'] .sa-mface--anger,
+.shade-art[data-face='sadness'] .sa-mface--sadness,
+.shade-art[data-face='loneliness'] .sa-mface--loneliness,
+.shade-art[data-face='fear'] .sa-mface--fear,
+.shade-art[data-face='despair'] .sa-mface--despair,
+.shade-art[data-face='anxiety'] .sa-mface--anxiety {
+  opacity: 0.95;
+}
+
+.shade-art[data-next='anger'] .sa-nface--anger,
+.shade-art[data-next='sadness'] .sa-nface--sadness,
+.shade-art[data-next='loneliness'] .sa-nface--loneliness,
+.shade-art[data-next='fear'] .sa-nface--fear,
+.shade-art[data-next='despair'] .sa-nface--despair,
+.shade-art[data-next='anxiety'] .sa-nface--anxiety {
+  opacity: 0.8;
+}
+
+.sa-mcrack {
+  fill: none;
+  stroke: var(--cure);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity 300ms ease;
+}
+
+/* ---------- Apathy and The Numbness ---------- */
+.shade-art[data-family='numb'] {
+  --body-hi: #7a778b;
+  --body-mid: #5a5769;
+  --body-lo: #3a3846;
+  --rim-light: #9a97a8;
+}
+
+.shade-art[data-family='numb'] .sa-aura { opacity: 0; }
+.shade-art[data-family='numb'] .sa-rim { opacity: 0.45; }
+.shade-art[data-slouched='true'] .sa-idle { transform: rotate(-9deg); }
+
+.sa-numb__shine { fill: #ffffff; opacity: 0.09; }
+
+.sa-static {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.6;
+  opacity: 0.06;
+  animation: var(--a-static) 0.9s steps(1, end) infinite;
+}
+
+.sa-felt {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sa-felt--glow {
+  stroke-width: 7;
+  opacity: 0.3;
+}
+
+/* ---------- compound badge (inner face) ---------- */
+.sa-badge__disc {
+  fill: #141120;
+  stroke: color-mix(in srgb, var(--badge-c) 40%, var(--rim-light));
+  stroke-width: 2;
+}
+
+.sa-badge__sigil {
+  color: #7a7196;
+}
+
+.shade-art[data-showing='inner'] .sa-badge__disc {
+  fill: color-mix(in srgb, var(--badge-c) 32%, #141120);
+  stroke: var(--badge-c);
+}
+
+.shade-art[data-showing='inner'] .sa-badge__sigil {
+  color: var(--pearl);
+}
+
+.shade-art[data-showing='inner'] .sa-badge {
+  filter: drop-shadow(0 0 5px var(--badge-c));
+}
+
+/* ---------- flare (4% per stack) ---------- */
+.sa-flare {
+  transform-origin: 100px 196px;
+  transform: scale(calc(1 + 0.04 * var(--flare)));
+  transition: transform 200ms var(--ease-out);
+}
+
+/* ---------- reactions ---------- */
+.sa-react {
+  transform-origin: 100px 196px;
+  transition: transform var(--t-hover) var(--ease-out);
+}
+
+.shade-art.is-flinch .sa-react { transform: translateX(6px); }
+.shade-art.is-swell .sa-react { transform: scale(1.03); }
+.shade-art.is-swell .sa-aura { opacity: 0.5; }
+.shade-art.is-swell .sa-cracks { opacity: 1; }
+
+.shade-art.is-hit .sa-react {
+  animation: var(--a-squash) 240ms var(--ease-out);
+}
+
+.shade-art.is-hit .sa-flash {
+  animation: kf-shade-flash 240ms ease-out;
+}
+
+.shade-art.is-turning .sa-cracks {
+  animation: kf-crossfade var(--t-face) ease;
+}
+
+.sa-bloom circle,
+.sa-mote,
+.sa-seal {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sa-seal ellipse { fill: var(--ink); stroke: var(--rim-light); stroke-width: 2; }
+.sa-seal .sa-seal__ring { fill: none; stroke: var(--pearl); stroke-width: 1.4; opacity: 0.55; }
+
+.shade-art.is-resolving .sa-dissolver {
+  mask: var(--dmask);
+}
+
+.shade-art.is-resolving .sa-dissolve {
+  transform: scale(0);
+  animation: var(--a-dissolve-mask) 1000ms ease-in-out 110ms forwards;
+}
+
+.shade-art.is-resolving .sa-react {
+  animation: var(--a-dissolve) 1.1s ease-in-out 110ms forwards;
+}
+
+.shade-art.is-resolving .sa-shadow {
+  animation: kf-fade-out 700ms ease 200ms forwards;
+}
+
+.shade-art.is-resolving .sa-bloom circle {
+  animation: var(--a-bloom) 1s ease-out 110ms forwards;
+}
+
+.shade-art.is-resolving .sa-mote:not(.sa-mote--second),
+.shade-art.is-deep .sa-mote--second {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: var(--a-mote) 1.1s ease-out 150ms forwards;
+}
+
+.shade-art.is-suppressed .sa-react {
+  animation: var(--a-crush) 900ms ease-in-out forwards;
+}
+
+.shade-art.is-suppressed .sa-seal {
+  animation: var(--a-seal) 900ms ease forwards;
+}
+
+.shade-art.is-suppressed .sa-shadow {
+  animation: kf-fade-out 800ms ease forwards;
+}
+
+/* Reduced motion drops Anger's heat shimmer (the one animated SVG filter). */
+:root[data-motion='reduced'] .shade-art .sa-body {
+  filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .shade-art .sa-body {
+    filter: none !important;
+  }
+}
+
+/* Hit-stop (18.1): pause stage animations briefly. Add to any ancestor for 60 or 110 ms. */
+.is-hitstop,
+.is-hitstop * {
+  animation-play-state: paused !important;
+}
+
+/* ---------- Resolved forms ---------- */
+.resolved-form {
+  width: 1em;
+  height: 1em;
+  color: var(--c);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--c) 70%, transparent));
+}
+
+/* ---------- Shade slot (205px wide: intent y64-104, silhouette y108-316, nameplate y320-460) ---------- */
+.shade-slot {
+  position: relative;
+  display: grid;
+  grid-template-rows: calc(var(--u) * 44) calc(var(--u) * 212) auto;
+  justify-items: center;
+  align-items: end;
+  width: calc(var(--u) * 205);
+  padding-top: calc(var(--u) * 4);
+  border-radius: var(--r-lg);
+  transition: transform var(--t-hover) var(--ease-out);
+}
+
+.shade-slot {
+  align-content: start;
+}
+
+.shade-slot__intent {
+  align-self: center;
+}
+
+.shade-slot > .nameplate {
+  align-self: start;
+  margin-top: calc(var(--u) * 4);
+}
+
+.shade-slot__art {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+}
+
+.shade-slot__art::before {
+  /* soft stage light behind the silhouette */
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 4%;
+  height: 70%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--cure, var(--pearl)) 14%, transparent), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.shade-slot__feet {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * -4);
+  display: flex;
+  gap: calc(var(--u) * 4);
+  transform: translateX(-50%);
+}
+
+.shade-slot[data-targetable='true'] {
+  cursor: pointer;
+}
+
+.shade-slot[data-focused='true']::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -2);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 2px var(--pearl), 0 0 calc(var(--u) * 18) rgb(244 239 230 / 0.35);
+  pointer-events: none;
+}
+
+.shade-slot.is-striking {
+  animation: var(--a-lunge) 300ms var(--ease-out);
+}
+
+.shade-slot.is-shaking {
+  animation: var(--a-shake-v) 400ms ease;
+}
+
+.sa-pit__deep { fill: #010103; }
+
+.shade-art.is-resolving .sa-badge,
+.shade-art.is-suppressed .sa-badge {
+  animation: kf-fade-out 400ms ease forwards;
+}

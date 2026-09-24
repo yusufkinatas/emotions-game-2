@@ -1,0 +1,91 @@
+// Courage: Stand (Guard, big hits, Nerve). Cures Fear, clears Trembling, DISSONANT vs Despair (DESIGN 6.5).
+
+import { ease, guard, iff, or, status } from '../../engine/dsl';
+import type { CardDef, Cond } from '../../engine/types';
+
+const intendsAttack: Cond = { c: 'targetIntendsAttack' };
+const stormCond: Cond = or({ c: 'harmonized' }, intendsAttack);
+
+export const COURAGE_CARDS: CardDef[] = [
+  {
+    id: 'courage.hold_the_line',
+    name: 'Hold the Line',
+    lights: ['courage'],
+    kind: 'skill',
+    rarity: 'common',
+    cost: 1,
+    target: 'self',
+    effects: [guard(8)],
+    upgrade: { effects: [guard(11)] },
+    text: 'Gain {0} Guard.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.face_the_storm',
+    name: 'Face the Storm',
+    lights: ['courage'],
+    kind: 'ease',
+    rarity: 'common',
+    cost: 1,
+    target: 'enemy',
+    effects: [iff(stormCond, [ease(10)], [ease(7)])],
+    upgrade: { effects: [iff(stormCond, [ease(13)], [ease(9)])] },
+    text: 'Ease {1}. If the target intends to attack, Ease {0} instead. Harmony: always Ease {0}.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.chin_up',
+    name: 'Chin Up',
+    lights: ['courage'],
+    kind: 'ease',
+    rarity: 'common',
+    cost: 1,
+    target: 'enemy',
+    effects: [ease(5), guard(5)],
+    upgrade: { effects: [ease(7), guard(7)] },
+    text: 'Ease {0}. Gain {1} Guard.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.find_your_nerve',
+    name: 'Find Your Nerve',
+    lights: ['courage'],
+    kind: 'mood',
+    rarity: 'uncommon',
+    cost: 1,
+    target: 'none',
+    effects: [status('nerve', 2)],
+    upgrade: { effects: [status('nerve', 3)] },
+    text: 'Gain {0} Nerve.',
+    availableFromAct: 1,
+  },
+  {
+    // The intent is read before the hit (lead ruling: the current intent at the moment the card is played),
+    // so Resolving the target with this hit still pays the Guard.
+    id: 'courage.bold_leap',
+    name: 'Bold Leap',
+    lights: ['courage'],
+    kind: 'ease',
+    rarity: 'uncommon',
+    cost: 2,
+    target: 'enemy',
+    effects: [iff(intendsAttack, [guard(8)]), ease(15)],
+    upgrade: { effects: [iff(intendsAttack, [guard(10)]), ease(19)] },
+    text: 'Ease {1}. If the target intends to attack, also gain {0} Guard.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.lionheart',
+    name: 'Lionheart',
+    lights: ['courage'],
+    kind: 'mood',
+    rarity: 'rare',
+    cost: 2,
+    target: 'none',
+    effects: [],
+    mood: [{ on: 'turnStart', if: { c: 'anyIntendsAttack' }, effects: [status('nerve', 1)] }],
+    upgrade: { cost: 1 },
+    text: 'At the start of your turn, if any Shade intends to attack, gain 1 Nerve.',
+    availableFromAct: 1,
+  },
+];

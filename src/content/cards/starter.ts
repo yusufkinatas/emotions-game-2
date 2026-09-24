@@ -1,0 +1,87 @@
+// Starter cards (DESIGN 6.1). Every starter card is typed so each play moves the Note.
+
+import { draw, ease, guard } from '../../engine/dsl';
+import type { CardDef, CardId } from '../../engine/types';
+
+export const STARTER_CARDS: CardDef[] = [
+  {
+    id: 'love.kind_word',
+    name: 'Kind Word',
+    lights: ['love'],
+    kind: 'ease',
+    rarity: 'starter',
+    cost: 1,
+    target: 'enemy',
+    effects: [ease(6)],
+    upgrade: { effects: [ease(9)] },
+    text: 'Ease {0}.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'joy.bright_spark',
+    name: 'Bright Spark',
+    lights: ['joy'],
+    kind: 'ease',
+    rarity: 'starter',
+    cost: 1,
+    target: 'enemy',
+    effects: [ease(4), draw(1)],
+    upgrade: { effects: [ease(6), draw(1)] },
+    text: 'Ease {0}. Draw {1}.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'friendship.reach_out',
+    name: 'Reach Out',
+    lights: ['friendship'],
+    kind: 'ease',
+    rarity: 'starter',
+    cost: 1,
+    target: 'enemy',
+    effects: [ease(6)],
+    upgrade: { effects: [ease(9)] },
+    text: 'Ease {0}.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.brave_strike',
+    name: 'Brave Strike',
+    lights: ['courage'],
+    kind: 'ease',
+    rarity: 'starter',
+    cost: 1,
+    target: 'enemy',
+    effects: [ease(6)],
+    upgrade: { effects: [ease(9)] },
+    text: 'Ease {0}.',
+    availableFromAct: 1,
+  },
+  {
+    id: 'courage.stand_firm',
+    name: 'Stand Firm',
+    lights: ['courage'],
+    kind: 'skill',
+    rarity: 'starter',
+    cost: 1,
+    target: 'self',
+    effects: [guard(5)],
+    upgrade: { effects: [guard(8)] },
+    text: 'Gain {0} Guard.',
+    availableFromAct: 1,
+  },
+];
+
+/** 11-card starter deck (the starting Charm adds a 12th). */
+export const STARTER_DECK: CardId[] = [
+  'love.kind_word',
+  'love.kind_word',
+  'joy.bright_spark',
+  'joy.bright_spark',
+  'friendship.reach_out',
+  'friendship.reach_out',
+  'courage.brave_strike',
+  'courage.brave_strike',
+  'courage.stand_firm',
+  'courage.stand_firm',
+  'courage.stand_firm',
+];

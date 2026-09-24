@@ -1,0 +1,100 @@
+// Calm: Stillness (Hush, Linger, unspent Spirit). Cures Anxiety, clears Restless, DISSONANT vs Anger (DESIGN 6.7).
+// Act 2+ ("the wheel closes").
+
+import { draw, ease, guard, ifH, lingerHand, nextCardFree, per, status } from '../../engine/dsl';
+import type { CardDef } from '../../engine/types';
+
+/** Lullaby: Harmony widens the Hush to every Shade. */
+const lullaby = (amount: number, hush: number) => [
+  ease(amount),
+  ifH([status('hush', hush, 'all')], [status('hush', hush, 'target')]),
+];
+
+export const CALM_CARDS: CardDef[] = [
+  {
+    id: 'calm.still_water',
+    name: 'Still Water',
+    lights: ['calm'],
+    kind: 'skill',
+    rarity: 'common',
+    cost: 1,
+    target: 'self',
+    effects: [guard(7)],
+    keywords: ['linger'],
+    upgrade: { effects: [guard(10)] },
+    text: 'Gain {0} Guard. Linger.',
+    availableFromAct: 2,
+  },
+  {
+    id: 'calm.lullaby',
+    name: 'Lullaby',
+    lights: ['calm'],
+    kind: 'ease',
+    rarity: 'common',
+    cost: 1,
+    target: 'enemy',
+    effects: lullaby(5, 4),
+    upgrade: { effects: lullaby(7, 5) },
+    text: 'Ease {0}. Hush {2}. Harmony: Hush ALL Shades instead.',
+    availableFromAct: 2,
+  },
+  {
+    id: 'calm.count_to_ten',
+    name: 'Count to Ten',
+    lights: ['calm'],
+    kind: 'ease',
+    rarity: 'common',
+    cost: 2,
+    costMod: { per: 'lingered', mult: -1 },
+    target: 'enemy',
+    effects: [ease(13)],
+    keywords: ['linger'],
+    upgrade: { effects: [ease(17)] },
+    text: 'Ease {0}. Linger. Costs 1 less for each turn it has Lingered this combat.',
+    availableFromAct: 2,
+  },
+  {
+    id: 'calm.center',
+    name: 'Center',
+    lights: ['calm'],
+    kind: 'skill',
+    rarity: 'uncommon',
+    cost: 1,
+    target: 'none',
+    effects: [nextCardFree(), draw(1)],
+    upgrade: { cost: 0 },
+    text: 'The next card you play this turn costs 0. Draw {0}.',
+    availableFromAct: 2,
+  },
+  {
+    id: 'calm.unhurried',
+    name: 'Unhurried',
+    lights: ['calm'],
+    kind: 'mood',
+    rarity: 'uncommon',
+    cost: 1,
+    target: 'none',
+    effects: [],
+    mood: [{ on: 'turnEnd', effects: [guard(per('unspentEnergy', 4))] }],
+    upgrade: {
+      mood: [{ on: 'turnEnd', effects: [guard(per('unspentEnergy', 6))] }],
+      text: 'At the end of your turn, gain 6 Guard for each unspent Spirit.',
+    },
+    text: 'At the end of your turn, gain 4 Guard for each unspent Spirit.',
+    availableFromAct: 2,
+  },
+  {
+    id: 'calm.serenity',
+    name: 'Serenity',
+    lights: ['calm'],
+    kind: 'mood',
+    rarity: 'rare',
+    cost: 2,
+    target: 'none',
+    effects: [],
+    mood: [{ on: 'turnEnd', effects: [lingerHand()] }],
+    upgrade: { cost: 1 },
+    text: 'At the end of your turn, every non-Buried card in your hand Lingers.',
+    availableFromAct: 2,
+  },
+];

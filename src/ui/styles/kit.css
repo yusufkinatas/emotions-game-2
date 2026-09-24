@@ -1,0 +1,10 @@
+/*
+ * Heartward UI kit styles. Load order: tokens.css, base.css, kit.css (or just index.css).
+ * Split by component so each file stays readable.
+ */
+@import './kit-motion.css';
+@import './kit-sigil.css';
+@import './kit-card.css';
+@import './kit-shade.css';
+@import './kit-compass.css';
+@import './kit-hud.css';

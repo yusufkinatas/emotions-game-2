@@ -1,0 +1,127 @@
+/* Sigils and icons (DESIGN 16.0). Icons draw in currentColor and are 1em square unless sized. */
+
+.sigil {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  overflow: visible;
+}
+
+.sigil--tint.sigil--love { color: var(--love); }
+.sigil--tint.sigil--joy { color: var(--joy); }
+.sigil--tint.sigil--friendship { color: var(--friendship); }
+.sigil--tint.sigil--courage { color: var(--courage); }
+.sigil--tint.sigil--hope { color: var(--hope); }
+.sigil--tint.sigil--calm { color: var(--calm); }
+.sigil--tint.sigil--numb { color: var(--numb); }
+.sigil--tint.sigil--doubt { color: var(--courage); }
+
+.numb-badge {
+  color: var(--numb);
+}
+
+/* Ink disc holding a Shade sigil, rim lit in its cure colour (Compass markers, map nodes, chips). */
+.shade-disc {
+  display: inline-grid;
+  place-items: center;
+  width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--ink-rim), var(--ink));
+  box-shadow: 0 0 0 calc(var(--u) * 1.5) color-mix(in srgb, var(--cure) 70%, var(--ink-rim));
+  color: var(--text-2);
+}
+
+.shade-disc > .sigil {
+  width: 64%;
+  height: 64%;
+}
+
+/* Map node shell (16.4): 56px circle; the icon or Shade sigils sit inside. */
+.map-node {
+  --node-c: var(--text-2);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  background: radial-gradient(circle at 50% 30%, var(--surface-2), var(--ink) 75%);
+  box-shadow:
+    0 0 0 calc(var(--u) * 2) color-mix(in srgb, var(--node-c) 55%, var(--ink-rim)),
+    0 calc(var(--u) * 4) calc(var(--u) * 10) rgb(0 0 0 / 0.5);
+  color: var(--node-c);
+  cursor: pointer;
+}
+
+.map-node > .sigil {
+  width: 50%;
+  height: 50%;
+}
+
+.map-node__sigils {
+  display: flex;
+  gap: calc(var(--u) * 2);
+  align-items: center;
+}
+
+.map-node__sigils > .sigil {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+
+.map-node__sigils > .joiner {
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 2);
+  margin: 0 calc(var(--u) * -3);
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.map-node[data-kind='fight'] { --node-c: #b9b0cf; }
+.map-node[data-kind='elite'] {
+  --node-c: #e6dff5;
+  box-shadow:
+    0 0 0 calc(var(--u) * 2) var(--ink-rim),
+    0 0 0 calc(var(--u) * 4) color-mix(in srgb, var(--node-c) 70%, transparent),
+    0 0 0 calc(var(--u) * 6) var(--ink-rim),
+    0 calc(var(--u) * 4) calc(var(--u) * 10) rgb(0 0 0 / 0.5);
+}
+.map-node[data-kind='elite']::before {
+  /* spiked double ring */
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -9);
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--node-c) 60%, transparent) 0deg 5deg, transparent 5deg 22.5deg);
+  -webkit-mask: radial-gradient(circle, transparent calc(var(--u) * 33), #000 calc(var(--u) * 34), #000 calc(var(--u) * 37), transparent calc(var(--u) * 37.5));
+  mask: radial-gradient(circle, transparent calc(var(--u) * 33), #000 calc(var(--u) * 34), #000 calc(var(--u) * 37), transparent calc(var(--u) * 37.5));
+}
+.map-node[data-kind='haven'] { --node-c: var(--pearl); }
+.map-node[data-kind='sanctuary'] { --node-c: #e8d9b8; }
+.map-node[data-kind='memory'] { --node-c: #d7cdef; }
+.map-node[data-kind='chest'] { --node-c: #efe3cf; }
+.map-node[data-kind='boss'] {
+  --node-c: var(--pearl);
+  width: calc(var(--u) * 80);
+  height: calc(var(--u) * 80);
+}
+
+.map-node[data-state='reachable']::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * -5);
+  border-radius: 50%;
+  box-shadow: 0 0 0 calc(var(--u) * 2) var(--pearl), 0 0 calc(var(--u) * 12) rgb(244 239 230 / 0.6);
+  animation: var(--a-pulse) 1.6s ease-in-out infinite;
+}
+
+.map-node[data-state='visited'] {
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--node-c) 30%, var(--surface-2)), var(--ink) 80%);
+}
+
+.map-node[data-state='unreachable'] {
+  opacity: 0.4;
+}

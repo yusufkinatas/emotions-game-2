@@ -1,0 +1,287 @@
+// Act 2: The Undertow (DESIGN 7.2). Compound faces are outer first; the outer face's cure is DISSONANT
+// against the inner face (4.5). "A card with <Light>" means effective Lights at play time (R-2b).
+
+import {
+  afflict,
+  and,
+  flare,
+  gauge,
+  has,
+  iff,
+  lacks,
+  mark,
+  marked,
+  not,
+  per,
+  scatter,
+  selfStatus,
+  setStatus,
+  shadeGuard,
+  strike,
+  unmark,
+} from '../../engine/dsl';
+import type { Cond, EnemyDef } from '../../engine/types';
+import { SHADE_LINES } from '../lines';
+import { move } from './move';
+import { displayOnly, firstTimeAlone, wallow } from './passives';
+
+const selfCount = (id: string, mult: number, add: number) => per({ status: id, on: 'self' }, mult, add);
+const fromCard: Cond = { c: 'hitFromCard' };
+
+export const ACT2_ENEMIES: EnemyDef[] = [
+  {
+    id: 'shade.fret',
+    name: 'Fret',
+    faces: ['anxiety'],
+    hp: [42, 46],
+    tier: 'normal',
+    moves: {
+      flurry: move('Flurry', strike(3, selfCount('worry', 1, 1))),
+      fidget: move('Fidget', gauge('worry', 2), afflict('restless', 2)),
+      pace: move('Pace', shadeGuard(8)),
+    },
+    pattern: { kind: 'cycle', moves: ['flurry', 'fidget', 'pace'] },
+    passives: [
+      {
+        name: 'Worry',
+        on: 'afterOwnAction',
+        effects: [gauge('worry', 1)],
+        text: 'After its action, Worry +1 (max 6). Each of your cards with Calm that hits it removes 2 Worry.',
+      },
+      { name: 'Worry', on: 'cardHitResolved', if: has('calm'), effects: [gauge('worry', -2)] },
+    ],
+    lines: SHADE_LINES['shade.fret']!,
+    visual: { family: 'anxiety', scale: 0.95 },
+    blurb: 'It has checked the door six times. It would like to check it once more.',
+  },
+  {
+    id: 'shade.slump',
+    name: 'Slump',
+    faces: ['despair'],
+    hp: [50, 54],
+    tier: 'normal',
+    moves: {
+      sigh_deeply: move('Sigh Deeply', strike(6), afflict('hollow', 1)),
+      sink: move('Sink', shadeGuard(12)),
+      collapse: move('Collapse', strike(15)),
+    },
+    pattern: { kind: 'cycle', moves: ['sigh_deeply', 'sink', 'collapse'] },
+    passives: [
+      {
+        name: 'Heavy Silence',
+        on: 'afterOwnAction',
+        if: { c: 'playedLastTurn', op: '<=', n: 2 },
+        effects: [shadeGuard(8)],
+        text: 'After its action, if you played 2 or fewer cards last turn, it gains 8 Guard.',
+      },
+    ],
+    lines: SHADE_LINES['shade.slump']!,
+    visual: { family: 'despair', scale: 1 },
+    blurb: 'It sat down for a minute a long time ago. Getting up again seems like a lot.',
+  },
+  {
+    id: 'shade.old_grudge',
+    name: 'Old Grudge',
+    faces: ['anger', 'sadness'],
+    hp: [60, 64],
+    tier: 'normal',
+    moves: {
+      mutter: move('Mutter', strike(6), afflict('seething', 2)),
+      rehash: move('Rehash', strike(selfCount('tally', 3, 4)), setStatus('tally', 0)),
+      brood: move('Brood', shadeGuard(10), afflict('heavy', 1)),
+    },
+    pattern: { kind: 'cycle', moves: ['mutter', 'rehash', 'brood'] },
+    passives: [
+      {
+        name: 'Keeps Score',
+        on: 'hitTaken',
+        if: and(fromCard, not({ c: 'relation', is: ['opposite'] })),
+        effects: [gauge('tally', 1)],
+        text: "Each hit from your cards that isn't OPPOSITE adds 1 Tally (max 6). Rehash strikes 3 harder per Tally.",
+      },
+    ],
+    lines: SHADE_LINES['shade.old_grudge']!,
+    visual: { family: 'anger', scale: 1.05 },
+    blurb: 'Anger that has been kept so long it turned into Sadness underneath.',
+  },
+  {
+    id: 'shade.longing',
+    name: 'Longing',
+    faces: ['sadness', 'loneliness'],
+    hp: [58, 62],
+    tier: 'normal',
+    moves: {
+      reach_back: move('Reach Back', strike(9)),
+      remember: move('Remember', shadeGuard(10), afflict('heavy', 1), afflict('isolated', 1)),
+      ache: move('Ache', strike(4, 3)),
+    },
+    pattern: { kind: 'cycle', moves: ['reach_back', 'remember', 'ache'] },
+    passives: wallow(
+      ['joy', 'friendship'],
+      'After its action, it restores 5 Intensity unless a hit with Joy or Friendship landed on it since its last action.',
+    ),
+    lines: SHADE_LINES['shade.longing']!,
+    visual: { family: 'sadness', scale: 1.05 },
+    blurb: 'It holds on to everything that ever mattered, and misses all of it.',
+  },
+  {
+    id: 'shade.wallflower',
+    name: 'Wallflower',
+    faces: ['loneliness', 'fear'],
+    hp: [38, 42],
+    tier: 'normal',
+    shy: true,
+    moves: {
+      peek: move('Peek', afflict('trembling', 2)),
+      wilt: move('Wilt', scatter(1), afflict('isolated', 2)),
+      prickle: move('Prickle', strike(8)),
+    },
+    pattern: { kind: 'cycle', moves: ['peek', 'wilt', 'prickle'] },
+    passives: firstTimeAlone(
+      'Cornered',
+      'cornered',
+      'The first time it is the only Shade left, it gains 3 Flare.',
+      [flare(3)],
+    ),
+    lines: SHADE_LINES['shade.wallflower']!,
+    visual: { family: 'loneliness', scale: 0.85 },
+    blurb: 'It stays by the wall where nobody will look. Cards that Reach Shy can find it.',
+  },
+  {
+    id: 'shade.dread',
+    name: 'Dread',
+    faces: ['fear', 'despair'],
+    hp: [56, 60],
+    tier: 'normal',
+    moves: {
+      creak: move('Creak', strike(6)),
+      shadow: move('Shadow', afflict('trembling', 2), afflict('hollow', 1)),
+      the_thing: move('The Thing', strike(24), mark('thing')),
+    },
+    pattern: {
+      kind: 'cycle',
+      moves: ['creak', 'shadow'],
+      overrides: [{ if: selfStatus('countdown', '<=', 0), move: 'the_thing' }],
+    },
+    passives: [
+      {
+        name: 'Countdown',
+        on: 'combatStart',
+        effects: [setStatus('countdown', 3)],
+        text: 'Counts down after each action. At 0, The Thing arrives. Once per turn, a card hit with Courage or Hope pushes it back 1.',
+      },
+      {
+        name: 'Countdown',
+        on: 'afterOwnAction',
+        effects: [iff(marked('thing'), [setStatus('countdown', 3), unmark('thing')], [gauge('countdown', -1)])],
+      },
+      {
+        name: 'Countdown',
+        on: 'hitTaken',
+        if: and(fromCard, has('courage', 'hope'), not(marked('pushed'))),
+        effects: [gauge('countdown', 1), mark('pushed')],
+      },
+      { name: 'Countdown', on: 'playerTurnEnd', effects: [unmark('pushed')] },
+    ],
+    lines: SHADE_LINES['shade.dread']!,
+    visual: { family: 'fear', scale: 1.05 },
+    blurb: 'Something is coming. It has been coming for a while now.',
+  },
+  {
+    id: 'shade.knot',
+    name: 'The Knot',
+    faces: ['anxiety', 'anger'],
+    hp: [108, 112],
+    tier: 'elite',
+    moves: {
+      twist: move('Twist', strike(6, 2)),
+      clench: move('Clench', shadeGuard(16), gauge('tension', 2)),
+      lash: move('Lash', strike(14)),
+      snap: move('Snap', strike(22), setStatus('tension', 0)),
+    },
+    pattern: {
+      kind: 'cycle',
+      moves: ['twist', 'clench', 'lash'],
+      overrides: [{ if: selfStatus('tension', '>=', 6), move: 'snap' }],
+    },
+    passives: [
+      {
+        name: 'Tension',
+        on: 'cardPlayed',
+        if: lacks('calm', 'love'),
+        effects: [gauge('tension', 1)],
+        text: 'Each card you play without Calm or Love adds 1 Tension. Each Calm or Love card hit on it removes 1. At 6 it Snaps.',
+      },
+      { name: 'Tension', on: 'hitTaken', if: and(fromCard, has('calm', 'love')), effects: [gauge('tension', -1)] },
+    ],
+    lines: SHADE_LINES['shade.knot']!,
+    visual: { family: 'anxiety', scale: 1.3 },
+    blurb: 'Worry pulled so tight it started to burn.',
+  },
+  {
+    id: 'shade.apathy',
+    name: 'Apathy',
+    faces: [],
+    hp: [90, 94],
+    tier: 'elite',
+    numbRules: { surface: 1, hpPerHiddenWeight: 0 },
+    moves: {
+      shrug: move('Shrug', strike(10)),
+      grey_out: move('Grey Out', afflict('numb', 2), shadeGuard(10)),
+      sigh: move('Sigh', strike(6, 2)),
+    },
+    pattern: { kind: 'cycle', moves: ['shrug', 'grey_out', 'sigh'] },
+    passives: [
+      displayOnly('Muffled', 'One Light is MUFFLED (x1/2). Two Lights at once are FELT (x2). It has no face to Understand.'),
+      displayOnly(
+        'Surfacing',
+        'Your heaviest Buried card rises first as a Shade and Veils it. Suppress that Shade and Apathy grows.',
+      ),
+    ],
+    lines: SHADE_LINES['shade.apathy']!,
+    visual: { family: 'numb', scale: 1.15 },
+    blurb: 'A grey that does not mind anything very much. A small taste of the Deep.',
+  },
+  {
+    id: 'shade.spiral',
+    name: 'The Spiral',
+    faces: ['despair', 'anxiety'],
+    hp: [200, 200],
+    tier: 'boss',
+    moves: {
+      what_if: move('What If', strike(3, selfCount('coil', 1, 0)), afflict('restless', 1)),
+      whats_the_point: move("What's the Point", afflict('hollow', 2), shadeGuard(15)),
+      around_again: move('Around Again', strike(12), gauge('coil', 1)),
+    },
+    pattern: { kind: 'cycle', moves: ['what_if', 'whats_the_point', 'around_again'] },
+    passives: [
+      {
+        name: 'Coil',
+        on: 'combatStart',
+        effects: [setStatus('coil', 2)],
+        text: 'Coil +1 after its action (max 6). Each card you play with Hope or Calm unwinds 1, or 2 with both. Turning its face unwinds 1.',
+      },
+      { name: 'Coil', on: 'afterOwnAction', effects: [gauge('coil', 1)] },
+      {
+        name: 'Coil',
+        on: 'cardPlayed',
+        if: has('hope', 'calm'),
+        effects: [
+          iff({ c: 'sourceLights', has: ['hope', 'calm'], mode: 'all' }, [gauge('coil', -2)], [gauge('coil', -1)]),
+        ],
+      },
+      { name: 'Coil', on: 'faceTurned', effects: [gauge('coil', -1)] },
+      {
+        name: 'Deepening',
+        on: 'hpThreshold',
+        thresholdPct: 50,
+        once: true,
+        effects: [flare(2)],
+        text: 'The first time it is at half Intensity or less, it gains 2 Flare.',
+      },
+    ],
+    lines: SHADE_LINES['shade.spiral']!,
+    visual: { family: 'despair', scale: 1.5 },
+    blurb: 'Round and round: what if, what is the point, what if. Hope and Calm slow it down.',
+  },
+];

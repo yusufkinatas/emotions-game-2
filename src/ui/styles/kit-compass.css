@@ -1,0 +1,293 @@
+/* The Compass HUD (DESIGN 16.2): 200x200 reference. SVG units = reference px at --u = 1px. */
+
+.compass-hud {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  user-select: none;
+}
+
+.compass-hud__svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.compass-hud__label {
+  font-size: var(--fs-chip);
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+
+.compass-hud__label b {
+  color: var(--pearl);
+  font-size: calc(var(--u) * 14);
+}
+
+.compass-hud :where(g, path, circle, text) {
+  transform-box: view-box;
+}
+
+/* ---------- ring ---------- */
+.cp-ring {
+  transform-origin: 100px 100px;
+}
+
+.compass-hud[data-granting='true'] .cp-ring {
+  animation: var(--a-grow-ring) 1.2s var(--ease-out) both;
+}
+
+.cp-seg__fill {
+  fill: color-mix(in srgb, var(--c) 20%, #16121f);
+}
+
+.cp-seg__edge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 45%, transparent);
+  stroke-width: 1.2;
+}
+
+.cp-sigil {
+  color: color-mix(in srgb, var(--c) 80%, var(--pearl));
+}
+
+.cp-seg[data-state='dim'] .cp-seg__fill { fill: color-mix(in srgb, var(--c) 8%, #16121f); }
+.cp-seg[data-state='dim'] .cp-seg__edge { stroke: color-mix(in srgb, var(--c) 20%, transparent); }
+.cp-seg[data-state='dim'] .cp-sigil { color: color-mix(in srgb, var(--c) 35%, #3a3350); }
+
+.cp-seg[data-state='note'] .cp-seg__fill {
+  fill: var(--c);
+}
+
+.cp-seg[data-state='note'] .cp-seg__edge {
+  stroke: var(--pearl);
+  stroke-width: 1.6;
+}
+
+.cp-seg[data-state='note'] .cp-sigil {
+  color: var(--on-c);
+}
+
+.cp-seg[data-state='note'] {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--c) 70%, transparent));
+}
+
+.cp-notch {
+  fill: var(--pearl);
+}
+
+.cp-seg[data-state='next'] .cp-seg__fill {
+  fill: color-mix(in srgb, var(--c) 30%, #16121f);
+}
+
+.cp-seg[data-state='next'] .cp-seg__edge {
+  stroke: var(--c);
+  stroke-width: 2.2;
+  animation: var(--a-pulse) 1.4s ease-in-out infinite;
+}
+
+.cp-chevron {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: var(--a-pulse) 1.4s ease-in-out infinite;
+}
+
+.cp-seg[data-state='locked'] .cp-seg__fill { fill: #120f1a; }
+.cp-seg[data-state='locked'] .cp-seg__edge { stroke: #2a2440; }
+.cp-lock { color: #4a4262; }
+
+.compass-hud[data-wheel-closes='true'] .cp-seg[data-light='hope'],
+.compass-hud[data-wheel-closes='true'] .cp-seg[data-light='calm'] {
+  transform-origin: 100px 100px;
+  animation: var(--a-ignite) 1.5s var(--ease-out) both;
+}
+
+/* ---------- Blend edges ---------- */
+.cp-edge__glow {
+  fill: var(--pearl);
+  opacity: 0;
+}
+
+.cp-edge__hit {
+  fill: transparent;
+  cursor: help;
+}
+
+.cp-edge[data-glow='true'] .cp-edge__glow {
+  opacity: 0.9;
+  fill: var(--pearl);
+  filter: drop-shadow(0 0 3px var(--c)) drop-shadow(0 0 4px var(--c2));
+  animation: var(--a-pulse) 1.8s ease-in-out infinite;
+}
+
+.cp-edge:hover .cp-edge__glow {
+  opacity: 0.7;
+  fill: var(--pearl);
+}
+
+/* ---------- outer Shade markers ---------- */
+.cp-marker__disc {
+  fill: var(--ink);
+  stroke: #2f2846;
+  stroke-width: 1.6;
+}
+
+.cp-marker__sigil {
+  color: #6c6388;
+}
+
+.cp-marker[data-active='true'] .cp-marker__disc {
+  stroke: var(--cure);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px var(--cure));
+}
+
+.cp-marker[data-active='true'] .cp-marker__sigil {
+  color: var(--text);
+}
+
+.cp-marker[data-locked='true'] {
+  opacity: 0.35;
+}
+
+/* ---------- DISSONANT arrows ---------- */
+.cp-dis path {
+  fill: none;
+  stroke: #6b6384;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.cp-dis[data-locked='true'] {
+  opacity: 0.3;
+}
+
+/* ---------- Harmony arc ---------- */
+.cp-arc {
+  fill: none;
+  stroke: var(--pearl);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 4px var(--c));
+  animation: kf-cp-arc 250ms var(--ease-out) both;
+}
+
+:root[data-motion='reduced'] .cp-arc {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .cp-arc {
+    animation: none;
+  }
+}
+
+@keyframes kf-cp-arc {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---------- Spirit orb ---------- */
+.cp-stop-pearl { stop-color: var(--pearl); }
+.cp-stop-edge { stop-color: #cbbfd8; }
+
+.cp-orb__halo {
+  fill: none;
+  stroke: rgb(244 239 230 / 0.12);
+  stroke-width: 6;
+}
+
+.cp-orb__body {
+  filter: drop-shadow(0 0 8px rgb(244 239 230 / 0.45));
+}
+
+.cp-orb__shine {
+  fill: #ffffff;
+  opacity: 0.55;
+}
+
+.cp-orb__n {
+  font-family: var(--font-ui);
+  font-size: 34px;
+  font-weight: 900;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-orb__max {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  fill: #5b5170;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-orb[data-empty='true'] .cp-orb__body {
+  opacity: 0.35;
+  filter: none;
+}
+
+.cp-orb[data-empty='true'] .cp-orb__n {
+  fill: var(--text-2);
+}
+
+.cp-orb__crack {
+  fill: none;
+  stroke: #1c1729;
+  stroke-width: 2.4;
+  stroke-linejoin: miter;
+  stroke-linecap: round;
+}
+
+/* ---------- Isolated fog ---------- */
+.cp-fog circle {
+  fill: #6d6980;
+  opacity: 0.55;
+}
+
+.cp-fog {
+  pointer-events: none;
+}
+
+.cp-fog__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--ink);
+  stroke-width: 3px;
+}
+
+.compass-hud.is-fog-clearing .cp-fog {
+  animation: kf-fade-out 500ms ease forwards;
+}
+
+.compass-hud.is-harmony::after {
+  content: 'HARMONY';
+  position: absolute;
+  top: calc(var(--u) * -6);
+  right: calc(var(--u) * -30);
+  padding: calc(var(--u) * 2) calc(var(--u) * 8);
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  border: 1px solid var(--pearl);
+  font-family: var(--font-title);
+  font-size: calc(var(--u) * 13);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--pearl);
+  animation: var(--a-pop-in) 250ms var(--ease-pop) both;
+}

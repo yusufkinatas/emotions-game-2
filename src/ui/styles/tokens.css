@@ -1,0 +1,299 @@
+/*
+ * Heartward design tokens (DESIGN 16.0, 18.1, 19).
+ * Everything is sized in reference pixels of the 1280x720 canvas: calc(var(--u) * N).
+ * --u is a length (1 reference px), so write calc(var(--u) * 130), never var(--u) * 130px.
+ */
+
+:root {
+  /* ---------- scale ---------- */
+  --u: min(calc(100vw / 1280), calc(100vh / 720));
+
+  /* ---------- neutral palette (16.0) ---------- */
+  --bg-0: #0e0c16;
+  --bg-1: #1c1830;
+  --surface: #231e33;
+  --surface-2: #2b2540;
+  --text: #ede8f5;
+  --text-2: #a89fbf;
+  --text-3: #7d7497;
+  --pearl: #f4efe6;
+  --silver: #c7cedb;
+  --ink: #15121f;
+  --ink-rim: #2e2645;
+  --ink-deep: #0a0810;
+  --numb: #8d8a99;
+  --numb-dark: #4a4757;
+  --dim-grey: #8f879f;
+  --line: rgb(237 232 245 / 0.12);
+  --line-strong: rgb(237 232 245 / 0.24);
+
+  /* ---------- Light colours, default palette (16.0) ---------- */
+  --love: #ff5c8a;
+  --joy: #ffd23f;
+  --friendship: #3ddc84;
+  --courage: #ff8c42;
+  --hope: #b18cff;
+  --calm: #4cc9f0;
+  /* Text colour on a filled Light (banners, the Note segment). Only CB Hope is dark enough to need pearl. */
+  --on-hope: var(--ink);
+
+  /* ---------- type ---------- */
+  --font-ui: ui-rounded, system-ui, sans-serif;
+  --font-title: ui-serif, Georgia, serif;
+  --fs-caps: calc(var(--u) * 10);
+  --fs-chip: calc(var(--u) * 12);
+  --fs-body: calc(var(--u) * 14);
+  --fs-num: calc(var(--u) * 16);
+  --fs-big: calc(var(--u) * 24);
+  --fs-title: calc(var(--u) * 40);
+
+  /* ---------- spacing and shape ---------- */
+  --s1: calc(var(--u) * 4);
+  --s2: calc(var(--u) * 8);
+  --s3: calc(var(--u) * 12);
+  --s4: calc(var(--u) * 16);
+  --s5: calc(var(--u) * 24);
+  --s6: calc(var(--u) * 32);
+  --r-sm: calc(var(--u) * 6);
+  --r-md: calc(var(--u) * 10);
+  --r-lg: calc(var(--u) * 16);
+  --r-pill: 999px;
+  --tap: calc(var(--u) * 56);
+
+  /* ---------- focus (19) ---------- */
+  --focus-ring: 2px solid var(--pearl);
+  --focus-offset: 2px;
+
+  /* ---------- shadows and glows ---------- */
+  --shadow-1: 0 calc(var(--u) * 2) calc(var(--u) * 6) rgb(0 0 0 / 0.35);
+  --shadow-2: 0 calc(var(--u) * 8) calc(var(--u) * 24) rgb(0 0 0 / 0.45);
+  --glow-pearl: 0 0 calc(var(--u) * 14) rgb(244 239 230 / 0.45);
+
+  /* ---------- motion (18.1) ---------- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --ease-in: cubic-bezier(0.6, 0, 0.9, 0.5);
+  --ease-pop: cubic-bezier(0.3, 1.6, 0.5, 1);
+  --t-hover: 120ms;
+  --t-play: 180ms;
+  --t-inward: 250ms;
+  --t-impact: 90ms;
+  --t-float: 700ms;
+  --t-lag-delay: 400ms;
+  --t-lag-drain: 300ms;
+  --t-face: 300ms;
+
+  /*
+   * Motion switches. Every kit animation reads its keyframe name through one of these, so reduced motion
+   * only swaps names (see the two blocks at the end of this file). 'none' disables an effect.
+   */
+  --tilt: 1;
+  --shake: 1;
+  --flash-max: 0.3;
+  --a-squash: kf-squash;
+  --a-shake-h: kf-shake-h;
+  --a-shake-v: kf-shake-v;
+  --a-float-rise: kf-float-rise;
+  --a-float-sink: kf-float-sink;
+  --a-float-pop: kf-float-pop;
+  --a-bloom: kf-bloom;
+  --a-breathe: kf-stage-breathe;
+  --a-crush: kf-crush;
+  --a-dissolve: kf-dissolve;
+  --a-lunge: kf-lunge;
+  --a-card-fly: kf-card-fly;
+  --a-inward: kf-inward-ring;
+  --a-flip: kf-flip;
+  --a-pop-in: kf-pop-in;
+  --a-deal: kf-deal-in;
+  --a-sheen: kf-sheen;
+  --a-pulse: kf-pulse;
+  --a-heartbeat: kf-heartbeat;
+  --a-vignette: kf-vignette;
+  --a-rise: kf-rise;
+  --a-ignite: kf-ignite;
+  --a-shard: kf-shard;
+  --a-wisp: kf-wisp;
+  --a-grow-ring: kf-grow-ring;
+  --a-dissolve-mask: kf-dissolve-mask;
+  --a-mote: kf-mote-rise;
+  --a-seal: kf-seal;
+  /* Shade idles (16.7) */
+  --a-idle-anger: kf-idle-breathe;
+  --a-idle-sadness: kf-idle-sway;
+  --a-idle-loneliness: kf-idle-drift;
+  --a-idle-fear: kf-idle-shiver;
+  --a-idle-despair: kf-idle-sink;
+  --a-idle-anxiety: kf-idle-vibrate;
+  --a-idle-doubt: kf-idle-bob;
+  --a-idle-mask: kf-idle-rotate;
+  --a-idle-numb: none;
+  --a-blink: kf-blink;
+  --a-tear: kf-tear;
+  --a-particle: kf-particle-in;
+  --a-glance: kf-glance;
+  --a-flicker: kf-flicker;
+  --a-static: kf-static;
+  --a-scribble: kf-scribble;
+  --a-twinkle: kf-twinkle;
+}
+
+/* ---------- colour-blind palette (Okabe-Ito, 16.0). Works on :root or on any container. ---------- */
+:root[data-palette='cb'],
+[data-palette='cb'] {
+  --love: #cc79a7;
+  --joy: #f0e442;
+  --friendship: #009e73;
+  --courage: #e69f00;
+  --hope: #0072b2;
+  --calm: #56b4e9;
+  --on-hope: var(--pearl);
+}
+
+/* Default palette forced on a container inside a colour-blind root (the gallery shows both). */
+[data-palette='default'] {
+  --love: #ff5c8a;
+  --joy: #ffd23f;
+  --friendship: #3ddc84;
+  --courage: #ff8c42;
+  --hope: #b18cff;
+  --calm: #4cc9f0;
+  --on-hope: var(--ink);
+}
+
+/*
+ * Per-element Light binding. Any kit element with data-light (or data-light2 for a Blend's second Light)
+ * gets --c (and --c2) plus --on-c, the readable text colour on a --c fill.
+ * Components colour themselves only through --c / --c2 / --on-c / --cure.
+ */
+[data-light='love'] { --c: var(--love); }
+[data-light='joy'] { --c: var(--joy); }
+[data-light='friendship'] { --c: var(--friendship); }
+[data-light='courage'] { --c: var(--courage); }
+[data-light='hope'] { --c: var(--hope); }
+[data-light='calm'] { --c: var(--calm); }
+[data-light='none'] { --c: var(--pearl); }
+[data-light] { --on-c: var(--ink); }
+[data-light='hope'] { --on-c: var(--on-hope); }
+[data-light2='love'] { --c2: var(--love); }
+[data-light2='joy'] { --c2: var(--joy); }
+[data-light2='friendship'] { --c2: var(--friendship); }
+[data-light2='courage'] { --c2: var(--courage); }
+[data-light2='hope'] { --c2: var(--hope); }
+[data-light2='calm'] { --c2: var(--calm); }
+
+/* A Shade face binds --cure to the Light that answers it (16.0 colour rule). */
+[data-face='anger'] { --cure: var(--love); }
+[data-face='sadness'] { --cure: var(--joy); }
+[data-face='loneliness'] { --cure: var(--friendship); }
+[data-face='fear'] { --cure: var(--courage); }
+[data-face='despair'] { --cure: var(--hope); }
+[data-face='anxiety'] { --cure: var(--calm); }
+[data-face='none'] { --cure: var(--numb); }
+
+/* ---------- reduced motion (18.1 fallbacks, 19) ---------- */
+:root[data-motion='reduced'] {
+  --tilt: 0;
+  --shake: 0;
+  --flash-max: 0.3;
+  --a-squash: none;
+  --a-shake-h: none;
+  --a-shake-v: none;
+  --a-float-rise: kf-fade-out;
+  --a-float-sink: kf-fade-out;
+  --a-float-pop: none;
+  --a-bloom: none;
+  --a-breathe: none;
+  --a-crush: kf-fade-out;
+  --a-dissolve: kf-fade-out;
+  --a-lunge: kf-step;
+  --a-card-fly: kf-fade-out;
+  --a-inward: kf-fade-out;
+  --a-flip: kf-crossfade;
+  --a-pop-in: kf-fade-in;
+  --a-deal: kf-fade-in;
+  --a-sheen: none;
+  --a-pulse: none;
+  --a-heartbeat: none;
+  --a-vignette: kf-fade-in-out;
+  --a-rise: kf-fade-in;
+  --a-ignite: none;
+  --a-shard: kf-fade-out;
+  --a-wisp: none;
+  --a-grow-ring: kf-fade-in;
+  --a-dissolve-mask: none;
+  --a-mote: kf-fade-in-out;
+  --a-seal: kf-fade-in;
+  --a-idle-anger: none;
+  --a-idle-sadness: none;
+  --a-idle-loneliness: none;
+  --a-idle-fear: none;
+  --a-idle-despair: none;
+  --a-idle-anxiety: none;
+  --a-idle-doubt: none;
+  --a-idle-mask: none;
+  --a-blink: none;
+  --a-tear: none;
+  --a-particle: none;
+  --a-glance: none;
+  --a-flicker: none;
+  --a-static: none;
+  --a-scribble: none;
+  --a-twinkle: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) {
+    --tilt: 0;
+    --shake: 0;
+    --flash-max: 0.3;
+    --a-squash: none;
+    --a-shake-h: none;
+    --a-shake-v: none;
+    --a-float-rise: kf-fade-out;
+    --a-float-sink: kf-fade-out;
+    --a-float-pop: none;
+    --a-bloom: none;
+    --a-breathe: none;
+    --a-crush: kf-fade-out;
+    --a-dissolve: kf-fade-out;
+    --a-lunge: kf-step;
+    --a-card-fly: kf-fade-out;
+    --a-inward: kf-fade-out;
+    --a-flip: kf-crossfade;
+    --a-pop-in: kf-fade-in;
+    --a-deal: kf-fade-in;
+    --a-sheen: none;
+    --a-pulse: none;
+    --a-heartbeat: none;
+    --a-vignette: kf-fade-in-out;
+    --a-rise: kf-fade-in;
+    --a-ignite: none;
+    --a-shard: kf-fade-out;
+    --a-wisp: none;
+    --a-grow-ring: kf-fade-in;
+    --a-dissolve-mask: none;
+    --a-mote: kf-fade-in-out;
+    --a-seal: kf-fade-in;
+    --a-idle-anger: none;
+    --a-idle-sadness: none;
+    --a-idle-loneliness: none;
+    --a-idle-fear: none;
+    --a-idle-despair: none;
+    --a-idle-anxiety: none;
+    --a-idle-doubt: none;
+    --a-idle-mask: none;
+    --a-blink: none;
+    --a-tear: none;
+    --a-particle: none;
+    --a-glance: none;
+    --a-flicker: none;
+    --a-static: none;
+    --a-scribble: none;
+    --a-twinkle: none;
+  }
+}
+
+/* ?gray=1 (19): the whole game must stay playable in greyscale. */
+:root[data-gray='1'] {
+  filter: grayscale(1);
+}
