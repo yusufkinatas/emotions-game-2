@@ -159,7 +159,12 @@ export interface ModelExtras {
   hoverCard: Uid | null;
   endTurnHover: boolean;
   feltCracks: Map<Uid, [Light, Light][]>;
+  /** The fight was reloaded (Continue) mid-turn and nothing has been played since: the undo history is gone. */
+  resumed?: boolean;
 }
+
+/** Why Undo is unavailable when the stack came back empty from a reload. */
+export const UNDO_AFTER_RELOAD = "Can't undo across a reload.";
 
 // ------------------------------------------------------------------------------------------------
 // Builders
@@ -538,7 +543,13 @@ export function buildModel(app: App, s: GameState, x: ModelExtras): CombatModel 
     spiritUnused: c.energy > 0 && playable.length > 0 ? c.energy : 0,
     nothingPlayable: playable.length === 0 && !c.pending,
     canUndo: app.canUndo(),
-    undoReason: app.canUndo() ? 'Undo the last card you played.' : c.turnFlags.played > 0 ? BANNERS.newCardsRevealed : 'Nothing to undo this turn.',
+    undoReason: app.canUndo()
+      ? 'Undo the last card you played.'
+      : c.turnFlags.played > 0
+        ? x.resumed
+          ? UNDO_AFTER_RELOAD
+          : BANNERS.newCardsRevealed
+        : 'Nothing to undo this turn.',
     pending,
     selected: sel?.card ?? null,
     focus: sel?.focus ?? null,

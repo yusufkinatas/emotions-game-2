@@ -12,7 +12,7 @@ import { threadMarkup } from '../../kit/thread';
 import { toElement } from '../../kit/svg';
 import type { synth } from '../../audio/synth';
 import '../../styles/combat.css';
-import { appendLog } from '../../overlays/log';
+import { appendLog, restoreLog } from '../../overlays/log';
 import { Breakdown } from './breakdown';
 import { Coach } from './coach';
 import { CompassView, RightColumn } from './controls';
@@ -83,6 +83,12 @@ export class CombatScreen implements ScreenController {
   private keyboardMode = false;
   private dirty = false;
   private shadeFocus = 0;
+  /** What the running dispatch is: an End Turn in flight must never queue another (a double-click ends one turn). */
+  private inFlight: 'endTurn' | 'play' | 'other' | null = null;
+  /** End Turn ignores clicks and E presses until this time (performance.now ms). */
+  private endTurnReadyAt = 0;
+  /** Mounted by Continue in the middle of a turn: Undo has no history back past this point. */
+  private resumedAt: { turn: number; played: number } | null = null;
   private readonly onKeyUp = (e: KeyboardEvent) => {
     if (e.key === 'Shift' && this.shift) {
       this.shift = false;
@@ -250,7 +256,14 @@ export class CombatScreen implements ScreenController {
     this.view.sfx.ambience?.(act);
     const c = s.combat!;
     const names = c.enemies.map((e) => this.app.engine.pack.enemies[e.defId]?.name ?? 'A Shade');
-    if (c.turn === 1 && c.turnFlags.played === 0) appendLog(this.app, [`A new fight: ${names.join(', ')}.`]);
+    const fresh = c.turn === 1 && c.turnFlags.played === 0;
+    if (fresh) appendLog(this.app, [`A new fight: ${names.join(', ')}.`]);
+    else {
+      // Continue in the middle of a fight: bring back the saved log lines and say where we are.
+      this.resumedAt = c.turnFlags.played > 0 ? { turn: c.turn, played: c.turnFlags.played } : null;
+      if (!this.app.log.length) restoreLog(this.app);
+      appendLog(this.app, [`Resumed: ${names.join(', ')}, turn ${c.turn}.`]);
+    }
     // Barks on arrival: each Shade says one of its lines (7.4).
     if (c.turn === 1 && c.turnFlags.played === 0) {
       c.enemies.forEach((e, i) => {
@@ -296,6 +309,7 @@ export class CombatScreen implements ScreenController {
       hoverCard: this.hoverCard,
       endTurnHover: this.endTurnHover,
       feltCracks: this.view.feltCracks,
+      resumed: !!this.resumedAt && s.combat.turn === this.resumedAt.turn && s.combat.turnFlags.played <= this.resumedAt.played,
     });
     this.renderModel(m, true);
     this.lastModel = m;
@@ -402,7 +416,7 @@ export class CombatScreen implements ScreenController {
         const btn = toElement<HTMLButtonElement>(cardFaceMarkup({ ...o.props, ariaLabel: `${i + 1}. ${o.props.ariaLabel ?? o.props.name}` }));
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          void this.app.dispatch({ t: 'choose', uid: o.uid });
+          void this.run('other', { t: 'choose', uid: o.uid });
         });
         return h('div', { class: 'cb-pending__opt' }, btn, h('span', { class: 'kbd' }, String((i + 1) % 10)));
       }),
@@ -505,7 +519,15 @@ export class CombatScreen implements ScreenController {
     // After a keyboard play, focus moves to the next card (19); a mouse play leaves focus alone.
     this.refocusIndex = this.keyboardMode ? Math.max(0, idx) : null;
     this.view.sfx.ui?.('play');
-    void this.app.dispatch(opt.action);
+    this.run('play', opt.action);
+  }
+
+  /** Dispatch an action and remember what kind of step is animating until it settles. */
+  private run(kind: 'endTurn' | 'play' | 'other', a: Parameters<App['dispatch']>[0]): Promise<void> {
+    this.inFlight = kind;
+    return this.app.dispatch(a).finally(() => {
+      if (this.inFlight === kind) this.inFlight = null;
+    });
   }
 
   private stageClick(e: MouseEvent): void {
@@ -524,13 +546,30 @@ export class CombatScreen implements ScreenController {
     }
   }
 
+  /**
+   * End Turn. Pressed during the Shades' phase it only fast-forwards (never ends the next turn too); pressed
+   * during a card's animation it runs once that settles, but only if it is still that same turn. A short
+   * debounce after each use swallows double-clicks and key repeat.
+   */
   private endTurn(): void {
-    if (this.app.busy) return this.queue(() => this.endTurn());
+    const now = performance.now();
+    if (now < this.endTurnReadyAt) return;
+    if (this.app.busy) {
+      if (this.inFlight === 'endTurn') return;
+      const turn = this.app.state?.combat?.turn;
+      this.queue(() => {
+        if (this.app.state?.combat?.turn === turn) this.endTurn();
+      });
+      return;
+    }
     if (!this.app.isLegal({ t: 'endTurn' })) return;
     this.sel = null;
     this.endTurnHover = false;
     this.view.sfx.ui?.('confirm');
-    void this.app.dispatch({ t: 'endTurn' });
+    this.endTurnReadyAt = now + 400;
+    void this.run('endTurn', { t: 'endTurn' }).then(() => {
+      this.endTurnReadyAt = Math.max(this.endTurnReadyAt, performance.now() + 300);
+    });
   }
 
   private undo(): void {
@@ -550,9 +589,16 @@ export class CombatScreen implements ScreenController {
   onKey(e: KeyboardEvent, app: App): boolean {
     const s = app.state;
     if (!s?.combat) return false;
+    if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Held E (key repeat) never ends more than one turn; during the Shades' phase E only fast-forwards.
+      if (e.repeat) return true;
+      if (app.busy && this.inFlight === 'endTurn') this.app.root.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      if (!s.combat.pending) this.endTurn();
+      return true;
+    }
     if (app.busy) {
-      // Card and turn keys pressed during an animation skip it and then act.
-      if (/^[0-9eEzZ]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Card and undo keys pressed during an animation skip it and then act.
+      if (/^[0-9zZ]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const key = e.key;
         this.queue(() => this.onKey(new KeyboardEvent('keydown', { key }), app));
         return true;
@@ -575,7 +621,7 @@ export class CombatScreen implements ScreenController {
       const n = /^[0-9]$/.test(k) ? (Number(k) + 9) % 10 : -1;
       const opt = n >= 0 ? c.pending.options[n] : undefined;
       if (opt !== undefined) {
-        void app.dispatch({ t: 'choose', uid: opt });
+        void this.run('other', { t: 'choose', uid: opt });
         return true;
       }
       return false;
@@ -652,9 +698,6 @@ export class CombatScreen implements ScreenController {
           return true;
         }
         return false;
-      case 'e':
-        this.endTurn();
-        return true;
       case 'z':
         this.undo();
         return true;

@@ -5,6 +5,7 @@ import { BANNERS } from '../../content/index';
 import type { GameEvent, GameState, Uid } from '../../engine/types';
 import type { App, ScreenController } from '../app';
 import { h } from '../dom';
+import * as storage from '../storage';
 import { AFFLICTION_NAME, LIGHT_NAME, SHADE_NAME } from '../kit/names';
 import { markIcon } from '../kit/sigils';
 import '../styles/combat.css';
@@ -182,9 +183,29 @@ export function describeEvents(app: App, events: readonly GameEvent[], prev: Gam
   return out.filter(Boolean);
 }
 
+/** The last lines are kept with the save so Continue mid-fight still has a Log. */
+const LOG_KEY = 'heartward.log';
+const SAVED_LINES = 80;
+
+function logTag(app: App): string {
+  const r = app.state?.run;
+  return r ? `${r.act}:${r.floor}` : '';
+}
+
 export function appendLog(app: App, lines: readonly string[]): void {
   app.log.push(...lines.map((l) => l.replace(/->/g, '→')));
   if (app.log.length > MAX_LINES) app.log.splice(0, app.log.length - MAX_LINES);
+  if (lines.length) storage.save(LOG_KEY, { tag: logTag(app), lines: app.log.slice(-SAVED_LINES) });
+}
+
+/** After Continue: bring back this fight's saved lines (from its "A new fight" line on). */
+export function restoreLog(app: App): void {
+  const saved = storage.load<{ tag?: string; lines?: unknown }>(LOG_KEY);
+  if (!saved || saved.tag !== logTag(app) || !Array.isArray(saved.lines)) return;
+  const lines = saved.lines.filter((l): l is string => typeof l === 'string');
+  let start = -1;
+  for (let i = lines.length - 1; i >= 0 && start < 0; i--) if (lines[i]!.startsWith('A new fight')) start = i;
+  if (start >= 0) app.log.push(...lines.slice(start));
 }
 
 export function logOverlay(app0: App): ScreenController {

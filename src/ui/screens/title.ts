@@ -47,6 +47,8 @@ export function titleScreen(app: App): ScreenController {
   const defaultTutorial = app.options.tutorial ?? !app.profile.tutorialDone;
   let tutorial = defaultTutorial;
   let confirming = false;
+  /** Shown under the menu when a saved run could not be read. */
+  let notice: string | null = null;
 
   const menu = h('nav', { class: 'title-menu', attrs: { 'aria-label': 'Main menu' } });
   const el = h(
@@ -96,6 +98,8 @@ export function titleScreen(app: App): ScreenController {
       return;
     }
     const hasSave = app.hasSave();
+    notice = app.saveNotice ?? notice;
+    app.saveNotice = null;
     const newRun = (): void => {
       if (app.hasSave()) {
         confirming = true;
@@ -131,6 +135,7 @@ export function titleScreen(app: App): ScreenController {
             if (!app.continueRun()) renderMenu();
           }, 'btn--primary')
         : null,
+      notice ? h('p', { class: 'title-menu__notice', attrs: { role: 'status' } }, notice) : null,
       button(newLabel, newRun, hasSave ? '' : 'btn--primary', tutorial ? 'Starts with a short guided fight' : undefined),
       // Blocked storage means the game can't remember a finished tutorial, so offer the way out every time.
       !app.storageOk ? button('Skip tutorial', () => start(false), '', 'Straight to Charm select') : toggle,

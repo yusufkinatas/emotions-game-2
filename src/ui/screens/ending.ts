@@ -122,7 +122,8 @@ function buildEnding(app: App): ScreenController {
   });
   newRun.addEventListener('click', () => {
     uiSound(app, 'confirm');
-    app.newRun({});
+    // A finished run (tutorial or not) means the tutorial is behind the player: never drop them back in it.
+    app.newRun({ tutorial: false });
   });
   toTitle.addEventListener('click', () => {
     uiSound(app, 'cancel');

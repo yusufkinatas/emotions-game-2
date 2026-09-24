@@ -117,7 +117,12 @@ export class App {
   /** Actions taken this run with the run seed, for "Copy replay". */
   replay: { seed: number; opts: NewRunOpts; actions: Action[] } | null = null;
 
+  /** Why the last Continue failed (a save that could not be read); the title shows it once. */
+  saveNotice: string | null = null;
+
   private undoStack: GameState[] = [];
+  /** The overlay to go back to when the current one closes (Pause > Codex returns to Pause). */
+  private overlayBack: OverlayKey | null = null;
   private screenKey: ScreenKey | null = null;
   private screenCtl: ScreenController | null = null;
   private overlayCtl: ScreenController | null = null;
@@ -146,11 +151,29 @@ export class App {
   // ---------------------------------------------------------------------------------------------
   // Run lifecycle
 
+  /** True if a saved run exists and can be read. An unreadable save is removed (and noted for the title). */
   hasSave(): boolean {
-    return storage.loadRaw(SAVE_KEY) !== null;
+    const raw = storage.loadRaw(SAVE_KEY);
+    if (raw === null) return false;
+    if (this.readSave(raw)) return true;
+    storage.remove(SAVE_KEY);
+    this.saveNotice = 'Your saved run could not be read, so it was cleared.';
+    return false;
   }
 
-  newRun(opts: NewRunOpts = {}, seed?: number): void {
+  private readSave(raw: string): GameState | null {
+    try {
+      return this.engine.deserialize(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Start a run. `debug` runs (the ?encounter= fight) neither overwrite the saved run nor count in the
+   * profile's stats.
+   */
+  newRun(opts: NewRunOpts = {}, seed?: number, debug = false): void {
     const s = seed ?? this.options.seed ?? (Math.floor(Math.random() * 2 ** 31) >>> 0);
     const runOpts: NewRunOpts = { tutorial: opts.tutorial ?? !this.profile.tutorialDone, ...opts };
     this.state = this.engine.newRun(s, runOpts);
@@ -158,19 +181,29 @@ export class App {
     this.undoStack = [];
     this.log = [];
     this.screen = 'run';
-    this.profile.stats.runs += 1;
-    this.saveProfile();
-    this.persist();
+    this.debugRun = debug;
+    if (!debug) {
+      // Unticking "Tutorial run" is an explicit opt-out: later New Runs (the ending's included) skip it too.
+      if (opts.tutorial === false) this.profile.tutorialDone = true;
+      this.profile.stats.runs += 1;
+      this.saveProfile();
+      this.persist();
+    }
     this.render();
   }
 
+  /** True while playing a debug fight (?encounter=): nothing is saved and the profile is untouched. */
+  debugRun = false;
+
   continueRun(): boolean {
     const raw = storage.loadRaw(SAVE_KEY);
-    const s = raw ? this.engine.deserialize(raw) : null;
+    const s = raw ? this.readSave(raw) : null;
     if (!s) {
+      if (raw !== null) this.saveNotice = 'Your saved run could not be read, so it was cleared.';
       storage.remove(SAVE_KEY);
       return false;
     }
+    this.debugRun = false;
     this.state = s;
     this.replay = null;
     this.undoStack = [];
@@ -188,6 +221,7 @@ export class App {
   toTitle(): void {
     this.screen = 'title';
     this.overlay = null;
+    this.overlayBack = null;
     this.render();
   }
 
@@ -254,6 +288,7 @@ export class App {
   }
 
   private onRunStateChanged(s: GameState): void {
+    if (this.debugRun) return;
     const k = s.phase.kind;
     if (k === 'victory' || k === 'defeat') {
       storage.remove(SAVE_KEY);
@@ -270,7 +305,7 @@ export class App {
   }
 
   private persist(): void {
-    if (!this.state) return;
+    if (!this.state || this.debugRun) return;
     const k = this.state.phase.kind;
     if (k === 'victory' || k === 'defeat') return;
     storage.save(SAVE_KEY, this.engine.serialize(this.state));
@@ -315,13 +350,17 @@ export class App {
   // ---------------------------------------------------------------------------------------------
   // Overlays and rendering
 
-  openOverlay(o: OverlayKey): void {
+  /** Open an overlay. With `back`, closing it (Esc, its close button) returns to that overlay instead. */
+  openOverlay(o: OverlayKey, back: OverlayKey | null = null): void {
     this.overlay = o;
+    this.overlayBack = back;
     this.render();
   }
 
   closeOverlay(): void {
-    this.overlay = null;
+    const back = this.overlayBack;
+    this.overlayBack = null;
+    this.overlay = back && this.state && this.screen === 'run' ? back : null;
     this.render();
   }
 
@@ -373,13 +412,19 @@ export class App {
       this.closeOverlay();
       return e.preventDefault();
     }
-    if (this.overlay) return;
+    const k = e.key.toLowerCase();
+    const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !['checkbox', 'radio', 'range', 'button'].includes((e.target as HTMLInputElement).type));
+    // Mute works everywhere, overlays included (Settings shows its M key).
+    if (k === 'm' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      this.setSettings({ muted: !this.profile.settings.muted });
+      return e.preventDefault();
+    }
+    // The log is a side panel, not a modal: the fight behind it keeps its keys.
+    if (this.overlay && this.overlay !== 'log') return;
     if (this.screenCtl?.onKey?.(e, this)) return e.preventDefault();
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const k = e.key.toLowerCase();
-    if (k === 'm') {
-      this.setSettings({ muted: !this.profile.settings.muted });
-    } else if (this.screen === 'run' && this.state) {
+    if (this.overlay) return;
+    if (this.screen === 'run' && this.state) {
       if (k === 'c') this.openOverlay('codex');
       else if (k === 'd' && this.state.phase.kind !== 'combat') this.openOverlay('deck');
       else if (e.key === 'Escape') this.openOverlay('pause');

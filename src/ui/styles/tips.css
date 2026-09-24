@@ -20,6 +20,11 @@
   left: var(--arrow-x, calc(var(--u) * 24));
 }
 
+.tips-layer .coach-mark[data-arrow='left']::after,
+.tips-layer .coach-mark[data-arrow='right']::after {
+  top: var(--arrow-y, calc(var(--u) * 14));
+}
+
 .tips-layer .coach-mark[data-arrow='none']::after {
   display: none;
 }
