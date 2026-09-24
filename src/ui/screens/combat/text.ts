@@ -99,7 +99,16 @@ export function playerChips(pack: ContentPack, bag: StatusBag): StatusChipProps[
 export function shadeChips(pack: ContentPack, e: EnemyState, def: EnemyDef): StatusChipProps[] {
   const chips: StatusChipProps[] = [];
   const order = (id: string): number => (id === 'flare' ? 0 : pack.statuses[id]?.polarity === 'gauge' ? 1 : 2);
-  const entries = byStacks(e.statuses)
+  // A passive named like one of the Shade's gauges ("Pressure") is shown as that gauge, even at 0.
+  const gaugeOf = (name: string) =>
+    Object.values(pack.statuses).find((sd) => sd.owner === 'enemy' && sd.polarity === 'gauge' && sd.name === name);
+  const bag: StatusBag = { ...e.statuses };
+  for (const p of def.passives ?? []) {
+    const g = gaugeOf(p.name);
+    if (g && bag[g.id] === undefined) bag[g.id] = g.min ?? 0;
+  }
+  const entries = Object.entries(bag)
+    .filter((x): x is [string, number] => typeof x[1] === 'number' && (x[1] > 0 || pack.statuses[x[0]]?.polarity === 'gauge'))
     .filter(([id]) => id !== 'wavering')
     .sort((a, b) => order(a[0]) - order(b[0]));
   for (const [id, n] of entries) {
@@ -120,7 +129,7 @@ export function shadeChips(pack: ContentPack, e: EnemyState, def: EnemyDef): Sta
   }
   const seen = new Set<string>();
   for (const p of def.passives ?? []) {
-    if (seen.has(p.name)) continue;
+    if (seen.has(p.name) || gaugeOf(p.name)) continue;
     seen.add(p.name);
     const text = def.passives?.find((x) => x.name === p.name && x.text)?.text;
     chips.push({ kind: 'flag', label: p.name, ...(text ? { title: `${p.name}: ${text}` } : {}) });

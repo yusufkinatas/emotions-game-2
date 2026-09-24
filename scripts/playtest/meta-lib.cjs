@@ -63,16 +63,21 @@ async function act(page, predSrc) {
 }
 
 /** Win the current combat instantly by driving the engine (not a UI test of combat). */
-async function autoCombat(page, maxSteps = 400) {
-  return page.evaluate(async (max) => {
+async function autoCombat(page, maxSteps = 400, cheat = !!process.env.CHEAT) {
+  return page.evaluate(async ({ max, cheat }) => {
     const app = window.heartward;
     app.profile.settings.animSpeed = 0;
     for (let i = 0; i < max && app.state && app.state.phase.kind === 'combat'; i++) {
+      // CHEAT=1 keeps the Heart topped up so a tour can reach late screens (a harness hack, not a rule).
+      if (cheat && app.state.combat) {
+        app.state.combat.player.hp = Math.max(app.state.combat.player.hp, 40);
+        if (app.state.combat.turn > 3) for (const e of app.state.combat.enemies) e.hp = Math.min(e.hp, 4);
+      }
       const s = app.state;
       const acts = app.engine.legalActions(s);
       // Prefer a play that Resolves, then any outward play, then end turn.
       let best = null;
-      let bestScore = -1;
+      let bestScore = -Infinity;
       for (const a of acts) {
         if (a.t === 'play') {
           const p = app.engine.preview(s, a);
@@ -92,7 +97,7 @@ async function autoCombat(page, maxSteps = 400) {
     }
     app.profile.settings.animSpeed = 1;
     return app.state?.phase.kind;
-  }, maxSteps);
+  }, { max: maxSteps, cheat });
 }
 
 /** Walk the run (auto combats, take first options) until `stop(state)` is true. Returns the phase kind. */
@@ -131,4 +136,33 @@ async function walkUntil(page, stopSrc, maxSteps = 600) {
   return 'timeout';
 }
 
-module.exports = { BASE, OUT, launch, openPage, shot, idle, act, autoCombat, walkUntil };
+const STATES = path.join(OUT, 'meta-states');
+fs.mkdirSync(STATES, { recursive: true });
+
+function saveState(name, json) {
+  fs.writeFileSync(path.join(STATES, `${name}.json`), json);
+}
+
+function listStates() {
+  return fs.readdirSync(STATES).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5));
+}
+
+/** Put a saved state on screen (no step, so no animation) and wait for it to settle. */
+async function loadState(page, name) {
+  const json = fs.readFileSync(path.join(STATES, `${name}.json`), 'utf8');
+  const ok = await page.evaluate((j) => {
+    const app = window.heartward;
+    const s = app.engine.deserialize(j);
+    if (!s) return false;
+    app.state = s;
+    app.screen = 'run';
+    app.ui = {};
+    app.overlay = null;
+    app.render();
+    return true;
+  }, json);
+  await page.waitForTimeout(700);
+  return ok;
+}
+
+module.exports = { saveState, listStates, loadState, STATES, BASE, OUT, launch, openPage, shot, idle, act, autoCombat, walkUntil };

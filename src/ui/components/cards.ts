@@ -7,6 +7,7 @@ import type { CardFaceProps } from '../kit/cardFace';
 import { cardFaceMarkup } from '../kit/cardFace';
 import { BLEND_NAME, LIGHT_NAME, SHADE_NAME } from '../kit/names';
 import { toElement } from '../kit/svg';
+import { sigil } from '../kit/sigils';
 
 const KIND_WORD: Record<CardDef['kind'], string> = { ease: 'Ease', skill: 'Skill', mood: 'Mood', buried: 'Buried' };
 
@@ -17,9 +18,6 @@ export function printedCost(def: CardDef, upgraded: boolean): number | null {
   if (def.cost === 'unplayable') return null;
   return upgraded && def.upgrade?.cost !== undefined ? def.upgrade.cost : def.cost;
 }
-
-/** Can this definition be upgraded at all (has upgrade data and is not already upgraded)? */
-export const hasUpgrade = (def: CardDef): boolean => def.upgrade !== undefined;
 
 /** "Love", "Delight (Love and Joy)", "Neutral", "Buried Anger", "Insight". */
 export function lightWord(def: CardDef): string {
@@ -120,4 +118,114 @@ export function buriedShades(engine: Engine, deck: readonly CardInstance[]): Sha
     if (s && !out.includes(s)) out.push(s);
   }
   return out;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Card choice row (rewards, the wheel closes): cards at 1.4x with their wheel lines underneath.
+// ------------------------------------------------------------------------------------------------
+
+function lineEl(label: string, parts: (Node | string)[], cls = ''): HTMLElement {
+  const el = document.createElement('div');
+  el.className = `choice-line ${cls}`.trim();
+  const b = document.createElement('span');
+  b.className = 'choice-line__label';
+  b.textContent = label;
+  const values = document.createElement('span');
+  values.className = 'choice-line__values';
+  values.append(...parts);
+  el.append(b, values);
+  return el;
+}
+
+function shadeTag(s: Shade, suffix = ''): HTMLElement {
+  const el = document.createElement('span');
+  el.className = 'shade-tag';
+  el.dataset.face = s;
+  el.innerHTML = `${sigil(s)}<span>${SHADE_NAME[s]}${suffix}</span>`;
+  return el;
+}
+
+function lightTag(l: Light): HTMLElement {
+  const el = document.createElement('span');
+  el.className = 'light-tag';
+  el.dataset.light = l;
+  el.innerHTML = `${sigil(l)}<span>${LIGHT_NAME[l]}</span>`;
+  return el;
+}
+
+/** The lines under a reward card (16.5): Answers, Harmonizes with, DISSONANT vs, Tends. */
+export function wheelLinesElement(def: CardDef, deckBuried: readonly Shade[]): HTMLElement {
+  const w = wheelLines(def, deckBuried);
+  const box = document.createElement('div');
+  box.className = 'choice-lines';
+  if (def.lights.length === 0) {
+    box.append(lineEl('No Light:', [' x1 against every Shade. Never changes the Note.'], 'choice-line--neutral'));
+    return box;
+  }
+  box.append(lineEl('Answers:', w.answers.map((s) => shadeTag(s, ' x2')), 'choice-line--answers'));
+  if (w.harmonizes.length) box.append(lineEl('Harmonizes with:', w.harmonizes.map(lightTag), 'choice-line--harmony'));
+  if (w.dissonant) box.append(lineEl('DISSONANT vs:', [shadeTag(w.dissonant, ' x1/2')], 'choice-line--dissonant'));
+  else box.append(lineEl('Two Lights:', [' never DISSONANT'], 'choice-line--blend'));
+  for (const s of w.tends) box.append(lineEl('Tends:', [`Buried ${SHADE_NAME[s]}`], 'choice-line--tends'));
+  return box;
+}
+
+export interface CardChoiceOptions {
+  engine: Engine;
+  cards: readonly CardId[];
+  deck: readonly CardInstance[];
+  /** Index taken already (drawn chosen), or null. `locked` greys every card (taken or skipped). */
+  takenIndex: number | null;
+  locked: boolean;
+  onTake: (i: number) => void;
+  onHover?: (def: CardDef | null) => void;
+  /** Upgraded offers (none in v1, but the engine may send them). */
+  upgraded?: boolean;
+}
+
+/** A row of reward cards as buttons, keyed 1-4, each with its wheel lines. */
+export function cardChoiceRow(o: CardChoiceOptions): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'card-choice';
+  row.setAttribute('role', 'list');
+  const deckBuried = buriedShades(o.engine, o.deck);
+  o.cards.forEach((id, i) => {
+    const def = o.engine.pack.cards[id];
+    if (!def) return;
+    const taken = o.takenIndex === i;
+    const cell = document.createElement('div');
+    cell.className = `card-choice__cell${taken ? ' is-taken' : ''}${o.locked && !taken ? ' is-passed' : ''}`;
+    cell.setAttribute('role', 'listitem');
+    cell.style.setProperty('--i', String(i));
+    const props = cardProps(o.engine, { defId: id, upgraded: !!o.upgraded });
+    const face = cardElement(o.engine, { defId: id, upgraded: !!o.upgraded }, {
+      tag: 'button',
+      className: 'card-face--large card-choice__card',
+      state: taken ? 'selected' : 'idle',
+      ariaLabel: `${i + 1}. Take ${props.ariaLabel ?? def.name}`,
+    });
+    if (o.locked) {
+      face.setAttribute('aria-disabled', 'true');
+      face.tabIndex = -1;
+    } else {
+      face.addEventListener('click', () => o.onTake(i));
+    }
+    face.addEventListener('pointerenter', () => o.onHover?.(def));
+    face.addEventListener('pointerleave', () => o.onHover?.(null));
+    face.addEventListener('focus', () => o.onHover?.(def));
+    face.addEventListener('blur', () => o.onHover?.(null));
+    const key = document.createElement('span');
+    key.className = 'kbd card-choice__key';
+    key.setAttribute('aria-hidden', 'true');
+    key.textContent = String(i + 1);
+    cell.append(key, face, wheelLinesElement(def, deckBuried));
+    if (taken) {
+      const tag = document.createElement('span');
+      tag.className = 'card-choice__taken caps';
+      tag.textContent = 'Added to your deck';
+      cell.append(tag);
+    }
+    row.append(cell);
+  });
+  return row;
 }

@@ -1,0 +1,181 @@
+/* Top bar (DESIGN 16.1): y 0-44 of the 1280x720 reference canvas. Shared by every run screen. */
+
+.top-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 16);
+  height: calc(var(--u) * 44);
+  padding: 0 calc(var(--u) * 16);
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgb(10 8 16 / 0.92), rgb(10 8 16 / 0.62));
+  border-bottom: 1px solid var(--line);
+  font-size: calc(var(--u) * 14);
+  color: var(--text);
+}
+
+.top-bar[hidden] {
+  display: none;
+}
+
+.tb-left,
+.tb-mid,
+.tb-right {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  min-width: 0;
+}
+
+.tb-left {
+  flex: 1 1 auto;
+}
+
+.tb-mid {
+  flex: 0 1 auto;
+}
+
+.tb-right {
+  flex: 0 0 auto;
+  gap: calc(var(--u) * 16);
+}
+
+.tb-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  height: calc(var(--u) * 32);
+  padding: 0 calc(var(--u) * 10);
+  border-radius: var(--r-pill);
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--line);
+  font-size: calc(var(--u) * 16);
+  white-space: nowrap;
+}
+
+.tb-stat .sigil {
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+}
+
+.tb-heart .sigil {
+  color: var(--pearl);
+}
+
+.tb-heart[data-low='true'] {
+  border-color: color-mix(in srgb, var(--pearl) 55%, transparent);
+  animation: var(--a-pulse) 1.1s ease-in-out infinite;
+}
+
+.tb-glimmers .sigil {
+  color: var(--pearl);
+}
+
+.tb-keepsakes {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.tb-ks {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid var(--line);
+  color: var(--pearl);
+}
+
+.tb-ks .sigil {
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+}
+
+.tb-ks__n {
+  position: absolute;
+  right: calc(var(--u) * -4);
+  bottom: calc(var(--u) * -4);
+  min-width: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 2);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-size: calc(var(--u) * 12);
+  line-height: calc(var(--u) * 14);
+  text-align: center;
+}
+
+.tb-act {
+  font-family: var(--font-title);
+  font-size: calc(var(--u) * 15);
+  color: var(--text-2);
+  white-space: nowrap;
+  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+}
+
+.tb-deck {
+  white-space: nowrap;
+}
+
+.tb-deck .sigil,
+.tb-btn .sigil {
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+}
+
+.tb-deck__buried {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.tb-numb:empty {
+  display: none;
+}
+
+.tb-btn .kbd {
+  margin-left: calc(var(--u) * 2);
+}
+
+.tb-btn__word {
+  margin-left: calc(var(--u) * 2);
+}
+
+/* Tooltips in the top bar open downward (there is no room above). */
+.top-bar .has-tip:is(:hover, :focus)::after {
+  bottom: auto;
+  top: calc(100% + var(--u) * 8);
+}
+
+.tb-left .has-tip:is(:hover, :focus)::after {
+  left: 0;
+  transform: none;
+}
+
+.top-bar .is-bumped {
+  animation: kf-tb-bump 420ms var(--ease-pop);
+}
+
+@keyframes kf-tb-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+:root[data-motion='reduced'] .top-bar .is-bumped {
+  animation: kf-fade-in 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .top-bar .is-bumped {
+    animation: kf-fade-in 300ms ease;
+  }
+}

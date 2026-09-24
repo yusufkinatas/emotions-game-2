@@ -1,10 +1,11 @@
 // Card grids grouped by Light in wheel order, then Blends, neutral, Insight and Buried (DESIGN 16.6 deck
 // view and deck select), plus keyboard helpers for moving focus through any grid or option row.
 
-import type { CardDef, ContentPack, Engine, Light } from '../../engine/index';
-import { BLENDS, LIGHTS, blendOfLights } from '../../engine/index';
+import type { CardDef, CardInstance, ContentPack, DeckSummary, Engine, GameState, Light, Shade } from '../../engine/index';
+import { BLENDS, LIGHTS, SHADES, blendOfLights, lightsOfBlend } from '../../engine/index';
+import type { LightMixSegment } from '../kit/runHud';
+import { lightMixMarkup } from '../kit/runHud';
 import type { CardFaceProps } from '../kit/cardFace';
-import { fitCards } from '../kit/cardFace';
 import { LIGHT_NAME } from '../kit/names';
 import { markIcon, sigil } from '../kit/sigils';
 import { h } from '../dom';
@@ -145,9 +146,47 @@ export function renderCardGrid(o: CardGridOptions): HTMLElement {
   return root;
 }
 
-/** Fit every card in a grid once it is in the document (kit rule: once per mount). */
-export function fitGrid(el: HTMLElement): void {
-  requestAnimationFrame(() => fitCards(el));
+// ------------------------------------------------------------------------------------------------
+// Light Mix (16.4): segments in wheel order, then Blends, neutral, Insight, Buried
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * Light Mix segments from the engine's deck summary. Insight and Buried are split by Light and Shade from
+ * the deck itself (the summary only totals them). `plus` adds one card (the hovered reward) and returns
+ * its segment index in `ghost`.
+ */
+export function lightMixSegments(
+  engine: Engine,
+  deck: readonly CardInstance[],
+  summary: DeckSummary,
+  plus?: CardDef,
+): LightMixSegment[] & { ghost?: number } {
+  const insight = new Map<Light, number>();
+  const buried = new Map<Shade, number>();
+  for (const c of deck) {
+    const def = engine.pack.cards[c.defId];
+    if (!def) continue;
+    if (def.buried) buried.set(def.buried.shade, (buried.get(def.buried.shade) ?? 0) + 1);
+    else if (isInsightDef(def) && def.lights[0]) insight.set(def.lights[0], (insight.get(def.lights[0]) ?? 0) + 1);
+  }
+  const segs: LightMixSegment[] & { ghost?: number } = [];
+  const plusKey = plus ? groupOf(plus) : null;
+  const plusBlend = plus && plus.lights.length === 2 ? blendOfLights(plus.lights) : null;
+  for (const l of LIGHTS) {
+    const extra = plusKey === l ? 1 : 0;
+    if (extra) segs.ghost = segs.length;
+    segs.push({ kind: 'light', light: l, count: summary.byLight[l] + extra });
+  }
+  for (const b of BLENDS) {
+    const extra = plusBlend === b ? 1 : 0;
+    if (extra) segs.ghost = segs.length;
+    segs.push({ kind: 'blend', lights: lightsOfBlend(b), count: summary.byBlend[b] + extra });
+  }
+  if (plusKey === 'neutral') segs.ghost = segs.length;
+  segs.push({ kind: 'neutral', count: summary.neutral + (plusKey === 'neutral' ? 1 : 0) });
+  for (const l of LIGHTS) segs.push({ kind: 'insight', light: l, count: insight.get(l) ?? 0 });
+  for (const sh of SHADES) segs.push({ kind: 'buried', shade: sh, count: buried.get(sh) ?? 0 });
+  return segs;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -204,4 +243,10 @@ export function focusedControl(container: HTMLElement): HTMLElement | null {
   const a = document.activeElement as HTMLElement | null;
   if (!a || !container.contains(a)) return null;
   return a.matches('button, a[href], input, select, [role="button"]') ? a : null;
+}
+
+/** The Light Mix bar for a run, optionally with a "+1" ghost for a card being considered. */
+export function lightMixFor(engine: Engine, s: GameState, plus?: CardDef, button = false): string {
+  const segs = lightMixSegments(engine, s.run.deck, engine.deckSummary(s), plus);
+  return lightMixMarkup({ segments: segs, ghost: segs.ghost, width: '100%', button });
 }

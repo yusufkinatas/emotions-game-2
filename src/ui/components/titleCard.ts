@@ -35,9 +35,6 @@ export function ambienceFor(app: App, act: 1 | 2 | 3 | null): void {
 
 let active: { el: HTMLElement; finish: () => void } | null = null;
 
-/** Is a title card on screen right now? Screens can hold their own keys until it is gone. */
-export const titleCardShowing = (): boolean => active !== null;
-
 /**
  * Show a full-screen title card over everything but coach marks. Resolves when it has faded out, or at once
  * when it is clicked, or Enter, Space or Escape is pressed.
@@ -98,13 +95,4 @@ export function fadeIn(el: HTMLElement, app: App, ms = 260): void {
   el.style.setProperty('--fade-ms', `${d}ms`);
   el.classList.add('screen-fade');
   setTimeout(() => el.classList.remove('screen-fade'), d + 50);
-}
-
-/** Wait, but end early when the player asks to skip (click or Space during an animation). */
-export async function waitSkippable(app: App, ms: number): Promise<void> {
-  const end = performance.now() + app.dur(ms);
-  while (performance.now() < end) {
-    if (app.skipping) return;
-    await new Promise((r) => setTimeout(r, 40));
-  }
 }
