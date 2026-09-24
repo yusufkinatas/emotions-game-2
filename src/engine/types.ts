@@ -953,8 +953,10 @@ export interface NewRunOpts {
   tutorial?: boolean;
   /** Skip charm select and take this Charm. */
   charm?: KeepsakeId;
-  rules?: Partial<RulesConfig>;
 }
+
+/** Rules are fixed per engine instance: createEngine(pack, rulesOverride?) in src/engine/index.ts. */
+export type CreateEngine = (pack: ContentPack, rules?: Partial<RulesConfig>) => Engine;
 
 export interface Engine {
   readonly pack: ContentPack;
