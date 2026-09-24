@@ -17,5 +17,5 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "sim", "vite.config.ts"]
+  "include": ["src", "tests", "sim", "vite.config.ts", "vitest.slow.config.ts", "vitest.balance.config.ts"]
 }
